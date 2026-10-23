@@ -1,4 +1,4 @@
-// NeoScan React 18 Application - Real-Time Optical Screening Edition
+// NeoScan React 18 Application - Real-Time Optical & Biometric Tracking Edition
 const { useState, useEffect, useRef } = React;
 
 // Safe, native React SVG Icons (prevents Lucide DOM mutation crashes)
@@ -229,6 +229,16 @@ const Icon = ({ name, className = "w-4 h-4", ...props }) => {
           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
         </svg>
       );
+    case "crosshair":
+      return (
+        <svg {...iconProps}>
+          <circle cx="12" cy="12" r="10" />
+          <line x1="22" y1="12" x2="18" y2="12" />
+          <line x1="6" y1="12" x2="2" y2="12" />
+          <line x1="12" y1="6" x2="12" y2="2" />
+          <line x1="12" y1="22" x2="12" y2="18" />
+        </svg>
+      );
     default:
       return (
         <svg {...iconProps}>
@@ -262,7 +272,7 @@ const Header = ({ onOpenCardModal }) => (
         <div>
           <div className="flex items-center gap-2">
             <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-sky-100 to-sky-300 bg-clip-text text-transparent">NeoScan</span>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">CV / ML v1.0</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">CV / ML v2.0 (Real NJN)</span>
           </div>
           <p className="text-xs text-slate-400">Lighting-Robust Neonatal Jaundice Screening</p>
         </div>
@@ -337,11 +347,17 @@ const CalibrationModal = ({ isOpen, onClose }) => {
   );
 };
 
+// Helper: Linear interpolation for smooth 60fps tracking animation
+function lerp(start, end, factor) {
+  return start + (end - start) * factor;
+}
+
 // Main App Component
 function App() {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraFacing, setCameraFacing] = useState("environment");
   const [realtimeScanning, setRealtimeScanning] = useState(true);
+  const [trackingEnabled, setTrackingEnabled] = useState(true);
   const [capturedImage, setCapturedImage] = useState(null);
   const [correctionMethod, setCorrectionMethod] = useState("auto");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -355,9 +371,22 @@ function App() {
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const trackingCanvasRef = useRef(null);
   const streamRef = useRef(null);
   const isProcessingRef = useRef(false);
-  const lastTimeRef = useRef(Date.now());
+  const animFrameIdRef = useRef(null);
+
+  // Smooth lerp state for real-time tracking boxes
+  const currentTrackingStateRef = useRef({
+    forehead: null,
+    nose: null,
+    sclera: null,
+    chest: null,
+    cardCorners: null,
+    locked: false,
+    distanceStatus: "OPTIMAL",
+    distanceAdvice: "Align subject in frame"
+  });
 
   // Fetch demo samples on initial load
   useEffect(() => {
@@ -373,6 +402,177 @@ function App() {
       .catch(err => console.error("Error loading demo samples:", err));
   }, []);
 
+  // Update tracking target whenever analysisResult arrives
+  useEffect(() => {
+    if (analysisResult && analysisResult.tracking) {
+      const t = analysisResult.tracking;
+      currentTrackingStateRef.current.targetRois = t.rois || {};
+      currentTrackingStateRef.current.targetCard = t.card || null;
+      currentTrackingStateRef.current.locked = t.locked || false;
+      currentTrackingStateRef.current.distanceStatus = t.distance_status || "OPTIMAL";
+      currentTrackingStateRef.current.distanceAdvice = t.distance_advice || "Optimal screening distance";
+      currentTrackingStateRef.current.estimatedDistanceCm = t.estimated_distance_cm || 28;
+    }
+  }, [analysisResult]);
+
+  // High-performance 60 FPS real-time tracking canvas overlay renderer
+  useEffect(() => {
+    const canvas = trackingCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    const renderTracking = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (cameraActive && trackingEnabled) {
+        const state = currentTrackingStateRef.current;
+        const targets = state.targetRois || {};
+        const w = canvas.width;
+        const h = canvas.height;
+
+        // Smooth box interpolation helper
+        const updateBox = (key) => {
+          const target = targets[key];
+          if (!target) return null;
+          let current = state[key];
+          if (!current) {
+            current = { ...target };
+            state[key] = current;
+          } else {
+            current.x = lerp(current.x, target.x, 0.22);
+            current.y = lerp(current.y, target.y, 0.22);
+            current.w = lerp(current.w, target.w, 0.22);
+            current.h = lerp(current.h, target.h, 0.22);
+          }
+          return current;
+        };
+
+        // Draw bracket helper
+        const drawCorners = (x, y, bw, bh, color, label, centerCrosshair = false) => {
+          const len = Math.min(bw, bh) * 0.35;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 6;
+
+          // Top-Left
+          ctx.beginPath();
+          ctx.moveTo(x, y + len);
+          ctx.lineTo(x, y);
+          ctx.lineTo(x + len, y);
+          ctx.stroke();
+
+          // Top-Right
+          ctx.beginPath();
+          ctx.moveTo(x + bw - len, y);
+          ctx.lineTo(x + bw, y);
+          ctx.lineTo(x + bw, y + len);
+          ctx.stroke();
+
+          // Bottom-Left
+          ctx.beginPath();
+          ctx.moveTo(x, y + bh - len);
+          ctx.lineTo(x, y + bh);
+          ctx.lineTo(x + len, y + bh);
+          ctx.stroke();
+
+          // Bottom-Right
+          ctx.beginPath();
+          ctx.moveTo(x + bw - len, y + bh);
+          ctx.lineTo(x + bw, y + bh);
+          ctx.lineTo(x + bw, y + bh - len);
+          ctx.stroke();
+
+          // Label Tag
+          if (label) {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "rgba(11, 17, 32, 0.85)";
+            ctx.fillRect(x, Math.max(0, y - 20), label.length * 7.5 + 12, 18);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, Math.max(0, y - 20), label.length * 7.5 + 12, 18);
+
+            ctx.fillStyle = color;
+            ctx.font = "bold 10px 'JetBrains Mono', monospace";
+            ctx.fillText(label, x + 6, Math.max(12, y - 7));
+          }
+
+          // Center crosshair
+          if (centerCrosshair) {
+            const cx = x + bw / 2;
+            const cy = y + bh / 2;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(cx - 6, cy);
+            ctx.lineTo(cx + 6, cy);
+            ctx.moveTo(cx, cy - 6);
+            ctx.lineTo(cx, cy + 6);
+            ctx.stroke();
+          }
+        };
+
+        // 1. Forehead Tracking Box (Cyan)
+        const fh = updateBox("forehead");
+        if (fh) {
+          drawCorners(fh.x * w, fh.y * h, fh.w * w, fh.h * h, "#22d3ee", "FOREHEAD [TRACKED]", true);
+        }
+
+        // 2. Nose Tip Tracking Box (Emerald)
+        const nose = updateBox("nose");
+        if (nose) {
+          drawCorners(nose.x * w, nose.y * h, nose.w * w, nose.h * h, "#34d399", "NOSE TIP");
+        }
+
+        // 3. Sclera/Eyes Tracking Box (Fuchsia)
+        const sclera = updateBox("sclera");
+        if (sclera) {
+          drawCorners(sclera.x * w, sclera.y * h, sclera.w * w, sclera.h * h, "#e879f9", "SCLERA [LOCKED]");
+        }
+
+        // 4. Chest/Sternum Tracking Box (Amber)
+        const chest = updateBox("chest");
+        if (chest) {
+          drawCorners(chest.x * w, chest.y * h, chest.w * w, chest.h * h, "#fbbf24", "STERNUM/CHEST");
+        }
+
+        // 5. ArUco Reference Card Tracking (Gold/Yellow Polygon)
+        if (state.targetCard && state.targetCard.corners) {
+          const corners = state.targetCard.corners;
+          ctx.strokeStyle = "#facc15";
+          ctx.lineWidth = 3;
+          ctx.shadowColor = "#facc15";
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.moveTo(corners[0][0] * w, corners[0][1] * h);
+          for (let i = 1; i < corners.length; i++) {
+            ctx.lineTo(corners[i][0] * w, corners[i][1] * h);
+          }
+          ctx.closePath();
+          ctx.stroke();
+
+          // Card Label
+          const c0 = corners[0];
+          ctx.fillStyle = "rgba(11, 17, 32, 0.9)";
+          ctx.fillRect(c0[0] * w, Math.max(0, c0[1] * h - 22), 160, 20);
+          ctx.fillStyle = "#facc15";
+          ctx.font = "bold 10px 'JetBrains Mono', monospace";
+          ctx.fillText(`ARUCO CARD #${state.targetCard.marker_id} [LOCKED]`, c0[0] * w + 6, Math.max(14, c0[1] * h - 8));
+        }
+
+        ctx.shadowBlur = 0;
+      }
+
+      animFrameIdRef.current = requestAnimationFrame(renderTracking);
+    };
+
+    animFrameIdRef.current = requestAnimationFrame(renderTracking);
+
+    return () => {
+      if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
+    };
+  }, [cameraActive, trackingEnabled]);
+
   // Real-time continuous processing loop from live camera
   useEffect(() => {
     let intervalId = null;
@@ -380,7 +580,7 @@ function App() {
     if (cameraActive && realtimeScanning) {
       intervalId = setInterval(() => {
         captureAndAnalyzeLiveFrame();
-      }, 650); // Sample every 650ms for smooth real-time updates without request queueing
+      }, 600); // 600ms sampling for real-time tracking updates
     }
 
     return () => {
@@ -393,13 +593,19 @@ function App() {
     if (isProcessingRef.current || !videoRef.current) return;
     const video = videoRef.current;
 
-    // Verify video stream is actively playing and has dimensions
     if (video.readyState < 2 || video.videoWidth === 0 || video.paused) {
       return;
     }
 
+    // Keep tracking canvas sized with video element
+    if (trackingCanvasRef.current && video.videoWidth > 0) {
+      if (trackingCanvasRef.current.width !== video.videoWidth) {
+        trackingCanvasRef.current.width = video.videoWidth;
+        trackingCanvasRef.current.height = video.videoHeight;
+      }
+    }
+
     const canvas = canvasRef.current || document.createElement("canvas");
-    // Scale down frame to 640px wide max for sub-100ms transport and inference
     const maxDimension = 640;
     const scale = Math.min(1.0, maxDimension / video.videoWidth);
     canvas.width = Math.round(video.videoWidth * scale);
@@ -408,7 +614,7 @@ function App() {
     const ctx = canvas.getContext("2d");
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const b64 = canvas.toDataURL("image/jpeg", 0.75);
+    const b64 = canvas.toDataURL("image/jpeg", 0.72);
     setCapturedImage(b64);
 
     isProcessingRef.current = true;
@@ -428,14 +634,13 @@ function App() {
         if (data.success) {
           setAnalysisResult(data);
           setFrameCount(c => c + 1);
-          // Calculate effective live FPS
           const elapsed = (Date.now() - now) / 1000;
           if (elapsed > 0) {
-            setLiveFps(Math.round(1.0 / (elapsed + 0.65) * 10) / 10);
+            setLiveFps(Math.round(1.0 / (elapsed + 0.60) * 10) / 10);
           }
         }
       })
-      .catch(err => console.error("Realtime frame error:", err))
+      .catch(err => console.error("Realtime tracking frame error:", err))
       .finally(() => {
         isProcessingRef.current = false;
       });
@@ -502,7 +707,6 @@ function App() {
   // Single Frame Snapshot
   const captureSnapshot = () => {
     captureAndAnalyzeLiveFrame();
-    // Temporarily pause continuous scanning so the user can inspect this exact frame
     setRealtimeScanning(false);
   };
 
@@ -562,6 +766,8 @@ function App() {
     }
   };
 
+  const trackingInfo = analysisResult && analysisResult.tracking;
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
       <MedicalDisclaimer />
@@ -569,7 +775,7 @@ function App() {
 
       <main className="flex-1 max-w-7xl mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Column: Real-Time Camera Feed & Guidance (5 cols) */}
+        {/* Left Column: Real-Time Camera Feed & Live Tracking (5 cols) */}
         <div className="lg:col-span-5 flex flex-col gap-5">
           
           {/* Camera Viewport Container */}
@@ -578,11 +784,11 @@ function App() {
               <div className="flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full ${cameraActive && realtimeScanning ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'}`}></span>
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
-                  {cameraActive ? (realtimeScanning ? "Real-Time Camera Stream" : "Live Camera (Paused)") : "Camera & Guidance"}
+                  {cameraActive ? (realtimeScanning ? "Real-Time Tracking Stream" : "Live Camera (Paused)") : "Optical Camera Feed"}
                 </span>
-                {cameraActive && realtimeScanning && (
+                {cameraActive && (
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    LIVE {liveFps > 0 ? `${liveFps} Hz` : "SCANNING"}
+                    {liveFps > 0 ? `${liveFps} FPS` : "TRACKING"}
                   </span>
                 )}
               </div>
@@ -590,21 +796,21 @@ function App() {
               {cameraActive && (
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => setRealtimeScanning(!realtimeScanning)}
+                    onClick={() => setTrackingEnabled(!trackingEnabled)}
                     className={`text-[11px] font-bold px-2 py-1 rounded-lg border transition flex items-center gap-1 ${
-                      realtimeScanning
-                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                        : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                      trackingEnabled
+                        ? 'bg-sky-500/20 border-sky-500/40 text-sky-300'
+                        : 'bg-slate-800 border-slate-700 text-slate-400'
                     }`}
-                    title="Toggle continuous frame scanning"
+                    title="Toggle visual tracking boxes"
                   >
-                    <Icon name="zap" className="w-3 h-3" />
-                    <span>{realtimeScanning ? "Continuous: ON" : "Continuous: PAUSED"}</span>
+                    <Icon name="crosshair" className="w-3 h-3" />
+                    <span>{trackingEnabled ? "Tracking: ON" : "Tracking: OFF"}</span>
                   </button>
                   <button
                     onClick={toggleCameraFacing}
                     className="text-xs text-sky-400 hover:text-sky-300 font-semibold bg-sky-950/60 p-1.5 rounded-lg border border-sky-800/40"
-                    title="Flip Camera (Front/Back)"
+                    title="Flip Camera"
                   >
                     <Icon name="flip-horizontal" className="w-3.5 h-3.5" />
                   </button>
@@ -615,7 +821,7 @@ function App() {
             {/* Viewport Area */}
             <div className="relative aspect-[4/3] bg-black flex items-center justify-center overflow-hidden">
               
-              {/* Always mounted video element (prevents null ref race condition) */}
+              {/* Native Video Feed */}
               <video
                 ref={videoRef}
                 autoPlay
@@ -624,37 +830,48 @@ function App() {
                 className={`w-full h-full object-cover ${cameraActive ? "block" : "hidden"}`}
               />
 
-              {/* Real-Time Live HUD Overlay on Video */}
+              {/* 60 FPS Real-Time Canvas Tracking Overlay */}
+              <canvas
+                ref={trackingCanvasRef}
+                className={`absolute inset-0 pointer-events-none w-full h-full ${cameraActive && trackingEnabled ? "block" : "hidden"}`}
+              />
+
+              {/* Real-Time HUD Distance Telemetry */}
               {cameraActive && (
                 <>
-                  {/* Framing Guide Oval */}
+                  {/* Framing Guide Oval (Soft guide background) */}
                   <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                    <div className="w-52 h-64 border-2 border-dashed border-sky-400/80 rounded-[50%] flex items-center justify-center shadow-lg">
-                      <div className="w-10 h-0.5 bg-sky-400/50"></div>
-                    </div>
-                    {/* ArUco Card Guide */}
-                    <div className="absolute bottom-4 left-4 w-28 h-20 border border-amber-400/70 rounded-lg bg-amber-500/15 backdrop-blur-sm flex flex-col items-center justify-center text-[10px] text-amber-300 text-center px-1 shadow">
-                      <Icon name="scan" className="w-3.5 h-3.5 mb-1 text-amber-400" />
-                      <span>Place Card Here (Optional)</span>
+                    <div className="w-52 h-64 border border-dashed border-slate-500/30 rounded-[50%] flex items-center justify-center">
                     </div>
                   </div>
 
-                  {/* Top Live Guidance Badge */}
-                  <div className="absolute top-3 inset-x-3 pointer-events-none flex justify-center">
-                    <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 text-slate-200 text-xs px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2">
-                      <Icon name="info" className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                      <span>Hold 25-30 cm away. Keep face centered. Frame #{frameCount}</span>
+                  {/* Top Distance Gauge Bar */}
+                  <div className="absolute top-3 inset-x-3 pointer-events-none flex flex-col items-center gap-1">
+                    <div className="bg-slate-950/90 backdrop-blur-md border border-slate-800 px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-3 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${
+                          trackingInfo?.distance_status === "OPTIMAL" ? "bg-emerald-400 animate-pulse" :
+                          trackingInfo?.distance_status === "TOO_CLOSE" ? "bg-red-400" : "bg-amber-400"
+                        }`}></span>
+                        <span className="font-bold text-white font-mono">
+                          {trackingInfo?.estimated_distance_cm ? `~${trackingInfo.estimated_distance_cm} cm` : "28 cm"}
+                        </span>
+                      </div>
+                      <span className="text-slate-400 font-medium">|</span>
+                      <span className="text-[11px] text-slate-300">
+                        {trackingInfo?.distance_advice || "Optimal screening distance"}
+                      </span>
                     </div>
                   </div>
 
                   {/* Real-time mini HUD stats on video */}
                   {analysisResult && (
-                    <div className="absolute top-12 left-3 pointer-events-none flex flex-col gap-1.5">
-                      <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-[10px] text-amber-300 font-mono shadow flex items-center gap-1.5">
+                    <div className="absolute bottom-3 left-3 pointer-events-none flex flex-col gap-1.5">
+                      <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-[10px] text-amber-300 font-mono shadow flex items-center gap-1.5">
                         <Icon name="sun" className="w-3 h-3 text-amber-400" />
                         <span>CCT: {analysisResult.lighting_condition.cct_kelvin}K</span>
                       </div>
-                      <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-[10px] text-sky-300 font-mono shadow flex items-center gap-1.5">
+                      <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 px-2.5 py-1 rounded-md text-[10px] text-sky-300 font-mono shadow flex items-center gap-1.5">
                         <Icon name="activity" className="w-3 h-3 text-sky-400" />
                         <span>Fused b*: {analysisResult.fused_biomarkers.fused_lab_b_star}</span>
                       </div>
@@ -689,13 +906,12 @@ function App() {
                     </div>
                     <p className="text-sm font-semibold text-slate-300 mb-1">Camera Feed Inactive</p>
                     <p className="text-xs text-slate-500 max-w-xs mb-4">
-                      Activate live camera stream to start real-time optical screening.
+                      Activate live camera stream to start real-time optical screening and ROI tracking.
                     </p>
                   </div>
                 )
               )}
 
-              {/* Hidden Canvas for Frame Transport */}
               <canvas ref={canvasRef} className="hidden" />
             </div>
 
@@ -840,7 +1056,7 @@ function App() {
               <div className="w-14 h-14 rounded-full border-4 border-sky-500 border-t-transparent animate-spin mb-4"></div>
               <h4 className="text-base font-bold text-white mb-1">Initializing Real-Time Pipeline...</h4>
               <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
-                Executing Quality Gating &bull; Lighting Detection &bull; Color Constancy &bull; Landmark ROI Isolation &bull; Calibrated Risk Assessment
+                Executing Quality Gating &bull; Lighting Detection &bull; Color Constancy &bull; Landmark ROI Tracking &bull; Calibrated Risk Assessment
               </p>
             </div>
           ) : analysisResult ? (

@@ -3,6 +3,7 @@
 node_modules/
 .venv/
 venv/
+data/
 
 # Python cache & logs
 __pycache__/

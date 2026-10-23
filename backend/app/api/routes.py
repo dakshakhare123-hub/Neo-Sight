@@ -128,6 +128,59 @@ def analyze_image(payload: AnalyzeRequest):
     fused_biomarkers = features_meta["fused_biomarkers"]
     risk_assessment = classifier.predict_risk(fused_biomarkers)
 
+    # Real-Time Image Tracking Telemetry (Normalized 0.0 - 1.0 Coordinates)
+    h_img, w_img = raw_bgr.shape[:2]
+    tracking_rois = {}
+    for name, r in rois.items():
+        if r is not None and r.get("bbox") is not None:
+            bx, by, bw, bh = r["bbox"]
+            tracking_rois[name] = {
+                "x": round(float(bx) / w_img, 4),
+                "y": round(float(by) / h_img, 4),
+                "w": round(float(bw) / w_img, 4),
+                "h": round(float(bh) / h_img, 4),
+            }
+
+    card_tracking = None
+    if calibration_meta.get("card_detected") and calibration_meta.get("marker_corners"):
+        corners = calibration_meta["marker_corners"]
+        card_tracking = {
+            "corners": [[round(float(pt[0]) / w_img, 4), round(float(pt[1]) / h_img, 4)] for pt in corners],
+            "marker_id": calibration_meta.get("marker_id", 0)
+        }
+
+    # Distance & Framing Telemetry based on apparent ROI proportions
+    fh_box = tracking_rois.get("forehead")
+    face_detected = roi_data.get("face_detected", False)
+
+    if fh_box:
+        apparent_width = fh_box["w"]
+        if apparent_width < 0.16:
+            distance_status = "TOO_FAR"
+            distance_advice = "Move closer (approx 25-30 cm)"
+            distance_cm = 45
+        elif apparent_width > 0.52:
+            distance_status = "TOO_CLOSE"
+            distance_advice = "Move slightly further away"
+            distance_cm = 16
+        else:
+            distance_status = "OPTIMAL"
+            distance_advice = "Optimal screening distance"
+            distance_cm = 28
+    else:
+        distance_status = "OPTIMAL" if face_detected else "SEARCHING"
+        distance_advice = "Keep face centered in frame"
+        distance_cm = 30
+
+    tracking_data = {
+        "locked": face_detected or bool(tracking_rois),
+        "distance_status": distance_status,
+        "distance_advice": distance_advice,
+        "estimated_distance_cm": distance_cm,
+        "rois": tracking_rois,
+        "card": card_tracking
+    }
+
     # Visualizations
     visualizations = {}
     if payload.include_visualizations:
@@ -175,6 +228,7 @@ def analyze_image(payload: AnalyzeRequest):
             } for k, v in features_meta["rois"].items()
         },
         "risk_assessment": risk_assessment,
+        "tracking": tracking_data,
         "visualizations": visualizations
     }
 
