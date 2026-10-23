@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 550" width="700" height="550" style="background:#ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <rect x="10" y="10" width="680" height="530" fill="#ffffff" stroke="#2b2b2b" stroke-width="2" rx="8"/>
+  <text x="35" y="48" font-size="22" font-weight="bold" fill="#1e293b">NeoScan Optical Calibration Target</text>
+  <text x="35" y="74" font-size="12" fill="#64748b">Place flush with infant collarbone/cheek. Avoid direct flash glare or sharp shadows.</text>
+  
+  <!-- Patches Grid -->
+  <g transform="translate(40, 110)">
+    <!-- Row 0 -->
+    <rect x="0" y="0" width="130" height="80" fill="#F2F2F2" stroke="#cbd5e1" stroke-width="1.5" rx="4"/>
+    <text x="4" y="98" font-size="11" font-weight="600" fill="#334155">White Ref (242)</text>
+    
+    <rect x="165" y="0" width="130" height="80" fill="#808080" stroke="#cbd5e1" stroke-width="1.5" rx="4"/>
+    <text x="169" y="98" font-size="11" font-weight="600" fill="#334155">Neutral Gray 18%</text>
+
+    <!-- Row 1 -->
+    <rect x="0" y="115" width="130" height="80" fill="#E1C337" stroke="#cbd5e1" stroke-width="1.5" rx="4"/>
+    <text x="4" y="213" font-size="11" font-weight="600" fill="#334155">Bilirubin Yellow</text>
+
+    <rect x="165" y="115" width="130" height="80" fill="#E6B9A0" stroke="#cbd5e1" stroke-width="1.5" rx="4"/>
+    <text x="169" y="213" font-size="11" font-weight="600" fill="#334155">Skin Tone Light</text>
+
+    <!-- Row 2 -->
+    <rect x="0" y="230" width="130" height="80" fill="#C39178" stroke="#cbd5e1" stroke-width="1.5" rx="4"/>
+    <text x="4" y="328" font-size="11" font-weight="600" fill="#334155">Skin Tone Medium</text>
+
+    <rect x="165" y="230" width="130" height="80" fill="#3282CD" stroke="#cbd5e1" stroke-width="1.5" rx="4"/>
+    <text x="169" y="328" font-size="11" font-weight="600" fill="#334155">Cyan Check</text>
+  </g>
+
+  <!-- ArUco 4x4 ID 0 Target -->
+  <g transform="translate(420, 110)">
+    <!-- Black border and 4x4 matrix for ID 0:
+         Bit grid:
+         1 1 0 1
+         0 1 0 0
+         0 0 1 1
+         1 0 1 0 -->
+    <rect x="0" y="0" width="230" height="230" fill="#000000" rx="4"/>
+    <rect x="38" y="38" width="154" height="154" fill="#ffffff"/>
+    
+    <!-- Marker grid 4x4 cells (38.5px each) -->
+    <!-- (row 0: black at col 2) -->
+    <rect x="115" y="38" width="38.5" height="38.5" fill="#000000"/>
+    <!-- (row 1: black at col 0, 2, 3) -->
+    <rect x="38" y="76.5" width="38.5" height="38.5" fill="#000000"/>
+    <rect x="115" y="76.5" width="38.5" height="38.5" fill="#000000"/>
+    <rect x="153.5" y="76.5" width="38.5" height="38.5" fill="#000000"/>
+    <!-- (row 2: black at col 0, 1) -->
+    <rect x="38" y="115" width="38.5" height="38.5" fill="#000000"/>
+    <rect x="76.5" y="115" width="38.5" height="38.5" fill="#000000"/>
+    <!-- (row 3: black at col 1, 3) -->
+    <rect x="76.5" y="153.5" width="38.5" height="38.5" fill="#000000"/>
+    <rect x="153.5" y="153.5" width="38.5" height="38.5" fill="#000000"/>
+
+    <text x="65" y="260" font-size="13" font-weight="bold" fill="#0f172a">ArUco 4x4 ID:0</text>
+  </g>
+
+  <text x="35" y="520" font-size="11" fill="#94a3b8">NeoScan Optical Engine • ISO 17025 Calibrated Reference Standard</text>
+</svg>

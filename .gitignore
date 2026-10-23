@@ -1,0 +1,19 @@
+# Dependencies & Build artifacts
+.tools/
+node_modules/
+.venv/
+venv/
+
+# Python cache & logs
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
