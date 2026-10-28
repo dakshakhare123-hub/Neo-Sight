@@ -1,99 +1,125 @@
 """
 Quality Gating Module
-Evaluates image usability, removes clipped highlights & shadows,
-and assesses camera focus / motion blur via Laplacian variance.
+Evaluates image usability, detects camera blur (Laplacian variance),
+and identifies extreme sensor clipping (specular highlights / underexposed shadows).
 
-Design Rationale:
-In clinical smartphone imaging, specular flash glare (saturated white) and
-deep shadows (underexposed sensor noise) carry no chromaticity information.
-If included in ROI mean calculations, specular highlights falsely bleach yellow
-pigment, while shadows corrupt color ratios. Discarding them upstream guarantees
-that subsequent color constancy and classification operate purely on unclipped dermal reflectance.
+Strict Failure Policy:
+Never passes unanalyzable, pitch black, blown-out, or heavily blurred images downstream.
+Returns specific error codes so users receive actionable corrective guidance.
 """
 
 import cv2
 import numpy as np
 from typing import Dict, Any, Tuple
-from ..config import QualityThresholds
 
 class QualityGate:
     def __init__(self, 
-                 min_intensity: int = QualityThresholds.MIN_VALID_INTENSITY,
-                 max_intensity: int = QualityThresholds.MAX_VALID_INTENSITY,
-                 min_sharpness: float = QualityThresholds.MIN_SHARPNESS_LAPLACIAN_VAR):
+                 min_intensity: int = 15,
+                 max_intensity: int = 245,
+                 min_sharpness: float = 35.0,
+                 min_dimension: int = 240,
+                 max_overexposed_ratio: float = 0.25,
+                 max_underexposed_ratio: float = 0.35):
         self.min_intensity = min_intensity
         self.max_intensity = max_intensity
         self.min_sharpness = min_sharpness
+        self.min_dimension = min_dimension
+        self.max_overexposed_ratio = max_overexposed_ratio
+        self.max_underexposed_ratio = max_underexposed_ratio
 
     def evaluate_image(self, bgr_image: np.ndarray) -> Dict[str, Any]:
         """
-        Analyzes full image quality metrics.
-        Returns quality flags, valid pixel mask, and blur diagnostics.
+        Analyzes image quality metrics.
+        Returns:
+            dict containing passed (bool), error_code (str or None),
+            sharpness_score, valid_pixel_ratio, and corrective guidance.
         """
-        h, w, c = bgr_image.shape
+        if bgr_image is None or bgr_image.size == 0:
+            return {
+                "passed": False,
+                "error_code": "UNSUPPORTED_FORMAT",
+                "message": "Image payload could not be decoded.",
+                "corrective_action": "Upload a valid JPEG or PNG photograph.",
+                "sharpness_score": 0.0,
+                "valid_pixel_ratio": 0.0
+            }
+
+        h, w = bgr_image.shape[:2]
         total_pixels = h * w
-        
-        # 1. Convert to grayscale for structural sharpness assessment
+
+        # 1. Dimension Check
+        if h < self.min_dimension or w < self.min_dimension:
+            return {
+                "passed": False,
+                "error_code": "IMAGE_TOO_SMALL",
+                "message": f"Image resolution ({w}x{h}) is too low for clinical dermal analysis.",
+                "corrective_action": f"Ensure image is at least {self.min_dimension}x{self.min_dimension} pixels.",
+                "sharpness_score": 0.0,
+                "valid_pixel_ratio": 0.0
+            }
+
+        # 2. Structural Sharpness (Laplacian variance on grayscale)
         gray = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2GRAY)
-        
-        # 2. Laplacian operator computes second spatial derivative (detects rapid edge transitions)
-        # Low variance => blurred / out of focus; High variance => crisp textures
         laplacian = cv2.Laplacian(gray, cv2.CV_64F)
         sharpness_var = float(laplacian.var())
         is_sharp = sharpness_var >= self.min_sharpness
 
-        # 3. Detect over-exposed (specular highlight) and under-exposed (dark shadow) pixels
-        # A pixel is considered clipped if all channels are <= min_intensity or >= max_intensity
+        # 3. Exposure / Sensor Clipping Assessment
+        # Severe underexposure: all channels very dark
         under_exposed_mask = np.all(bgr_image < self.min_intensity, axis=-1)
-        over_exposed_mask = np.all(bgr_image > self.max_intensity, axis=-1)
-        
-        # In addition, check for single-channel saturation (sensor clipping)
-        saturated_any_channel = np.any(bgr_image >= 254, axis=-1)
-        
-        clipped_mask = under_exposed_mask | over_exposed_mask | saturated_any_channel
-        valid_mask = ~clipped_mask
-        
+        # Severe overexposure / specular glare: all channels near 255 or luminance clipped
+        over_exposed_mask = np.all(bgr_image > self.max_intensity, axis=-1) | (gray >= 250)
+
         under_ratio = float(np.sum(under_exposed_mask) / total_pixels)
-        over_ratio = float(np.sum(over_exposed_mask | saturated_any_channel) / total_pixels)
+        over_ratio = float(np.sum(over_exposed_mask) / total_pixels)
+
+        clipped_mask = under_exposed_mask | over_exposed_mask
+        valid_mask = ~clipped_mask
         valid_ratio = float(np.sum(valid_mask) / total_pixels)
-        
-        # 4. Overall usability verdict
-        passed = is_sharp and (valid_ratio >= 0.50) and (over_ratio < 0.35)
-        
-        warnings = []
+
+        # 4. Strict Quality Verdicts with Actionable Errors
+        if under_ratio >= self.max_underexposed_ratio:
+            return {
+                "passed": False,
+                "error_code": "IMAGE_UNDEREXPOSED",
+                "message": f"Image is too dark ({under_ratio*100:.1f}% underexposed pixels). Sensor cannot capture dermal chrominance.",
+                "corrective_action": "Move baby to an area with brighter, even ambient room lighting and retake.",
+                "sharpness_score": round(sharpness_var, 2),
+                "valid_pixel_ratio": round(valid_ratio, 4),
+                "valid_mask": valid_mask
+            }
+
+        if over_ratio >= self.max_overexposed_ratio:
+            return {
+                "passed": False,
+                "error_code": "IMAGE_OVEREXPOSED",
+                "message": f"Severe glare or flash blowout detected ({over_ratio*100:.1f}% clipped pixels). Specular reflection bleaches skin pigment.",
+                "corrective_action": "Turn off camera flash and avoid direct harsh overhead light pointing at baby's face.",
+                "sharpness_score": round(sharpness_var, 2),
+                "valid_pixel_ratio": round(valid_ratio, 4),
+                "valid_mask": valid_mask
+            }
+
         if not is_sharp:
-            warnings.append(f"Image is blurry (Sharpness: {sharpness_var:.1f} < {self.min_sharpness:.1f}). Hold phone steady.")
-        if over_ratio > 0.20:
-            warnings.append(f"High specular glare / overexposure detected ({over_ratio*100:.1f}%). Avoid direct harsh flash.")
-        if under_ratio > 0.30:
-            warnings.append(f"Severe underexposure detected ({under_ratio*100:.1f}%). Increase ambient room lighting.")
-            
+            return {
+                "passed": False,
+                "error_code": "IMAGE_TOO_BLURRY",
+                "message": f"Image is out of focus or motion-blurred (sharpness score {sharpness_var:.1f} < {self.min_sharpness:.1f}).",
+                "corrective_action": "Hold phone steady approximately 25-30 cm from infant's forehead and allow camera to focus.",
+                "sharpness_score": round(sharpness_var, 2),
+                "valid_pixel_ratio": round(valid_ratio, 4),
+                "valid_mask": valid_mask
+            }
+
         return {
-            "passed": passed,
+            "passed": True,
+            "error_code": None,
+            "message": "Image passed optical quality criteria.",
+            "corrective_action": None,
             "sharpness_score": round(sharpness_var, 2),
             "is_sharp": is_sharp,
             "valid_pixel_ratio": round(valid_ratio, 4),
             "overexposed_ratio": round(over_ratio, 4),
             "underexposed_ratio": round(under_ratio, 4),
-            "warnings": warnings,
-            "valid_mask": valid_mask  # 2D boolean mask
+            "valid_mask": valid_mask
         }
-
-    def filter_roi_pixels(self, bgr_roi: np.ndarray) -> Tuple[np.ndarray, float]:
-        """
-        Filters an extracted ROI to retain only valid unclipped pixels.
-        Returns:
-            clean_pixels: Nx3 array of valid BGR values
-            valid_ratio: fraction of valid pixels in this ROI
-        """
-        if bgr_roi.size == 0:
-            return np.empty((0, 3), dtype=np.uint8), 0.0
-            
-        pixels = bgr_roi.reshape(-1, 3)
-        valid = (
-            (pixels[:, 0] >= self.min_intensity) & (pixels[:, 0] <= self.max_intensity) &
-            (pixels[:, 1] >= self.min_intensity) & (pixels[:, 1] <= self.max_intensity) &
-            (pixels[:, 2] >= self.min_intensity) & (pixels[:, 2] <= self.max_intensity)
-        )
-        valid_ratio = float(np.mean(valid))
-        return pixels[valid], valid_ratio

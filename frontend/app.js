@@ -570,32 +570,7 @@ function App() {
                 rawImage: matchingSample.image_base64,
                 activeCorrection: "auto",
                 corrections: {},
-                tracking: {
-                  locked: true,
-                  distance_status: "OPTIMAL",
-                  distance_advice: "Optimal distance (~25 cm)",
-                  estimated_distance_cm: 26,
-                  rois: {
-                    forehead: {
-                      x: 0.38,
-                      y: 0.22,
-                      w: 0.24,
-                      h: 0.16
-                    },
-                    nose: {
-                      x: 0.44,
-                      y: 0.40,
-                      w: 0.12,
-                      h: 0.12
-                    },
-                    sclera: {
-                      x: 0.35,
-                      y: 0.34,
-                      w: 0.30,
-                      h: 0.10
-                    }
-                  }
-                },
+                tracking: null,
                 currentAnalysis: null
               };
               return {
@@ -944,8 +919,25 @@ function App() {
       clearTimeout(t1);
       clearTimeout(t2);
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.detail || "Analysis failed. Please verify infant framing.");
+        const errData = await response.json().catch(() => ({
+          detail: "Analysis failed."
+        }));
+        let errObj = null;
+        if (typeof errData.detail === "object" && errData.detail !== null) {
+          errObj = {
+            code: errData.detail.error_code || "QUALITY_GATE_REJECTED",
+            message: errData.detail.message || "Image rejected by screening quality gate.",
+            action: errData.detail.corrective_action || "Please review infant framing and lighting conditions."
+          };
+        } else {
+          errObj = {
+            code: "ANALYSIS_FAILED",
+            message: typeof errData.detail === "string" ? errData.detail : "Image analysis could not be completed.",
+            action: "Ensure proper lighting and that the infant's face or skin is clearly visible."
+          };
+        }
+        setError(errObj);
+        return;
       }
       const data = await response.json();
       if (data.tracking && data.tracking.rois) {
@@ -953,7 +945,7 @@ function App() {
       }
 
       // Link new or updated image record non-destructively to patient
-      const newImageId = activeImageRecord && activeImageRecord.rawImage === targetImage ? activeImageRecord.id : `img_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+      const newImageId = activeImageRecord && activeImageRecord.rawImage === targetImage ? activeImageRecord.id : `img_${Date.now()}_${performance.now().toString(36).replace(".", "")}`;
       const formattedDate = new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit"
@@ -993,7 +985,11 @@ function App() {
       setCurrentStep(3); // Smoothly transition to results
     } catch (err) {
       console.error("Analysis execution error:", err);
-      setError(err.message || "An unexpected error occurred during screening.");
+      setError({
+        code: "SERVER_COMMUNICATION_ERROR",
+        message: err.message || "An unexpected error occurred during screening.",
+        action: "Please verify that the NeoScan backend service is reachable and retry."
+      });
     } finally {
       setLoading(false);
     }
@@ -1055,7 +1051,7 @@ function App() {
     return analysisResult?.visualizations?.corrected_image_base64 || activeImageRecord.rawImage;
   }, [activeImageRecord, imageCompareMode, analysisResult]);
 
-  // Dynamic Risk Details (derived directly from backend model output)
+  // Dynamic Risk Details (derived directly from real optical biomarkers)
   const riskDetails = useMemo(() => {
     if (!analysisResult || !analysisResult.risk_assessment) {
       return {
@@ -1064,35 +1060,58 @@ function App() {
         subtitle: "Capture infant skin to evaluate bilirubin levels.",
         color: "#64748b",
         badge: "READY FOR SCREENING",
-        confidence: 95,
-        eqTsb: "Pending",
+        confidence: 0,
+        confidenceLevel: "N/A",
+        bStar: "N/A",
+        bix: "N/A",
         recommendation: "Ensure baby's face is centered and in soft indirect lighting.",
-        lowP: 33,
-        modP: 33,
-        highP: 33,
         markerPos: 10
       };
     }
     const ra = analysisResult.risk_assessment;
-    const probas = ra.class_probabilities || ra.probability_distribution || {};
-    const lowP = Math.round((probas.LOW_RISK || 0) * 100);
-    const modP = Math.round((probas.MODERATE_RISK || 0) * 100);
-    const highP = Math.round((probas.HIGH_RISK || 0) * 100);
+    const cat = ra.risk_category || "INCONCLUSIVE";
+    const primary = ra.primary_biomarkers || {};
+    const bStarVal = primary.dermal_yellowness_b_star ?? analysisResult.fused_biomarkers?.fused_lab_b_star;
+    const bixVal = primary.bilirubin_index_bix ?? analysisResult.fused_biomarkers?.fused_bix;
+    const confScore = Math.round((ra.confidence_score || 0.8) * 100);
+    const confLevel = ra.confidence_level || "MODERATE";
 
-    // Calculate dynamic indicator marker position (0% - 100%)
-    const markerPos = Math.min(95, Math.max(5, Math.round(lowP * 0.15 + modP * 0.50 + highP * 0.88)));
+    // Physically meaningful marker position on 0 - 32 b* yellowness scale:
+    // Normal: b* < 16 (0% - 50%)
+    // Mild jaundice signs: 16 <= b* < 22 (50% - 75%)
+    // High yellowness signs: b* >= 22 (75% - 100%)
+    let markerPos = 25;
+    if (typeof bStarVal === "number" && !isNaN(bStarVal)) {
+      markerPos = Math.min(96, Math.max(4, Math.round(Math.max(0, bStarVal) / 32 * 100)));
+    }
+    let color = "#059669"; // emerald
+    let badge = "NO VISIBLE SIGNS";
+    let title = "Routine Observation Suggested";
+    let recommendation = ra.triage_recommendation || "Maintain standard pediatric care and regular feeding schedule.";
+    if (cat === "POSSIBLE_JAUNDICE_SIGNS") {
+      const isElevated = typeof bStarVal === "number" && bStarVal >= 22.0;
+      color = isElevated ? "#e11d48" : "#d97706";
+      badge = isElevated ? "ELEVATED JAUNDICE SIGNS" : "POSSIBLE JAUNDICE SIGNS";
+      title = "Pediatric Consultation Recommended";
+      recommendation = ra.triage_recommendation || "Contact your pediatrician or healthcare provider for clinical evaluation.";
+    } else if (cat === "INCONCLUSIVE") {
+      color = "#64748b";
+      badge = "INCONCLUSIVE SCREENING";
+      title = "Inconclusive Optical Screening";
+      recommendation = ra.triage_recommendation || "Re-capture in neutral diffuse daylight. Avoid tinted or tungsten lamps.";
+    }
     return {
-      category: ra.risk_category,
-      title: ra.title || "Neonatal Bilirubin Triage",
-      color: ra.color || "#059669",
-      badge: ra.badge || ra.risk_category.replace("_", " "),
-      confidence: ra.confidence_percent || Math.round((ra.confidence || 0.95) * 100),
-      eqTsb: ra.equivalent_tsb_range || (ra.risk_category === "HIGH_RISK" ? "> 14 mg/dL" : ra.risk_category === "MODERATE_RISK" ? "8-14 mg/dL" : "< 8 mg/dL"),
-      recommendation: ra.recommendation || "Maintain standard pediatric care.",
-      lowP,
-      modP,
-      highP,
-      markerPos
+      category: cat,
+      title,
+      color,
+      badge,
+      confidence: confScore,
+      confidenceLevel: confLevel,
+      bStar: typeof bStarVal === "number" ? bStarVal.toFixed(1) : "N/A",
+      bix: typeof bixVal === "number" ? bixVal.toFixed(3) : "N/A",
+      recommendation,
+      markerPos,
+      methodology: ra.methodology || "Rule-Based Optical Screening Heuristic (AAP Guidelines)"
     };
   }, [analysisResult]);
   return /*#__PURE__*/React.createElement("div", {
@@ -1151,7 +1170,7 @@ function App() {
     className: "w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
   }), /*#__PURE__*/React.createElement("span", {
     className: "hidden sm:inline font-medium"
-  }, "NJN Model Active (96.7%)"), /*#__PURE__*/React.createElement("span", {
+  }, "Optical Heuristic Active"), /*#__PURE__*/React.createElement("span", {
     className: "sm:hidden font-medium"
   }, "Online")))), /*#__PURE__*/React.createElement("div", {
     className: "md:hidden flex border-t border-slate-100"
@@ -1169,23 +1188,38 @@ function App() {
   }, "3. Results"))), /*#__PURE__*/React.createElement("main", {
     className: "flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8"
   }, error && /*#__PURE__*/React.createElement("div", {
-    className: "mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start justify-between shadow-sm animate-fadeIn"
+    className: "mb-6 p-5 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-amber-900 shadow-sm animate-fadeIn"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-start space-x-3"
+    className: "flex items-start justify-between gap-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start space-x-3.5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "p-2 rounded-xl bg-amber-100 text-amber-700 shrink-0 mt-0.5"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "alert-triangle",
-    className: "w-5 h-5 text-rose-600 shrink-0 mt-0.5"
-  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", {
-    className: "text-sm font-semibold text-rose-900"
-  }, "Screening Notice"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-rose-700 mt-0.5"
-  }, error))), /*#__PURE__*/React.createElement("button", {
+    className: "w-5 h-5"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "space-y-1"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2"
+  }, /*#__PURE__*/React.createElement("h4", {
+    className: "text-sm font-bold text-amber-950"
+  }, typeof error === "object" && error.code ? error.code.replace(/_/g, " ") : "Screening Notice"), typeof error === "object" && error.code && /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-900 font-semibold"
+  }, "Quality Gate")), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-amber-900 leading-relaxed font-medium"
+  }, typeof error === "object" ? error.message : error), typeof error === "object" && error.action && /*#__PURE__*/React.createElement("div", {
+    className: "mt-2.5 p-3 rounded-xl bg-white/90 border border-amber-200/80 text-xs text-slate-700"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "font-bold text-amber-900 block mb-0.5"
+  }, "Actionable Guidance:"), /*#__PURE__*/React.createElement("span", null, error.action)))), /*#__PURE__*/React.createElement("button", {
     onClick: () => setError(null),
-    className: "text-rose-400 hover:text-rose-600 p-1"
+    className: "text-amber-500 hover:text-amber-700 p-1.5 rounded-lg hover:bg-amber-100/60 transition-colors shrink-0",
+    title: "Dismiss"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "x",
     className: "w-4 h-4"
-  }))), currentStep === 1 && /*#__PURE__*/React.createElement("div", {
+  })))), currentStep === 1 && /*#__PURE__*/React.createElement("div", {
     className: "space-y-8 animate-fadeIn"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-center max-w-2xl mx-auto space-y-2"
@@ -1678,7 +1712,7 @@ function App() {
       color: riskDetails.color
     }
   }, /*#__PURE__*/React.createElement(Icon, {
-    name: riskDetails.category === "HIGH_RISK" ? "alert-triangle" : riskDetails.category === "MODERATE_RISK" ? "alert-circle" : "shield-check",
+    name: riskDetails.category === "POSSIBLE_JAUNDICE_SIGNS" ? "alert-triangle" : riskDetails.category === "INCONCLUSIVE" ? "alert-circle" : "shield-check",
     className: "w-4 h-4"
   }), /*#__PURE__*/React.createElement("span", null, riskDetails.badge)), /*#__PURE__*/React.createElement("h1", {
     className: "text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
@@ -1692,24 +1726,24 @@ function App() {
     className: "font-semibold text-slate-500"
   }, "CIE b* Yellowness:"), /*#__PURE__*/React.createElement("span", {
     className: "font-bold text-slate-900 font-mono text-sm"
-  }, analysisResult?.fused_biomarkers?.fused_lab_b_star || "14.2")), /*#__PURE__*/React.createElement("div", {
+  }, riskDetails.bStar !== "N/A" ? riskDetails.bStar : analysisResult?.fused_biomarkers?.fused_lab_b_star?.toFixed(1) || "N/A")), /*#__PURE__*/React.createElement("div", {
     className: "space-y-1.5 relative pt-2"
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-full h-3 rounded-full bg-slate-200 overflow-hidden flex"
   }, /*#__PURE__*/React.createElement("div", {
     className: "h-full bg-emerald-500",
     style: {
-      width: "35%"
+      width: "50%"
     }
   }), /*#__PURE__*/React.createElement("div", {
     className: "h-full bg-amber-500",
     style: {
-      width: "35%"
+      width: "25%"
     }
   }), /*#__PURE__*/React.createElement("div", {
     className: "h-full bg-rose-500",
     style: {
-      width: "30%"
+      width: "25%"
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "absolute top-0 w-3 h-3 rounded-full border-2 border-white shadow-md transform -translate-x-1/2 transition-all duration-500",
@@ -1719,19 +1753,19 @@ function App() {
     }
   }), /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between text-[10px] text-slate-400 font-medium"
-  }, /*#__PURE__*/React.createElement("span", null, "Low (", riskDetails.lowP, "%)"), /*#__PURE__*/React.createElement("span", null, "Mod (", riskDetails.modP, "%)"), /*#__PURE__*/React.createElement("span", null, "High (", riskDetails.highP, "%)"))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, "Normal (<16)"), /*#__PURE__*/React.createElement("span", null, "Mild (16-22)"), /*#__PURE__*/React.createElement("span", null, "Elevated (>22)"))), /*#__PURE__*/React.createElement("div", {
     className: "pt-2 border-t border-slate-100 flex items-center justify-between text-xs"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-slate-500"
-  }, "Estimated Equiv. TSB:"), /*#__PURE__*/React.createElement("span", {
+  }, "Bilirubin Index (BIx):"), /*#__PURE__*/React.createElement("span", {
     className: "font-bold text-slate-800 font-mono"
-  }, riskDetails.eqTsb)), /*#__PURE__*/React.createElement("div", {
+  }, riskDetails.bix !== "N/A" ? riskDetails.bix : analysisResult?.fused_biomarkers?.fused_bix?.toFixed(3) || "N/A")), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between text-xs"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-slate-500"
-  }, "Confidence Score:"), /*#__PURE__*/React.createElement("span", {
-    className: "font-bold text-teal-700"
-  }, riskDetails.confidence, "%")))), /*#__PURE__*/React.createElement("div", {
+  }, "Quality Confidence:"), /*#__PURE__*/React.createElement("span", {
+    className: "font-bold text-teal-700 font-mono"
+  }, riskDetails.confidence, "% (", riskDetails.confidenceLevel, ")")))), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200/60"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bg-white/90 rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1"
@@ -1904,27 +1938,36 @@ function App() {
     className: "p-4 rounded-2xl bg-slate-50 border border-slate-200/70"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] font-bold uppercase text-slate-400"
-  }, "Algorithm"), /*#__PURE__*/React.createElement("p", {
+  }, "Methodology"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs font-bold text-slate-900 mt-1"
-  }, "Calibrated Random Forest"), /*#__PURE__*/React.createElement("span", {
+  }, "Rule-Based Optical Screening"), /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] text-slate-500 mt-1 block"
-  }, "500 Decision Trees")), /*#__PURE__*/React.createElement("div", {
+  }, "AAP / Bilgen Physiological Model")), /*#__PURE__*/React.createElement("div", {
     className: "p-4 rounded-2xl bg-slate-50 border border-slate-200/70"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] font-bold uppercase text-slate-400"
-  }, "Clinical Cohort"), /*#__PURE__*/React.createElement("p", {
+  }, "Quality Gating"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs font-bold text-slate-900 mt-1"
-  }, "NJN Infant Dataset"), /*#__PURE__*/React.createElement("span", {
+  }, "Laplacian & Clipping Gating"), /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] text-slate-500 mt-1 block"
-  }, "760 Real Patient Cases")), /*#__PURE__*/React.createElement("div", {
+  }, "Focus ≥ 35.0 • Glare < 25%")), /*#__PURE__*/React.createElement("div", {
     className: "p-4 rounded-2xl bg-slate-50 border border-slate-200/70"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] font-bold uppercase text-slate-400"
-  }, "Validation Accuracy"), /*#__PURE__*/React.createElement("p", {
+  }, "Screening Thresholds"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs font-bold text-teal-700 mt-1 font-mono"
-  }, "96.73%"), /*#__PURE__*/React.createElement("span", {
+  }, "b* < 16.0 • BIx < 0.18"), /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] text-emerald-600 mt-1 block"
-  }, "100% High-Risk Sensitivity")))))), /*#__PURE__*/React.createElement("div", {
+  }, "Sclera b* < 7.5 Normal Limit"))), /*#__PURE__*/React.createElement("div", {
+    className: "p-4 rounded-2xl bg-amber-50/60 border border-amber-200/70 text-xs text-amber-900 space-y-1"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "font-bold flex items-center space-x-1.5"
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "shield-check",
+    className: "w-4 h-4 text-amber-700"
+  }), /*#__PURE__*/React.createElement("span", null, "Clinical Screening Disclosures & Limitations")), /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] text-amber-800 leading-relaxed"
+  }, "This system performs non-invasive optical screening based on calibrated dermal and scleral chrominance. It is a triage screening aid and does NOT provide diagnostic total serum bilirubin (TSB) measurement. Always verify results with certified transcutaneous bilirubinometry (TcB) or laboratory serum testing."))))), /*#__PURE__*/React.createElement("div", {
     className: "bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs space-y-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"
