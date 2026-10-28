@@ -686,11 +686,19 @@ function App() {
   // 4. Capture Frame from Live Camera
   const captureFrame = () => {
     if (!videoRef.current) return null;
+    const v = videoRef.current;
+    const w = v.videoWidth || 1280;
+    const h = v.videoHeight || 720;
+    if (w === 0 || h === 0) return null;
     const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth || 1280;
-    canvas.height = videoRef.current.videoHeight || 720;
+    canvas.width = w;
+    canvas.height = h;
     const ctx = canvas.getContext("2d");
-    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+    if (cameraFacing === "user") {
+      ctx.translate(w, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(v, 0, 0, w, h);
     return canvas.toDataURL("image/jpeg", 0.90);
   };
 
@@ -764,8 +772,10 @@ function App() {
     const effectiveMethod = methodOverride || correctionMethod || "auto";
     const targetPatientId = patientIdOverride || activePatientId;
 
-    // Check if this correction is already cached non-destructively
-    if (activeImageRecord && activeImageRecord.corrections && activeImageRecord.corrections[effectiveMethod]) {
+    const isSameImage = Boolean(activeImageRecord && activeImageRecord.rawImage === targetImage);
+
+    // Check if this correction is already cached non-destructively ONLY when re-evaluating the SAME image
+    if (isSameImage && activeImageRecord.corrections && activeImageRecord.corrections[effectiveMethod]) {
       const cached = activeImageRecord.corrections[effectiveMethod];
       // Update patient active image record
       setPatients(prev => prev.map(p => {
@@ -783,6 +793,7 @@ function App() {
         return { ...p, images: updatedImages };
       }));
       setCorrectionMethod(effectiveMethod);
+      stopCamera();
       setCurrentStep(3);
       return;
     }
@@ -838,22 +849,26 @@ function App() {
       }
 
       // Link new or updated image record non-destructively to patient
-      const newImageId = activeImageRecord && activeImageRecord.rawImage === targetImage
+      const newImageId = isSameImage
         ? activeImageRecord.id
         : `img_${Date.now()}_${performance.now().toString(36).replace(".", "")}`;
 
-      const formattedDate = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const dateStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
       setPatients(prev => prev.map(p => {
         if (p.id !== targetPatientId) return p;
 
         const existingImg = p.images.find(img => img.id === newImageId);
         const existingCorrections = existingImg ? existingImg.corrections : {};
+        const count = p.images ? p.images.length : 0;
+        const displayLabel = existingImg
+          ? existingImg.formattedDate
+          : (count === 0 ? "Baseline Screening" : `Screening #${count + 1} (${dateStr})`);
 
         const updatedRecord = {
           id: newImageId,
           timestamp: new Date().toISOString(),
-          formattedDate: existingImg ? existingImg.formattedDate : formattedDate,
+          formattedDate: displayLabel,
           rawImage: targetImage,
           activeCorrection: effectiveMethod,
           corrections: {
@@ -878,6 +893,7 @@ function App() {
         };
       }));
 
+      stopCamera();
       setActiveImageId(newImageId);
       setCorrectionMethod(effectiveMethod);
       setCurrentStep(3); // Smoothly transition to results
@@ -921,7 +937,11 @@ function App() {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setError("Please select a valid image file (JPEG or PNG).");
+      setError({
+        code: "INVALID_FILE_FORMAT",
+        message: "Please select a valid image file (JPEG or PNG).",
+        action: "Select a standard photo taken with your smartphone or camera."
+      });
       return;
     }
 
@@ -932,6 +952,7 @@ function App() {
       performAnalysis(b64);
     };
     reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   // Active Analysis Result (from active image record)
@@ -1423,7 +1444,13 @@ function App() {
               <div className="pt-2">
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(2)}
+                  onClick={() => {
+                    setError(null);
+                    setCurrentStep(2);
+                    if (captureMode === "camera") {
+                      startCamera();
+                    }
+                  }}
                   className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold text-sm shadow-md shadow-teal-500/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
                 >
                   <Icon name="camera" className="w-4 h-4" />
@@ -1621,7 +1648,15 @@ function App() {
                         type="button"
                         onClick={() => {
                           const img = captureFrame();
-                          if (img) performAnalysis(img);
+                          if (img) {
+                            performAnalysis(img);
+                          } else {
+                            setError({
+                              code: "CAMERA_CAPTURE_FAILED",
+                              message: "Could not capture frame from camera stream. Please ensure camera is active.",
+                              action: "Check camera permissions in browser settings or switch to Upload mode."
+                            });
+                          }
                         }}
                         className="flex-1 sm:flex-none py-3 px-6 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold text-sm shadow-md shadow-teal-500/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.98]"
                       >
@@ -1759,7 +1794,13 @@ function App() {
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(2)}
+                  onClick={() => {
+                    setError(null);
+                    setCurrentStep(2);
+                    if (captureMode === "camera") {
+                      startCamera();
+                    }
+                  }}
                   className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-xs font-bold text-slate-700 transition-colors flex items-center space-x-1.5"
                 >
                   <Icon name="camera" className="w-3.5 h-3.5" />
