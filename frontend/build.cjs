@@ -3,13 +3,17 @@ const path = require('path');
 
 let babel;
 try {
-  babel = require('/tmp/babel.min.js');
-} catch (e) {
+  babel = require(path.join(__dirname, 'vendor', 'babel.min.cjs'));
+} catch (e0) {
   try {
-    babel = require('@babel/standalone');
-  } catch (e2) {
-    console.error("Please ensure @babel/standalone is available at /tmp/babel.min.js");
-    process.exit(1);
+    babel = require('/tmp/babel.min.js');
+  } catch (e) {
+    try {
+      babel = require('@babel/standalone');
+    } catch (e2) {
+      console.error("Please ensure @babel/standalone is available at vendor/babel.min.cjs or /tmp/babel.min.js");
+      process.exit(1);
+    }
   }
 }
 

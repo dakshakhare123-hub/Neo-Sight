@@ -4,6 +4,7 @@ node_modules/
 .venv/
 venv/
 data/
+frontend/vendor/babel.min.*
 
 # Python cache & logs
 __pycache__/
