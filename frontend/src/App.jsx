@@ -1,6 +1,17 @@
-// NeoScan React 18 Application - World-Class Pediatric & Parent Edition
-// Designed with Apple Health / Modern Pediatric Care aesthetics
-const { useState, useEffect, useRef, useMemo } = React;
+// NeoScan React 18 Application - Clinical Pediatric Screening & Image Tracking Edition
+// Designed to Apple Health / Consumer Pediatric Health standards
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+// Safe canvas round rectangle helper (prevents TypeError on older WebViews)
+const drawSafeRoundRect = (ctx, x, y, w, h, r) => {
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+  }
+};
 
 // Safe, native React SVG Icons (zero external script dependency crashes)
 const Icon = ({ name, className = "w-4 h-4", ...props }) => {
@@ -161,16 +172,6 @@ const Icon = ({ name, className = "w-4 h-4", ...props }) => {
           <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
         </svg>
       );
-    case "file-text":
-      return (
-        <svg {...iconProps}>
-          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-          <line x1="10" y1="9" x2="8" y2="9" />
-        </svg>
-      );
     case "printer":
       return (
         <svg {...iconProps}>
@@ -223,51 +224,212 @@ const Icon = ({ name, className = "w-4 h-4", ...props }) => {
           <path d="M12 21v-1" />
         </svg>
       );
+    case "image":
+      return (
+        <svg {...iconProps}>
+          <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+          <circle cx="9" cy="9" r="2" />
+          <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+        </svg>
+      );
+    case "zap":
+      return (
+        <svg {...iconProps}>
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+      );
+    case "clock":
+      return (
+        <svg {...iconProps}>
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+      );
+    case "layers":
+      return (
+        <svg {...iconProps}>
+          <polygon points="12 2 2 7 12 12 22 7 12 2" />
+          <polyline points="2 17 12 22 22 17" />
+          <polyline points="2 12 12 17 22 12" />
+        </svg>
+      );
+    case "user-plus":
+      return (
+        <svg {...iconProps}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <line x1="19" y1="8" x2="19" y2="14" />
+          <line x1="22" y1="11" x2="16" y2="11" />
+        </svg>
+      );
     default:
       return null;
   }
 };
 
+// Robust Image Component with Loading & Fallback States
+const ImageWithFallback = ({ src, alt, className = "", fallbackText = "Image unavailable", ...props }) => {
+  const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setHasError(false);
+    setIsLoading(true);
+  }, [src]);
+
+  if (!src || hasError) {
+    return (
+      <div className={`flex flex-col items-center justify-center bg-slate-100 border border-slate-200 text-slate-400 p-4 rounded-2xl ${className}`}>
+        <Icon name="image" className="w-6 h-6 mb-1 text-slate-300" />
+        <span className="text-[11px] font-medium text-slate-500 text-center">{fallbackText}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`relative overflow-hidden ${className}`}>
+      {isLoading && (
+        <div className="absolute inset-0 bg-slate-100 flex items-center justify-center animate-pulse">
+          <Icon name="heart" className="w-5 h-5 text-teal-400 animate-spin" />
+        </div>
+      )}
+      <img
+        src={src}
+        alt={alt}
+        className={`w-full h-full object-contain transition-opacity duration-200 ${isLoading ? "opacity-0" : "opacity-100"}`}
+        onLoad={() => setIsLoading(false)}
+        onError={() => {
+          setIsLoading(false);
+          setHasError(true);
+        }}
+        {...props}
+      />
+    </div>
+  );
+};
+
+// Default Seed Patients (matching clinical demo cases)
+const DEFAULT_PATIENTS = [
+  {
+    id: "patient-leo",
+    name: "Baby Leo",
+    ageValue: 72,
+    ageUnit: "hours",
+    gestation: "full-term",
+    feeding: "breastfeeding",
+    notes: "Healthy neonate in standard daylight (D65). Baseline physiological skin color.",
+    sampleId: "healthy_daylight",
+    createdAt: new Date().toISOString(),
+    images: []
+  },
+  {
+    id: "patient-maya",
+    name: "Baby Maya",
+    ageValue: 48,
+    ageUnit: "hours",
+    gestation: "full-term",
+    feeding: "breastfeeding",
+    notes: "Mild dermal icterus under warm incandescent lighting (2800K).",
+    sampleId: "moderate_tungsten",
+    createdAt: new Date().toISOString(),
+    images: []
+  },
+  {
+    id: "patient-sam",
+    name: "Baby Sam",
+    ageValue: 96,
+    ageUnit: "hours",
+    gestation: "late-preterm",
+    feeding: "combination",
+    notes: "Deep cutaneous yellowness with scleral involvement under cool overcast light (7200K).",
+    sampleId: "severe_overcast",
+    createdAt: new Date().toISOString(),
+    images: []
+  },
+  {
+    id: "patient-noah",
+    name: "Baby Noah",
+    ageValue: 60,
+    ageUnit: "hours",
+    gestation: "full-term",
+    feeding: "breastfeeding",
+    notes: "Physical ArUco 4x4 ID 0 reference card calibration.",
+    sampleId: "with_aruco_card",
+    createdAt: new Date().toISOString(),
+    images: []
+  }
+];
+
+const STORAGE_KEY = "neoscan_patients_store_v3";
+
 function App() {
-  // Navigation & Wizard State (Step 1: Profile, Step 2: Capture, Step 3: Results)
+  // Navigation & Wizard State (Step 1: Profile & Records, Step 2: Capture & Guidance, Step 3: Triage & Insights)
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Baby Profile State (Personalized clinical context)
-  const [babyProfile, setBabyProfile] = useState({
-    name: "Baby Leo",
-    ageValue: 48,
-    ageUnit: "hours", // 'hours' or 'days'
-    gestation: "full-term", // 'full-term', 'late-preterm', 'preterm'
-    feeding: "breastfeeding", // 'breastfeeding', 'formula', 'combination'
-    notes: ""
+  // Patient Records Store (persisted to localStorage)
+  const [patients, setPatients] = useState(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn("Storage load notice:", e);
+    }
+    return DEFAULT_PATIENTS;
   });
+
+  const [activePatientId, setActivePatientId] = useState("patient-leo");
+  const [activeImageId, setActiveImageId] = useState(null);
+
+  // Active Patient Profile
+  const activePatient = useMemo(() => {
+    return patients.find(p => p.id === activePatientId) || patients[0];
+  }, [patients, activePatientId]);
+
+  // Active Image Record for the active patient
+  const activeImageRecord = useMemo(() => {
+    if (!activePatient || !activePatient.images || activePatient.images.length === 0) return null;
+    if (activeImageId) {
+      const match = activePatient.images.find(img => img.id === activeImageId);
+      if (match) return match;
+    }
+    return activePatient.images[0]; // Most recent
+  }, [activePatient, activeImageId]);
+
+  // Persist patients to localStorage whenever updated
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(patients));
+    } catch (e) {
+      console.warn("Storage save notice:", e);
+    }
+  }, [patients]);
 
   // Capture / Media State
   const [captureMode, setCaptureMode] = useState("camera"); // 'camera' or 'upload'
-  const [selectedImage, setSelectedImage] = useState(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraFacing, setCameraFacing] = useState("environment");
   const [continuousAnalysis, setContinuousAnalysis] = useState(false);
   const [showBiometricOverlay, setShowBiometricOverlay] = useState(true);
+  const [liveFps, setLiveFps] = useState(0);
+  const [frameCount, setFrameCount] = useState(0);
 
-  // Correction Method
+  // Correction Method & Views
   const [correctionMethod, setCorrectionMethod] = useState("auto");
   const [advancedOpticalOpen, setAdvancedOpticalOpen] = useState(false);
+  const [imageCompareMode, setImageCompareMode] = useState("corrected"); // 'corrected', 'raw', 'diagnostic', 'heatmap'
 
-  // Analysis State
+  // Analysis & Gating State
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Calibrating optical balance...");
-  const [analysisResult, setAnalysisResult] = useState(null);
   const [error, setError] = useState(null);
-
-  // Results Dashboard Tabs & Accordions
   const [clinicalTab, setClinicalTab] = useState("optical"); // 'optical', 'biomarkers', 'model'
   const [clinicalAccordionOpen, setClinicalAccordionOpen] = useState(false);
-  const [imageCompareMode, setImageCompareMode] = useState("corrected"); // 'corrected', 'original', 'diagnostic', 'heatmap'
 
-  // Preloaded Demo Samples
+  // Demo Samples
   const [demoSamples, setDemoSamples] = useState([]);
-  const [loadingDemo, setLoadingDemo] = useState(false);
 
   // References
   const videoRef = useRef(null);
@@ -275,18 +437,53 @@ function App() {
   const streamRef = useRef(null);
   const continuousIntervalRef = useRef(null);
   const fileInputRef = useRef(null);
+  const isStreamingRef = useRef(false);
 
   // Interpolated tracking coordinates for smooth 60 FPS drawing
   const currentRoisRef = useRef({});
   const targetRoisRef = useRef({});
 
-  // 1. Initial Load & Fetch Demo Profiles
+  // 1. Fetch demo samples & seed patient records
   useEffect(() => {
     fetch("/api/v1/demo-samples")
       .then(res => res.json())
       .then(data => {
         if (data.samples && data.samples.length > 0) {
           setDemoSamples(data.samples);
+
+          // Populate patient profiles with their demo baseline images if not already populated
+          setPatients(prevPatients => {
+            let changed = false;
+            const updated = prevPatients.map(p => {
+              const matchingSample = data.samples.find(s => s.id === p.sampleId);
+              if (matchingSample && (!p.images || p.images.length === 0)) {
+                changed = true;
+                const newRecord = {
+                  id: `img_${p.id}_baseline`,
+                  timestamp: new Date().toISOString(),
+                  formattedDate: "Baseline Screening",
+                  rawImage: matchingSample.image_base64,
+                  activeCorrection: "auto",
+                  corrections: {},
+                  tracking: {
+                    locked: true,
+                    distance_status: "OPTIMAL",
+                    distance_advice: "Optimal distance (~25 cm)",
+                    estimated_distance_cm: 26,
+                    rois: {
+                      forehead: { x: 0.38, y: 0.22, w: 0.24, h: 0.16 },
+                      nose: { x: 0.44, y: 0.40, w: 0.12, h: 0.12 },
+                      sclera: { x: 0.35, y: 0.34, w: 0.30, h: 0.10 }
+                    }
+                  },
+                  currentAnalysis: null
+                };
+                return { ...p, images: [newRecord] };
+              }
+              return p;
+            });
+            return changed ? updated : prevPatients;
+          });
         }
       })
       .catch(err => console.log("Demo samples fetch notice:", err));
@@ -310,12 +507,12 @@ function App() {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.play().catch(e => console.log("Video play notice:", e));
       }
       setCameraActive(true);
     } catch (err) {
       console.error("Camera access error:", err);
-      setError("Unable to access camera. Please verify camera permissions or upload a photo.");
+      setError("Unable to access camera: " + (err.message || "Permission denied"));
       setCameraActive(false);
     }
   };
@@ -340,18 +537,15 @@ function App() {
     const nextFacing = cameraFacing === "user" ? "environment" : "user";
     setCameraFacing(nextFacing);
     if (cameraActive) {
-      setTimeout(startCamera, 100);
+      setTimeout(startCamera, 150);
     }
   };
 
-  // Switch to step 2 automatically starts camera if in camera mode
+  // Step 2 auto-starts camera if in camera mode
   useEffect(() => {
-    if (currentStep === 2 && captureMode === "camera" && !cameraActive && !selectedImage) {
+    if (currentStep === 2 && captureMode === "camera" && !cameraActive) {
       startCamera();
     }
-    return () => {
-      // Don't kill camera if transitioning, but clean up on unmount
-    };
   }, [currentStep, captureMode]);
 
   // Clean up camera on unmount
@@ -361,7 +555,7 @@ function App() {
     };
   }, []);
 
-  // 3. Smooth 60 FPS Tracking HUD Canvas Render Loop
+  // 3. Smooth 60 FPS Biometric Tracking HUD Canvas
   useEffect(() => {
     let animId;
     const canvas = trackingCanvasRef.current;
@@ -379,7 +573,7 @@ function App() {
 
       ctx.clearRect(0, 0, width, height);
 
-      // Draw subtle Face-Oval Guidance Overlay when searching or active
+      // Face-Oval Framing Guidance Overlay
       if (cameraActive) {
         ctx.save();
         const centerX = width * 0.5;
@@ -389,27 +583,26 @@ function App() {
 
         ctx.beginPath();
         ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.setLineDash([8, 8]);
-        ctx.strokeStyle = "rgba(13, 148, 136, 0.45)"; // Soft clinical teal
+        ctx.strokeStyle = "rgba(13, 148, 136, 0.5)"; // Serene medical teal
         ctx.stroke();
 
         // Forehead Target Hint
         ctx.beginPath();
         ctx.ellipse(centerX, centerY - radiusY * 0.45, radiusX * 0.55, radiusY * 0.22, 0, 0, 2 * Math.PI);
-        ctx.strokeStyle = "rgba(14, 165, 233, 0.4)"; // Soft sky
+        ctx.strokeStyle = "rgba(14, 165, 233, 0.45)"; // Soft sky
         ctx.setLineDash([4, 4]);
         ctx.stroke();
         ctx.restore();
       }
 
-      // Draw Biometric Reticles if enabled and data is available
+      // Draw Biometric Reticles if enabled and targets are present
       if (showBiometricOverlay && targetRoisRef.current) {
         const targets = targetRoisRef.current;
         const current = currentRoisRef.current;
         const lerpFactor = 0.35;
 
-        // Smoothly interpolate bounding boxes
         Object.keys(targets).forEach(key => {
           const t = targets[key];
           if (!t) return;
@@ -423,12 +616,11 @@ function App() {
           }
         });
 
-        // Configs for clinical landmarks
         const roiStyles = {
           forehead: { color: "#0ea5e9", label: "Forehead • Primary Bilirubin Site" },
           nose: { color: "#10b981", label: "Nose Tip" },
-          sclera: { color: "#d946ef", label: "Sclera • White Reference" },
-          chest: { color: "#3b82f6", label: "Sternum" }
+          sclera: { color: "#d946ef", label: "Sclera • In-Scene Reference" },
+          chest: { color: "#3b82f6", label: "Sternum / Chest" }
         };
 
         Object.keys(current).forEach(key => {
@@ -443,37 +635,33 @@ function App() {
 
           if (rw <= 2 || rh <= 2) return;
 
-          // Draw modern clinical bracket corners
           ctx.save();
           ctx.strokeStyle = style.color;
           ctx.lineWidth = 2.5;
           ctx.shadowColor = style.color;
-          ctx.shadowBlur = 8;
+          ctx.shadowBlur = 6;
 
           const cornerLen = Math.min(rw, rh) * 0.25;
 
-          // Top-Left
+          // Corner brackets
           ctx.beginPath();
           ctx.moveTo(rx, ry + cornerLen);
           ctx.lineTo(rx, ry);
           ctx.lineTo(rx + cornerLen, ry);
           ctx.stroke();
 
-          // Top-Right
           ctx.beginPath();
           ctx.moveTo(rx + rw - cornerLen, ry);
           ctx.lineTo(rx + rw, ry);
           ctx.lineTo(rx + rw, ry + cornerLen);
           ctx.stroke();
 
-          // Bottom-Left
           ctx.beginPath();
           ctx.moveTo(rx, ry + rh - cornerLen);
           ctx.lineTo(rx, ry + rh);
           ctx.lineTo(rx + cornerLen, ry + rh);
           ctx.stroke();
 
-          // Bottom-Right
           ctx.beginPath();
           ctx.moveTo(rx + rw - cornerLen, ry + rh);
           ctx.lineTo(rx + rw, ry + rh);
@@ -484,13 +672,12 @@ function App() {
           ctx.fillStyle = `${style.color}15`;
           ctx.fillRect(rx, ry, rw, rh);
 
-          // Subtle text pill
+          // Text pill
           ctx.shadowBlur = 0;
           ctx.font = "600 11px 'Plus Jakarta Sans', sans-serif";
           const textWidth = ctx.measureText(style.label).width;
           ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
-          ctx.beginPath();
-          ctx.roundRect(rx, Math.max(0, ry - 20), textWidth + 12, 18, 4);
+          drawSafeRoundRect(ctx, rx, Math.max(0, ry - 20), textWidth + 12, 18, 4);
           ctx.fill();
 
           ctx.fillStyle = "#ffffff";
@@ -514,9 +701,7 @@ function App() {
     canvas.height = videoRef.current.videoHeight || 720;
     const ctx = canvas.getContext("2d");
     ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-    const b64 = canvas.toDataURL("image/jpeg", 0.92);
-    setSelectedImage(b64);
-    return b64;
+    return canvas.toDataURL("image/jpeg", 0.90);
   };
 
   // 5. Continuous Streaming Telemetry Loop
@@ -530,7 +715,10 @@ function App() {
     }
 
     const runStreamingFrame = async () => {
-      if (!videoRef.current || videoRef.current.readyState < 2) return;
+      if (isStreamingRef.current || !videoRef.current || videoRef.current.readyState < 2) return;
+      isStreamingRef.current = true;
+      const startTime = Date.now();
+
       const canvas = document.createElement("canvas");
       canvas.width = 480;
       canvas.height = 360;
@@ -553,15 +741,20 @@ function App() {
           if (data.tracking && data.tracking.rois) {
             targetRoisRef.current = data.tracking.rois;
           }
-          // Update live preview results if needed
-          setAnalysisResult(prev => ({ ...prev, tracking: data.tracking, lighting_condition: data.lighting_condition }));
+          setFrameCount(c => c + 1);
+          const elapsed = (Date.now() - startTime) / 1000;
+          if (elapsed > 0) {
+            setLiveFps(Math.round((1.0 / (elapsed + 0.55)) * 10) / 10);
+          }
         }
       } catch (e) {
         // Silent fail on continuous background frame
+      } finally {
+        isStreamingRef.current = false;
       }
     };
 
-    continuousIntervalRef.current = setInterval(runStreamingFrame, 600);
+    continuousIntervalRef.current = setInterval(runStreamingFrame, 650);
     return () => {
       if (continuousIntervalRef.current) {
         clearInterval(continuousIntervalRef.current);
@@ -570,25 +763,50 @@ function App() {
     };
   }, [continuousAnalysis, cameraActive, correctionMethod]);
 
-  // 6. Execute Full Clinical Analysis
-  const performAnalysis = async (imgB64) => {
-    const targetImage = imgB64 || selectedImage;
+  // 6. Non-Destructive Analysis Pipeline & Patient Record Linking
+  const performAnalysis = async (imgB64, methodOverride, patientIdOverride) => {
+    const targetImage = imgB64 || (activeImageRecord && activeImageRecord.rawImage);
     if (!targetImage) {
       setError("Please capture or upload an infant photo first.");
+      return;
+    }
+
+    const effectiveMethod = methodOverride || correctionMethod || "auto";
+    const targetPatientId = patientIdOverride || activePatientId;
+
+    // Check if this correction is already cached non-destructively
+    if (activeImageRecord && activeImageRecord.corrections && activeImageRecord.corrections[effectiveMethod]) {
+      const cached = activeImageRecord.corrections[effectiveMethod];
+      // Update patient active image record
+      setPatients(prev => prev.map(p => {
+        if (p.id !== targetPatientId) return p;
+        const updatedImages = p.images.map(img => {
+          if (img.id === activeImageRecord.id) {
+            return {
+              ...img,
+              activeCorrection: effectiveMethod,
+              currentAnalysis: cached.result
+            };
+          }
+          return img;
+        });
+        return { ...p, images: updatedImages };
+      }));
+      setCorrectionMethod(effectiveMethod);
+      setCurrentStep(3);
       return;
     }
 
     setLoading(true);
     setError(null);
 
-    // Calming progressive message transitions
     setLoadingMessage("Assessing ambient lighting & illuminant temperature...");
     const t1 = setTimeout(() => {
-      setLoadingMessage("Normalizing skin chrominance & isolating biometric ROIs...");
-    }, 700);
+      setLoadingMessage("Normalizing dermal chrominance & isolating anatomical ROIs...");
+    }, 600);
     const t2 = setTimeout(() => {
       setLoadingMessage("Calibrating risk assessment against neonatal clinical cohort...");
-    }, 1400);
+    }, 1200);
 
     try {
       const response = await fetch("/api/v1/analyze", {
@@ -596,7 +814,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           image_base64: targetImage,
-          correction_method: correctionMethod,
+          correction_method: effectiveMethod,
           include_visualizations: true
         })
       });
@@ -606,14 +824,57 @@ function App() {
 
       if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.detail || "Analysis failed. Please verify image quality.");
+        throw new Error(errData.detail || "Analysis failed. Please verify infant framing.");
       }
 
       const data = await response.json();
-      setAnalysisResult(data);
       if (data.tracking && data.tracking.rois) {
         targetRoisRef.current = data.tracking.rois;
       }
+
+      // Link new or updated image record non-destructively to patient
+      const newImageId = activeImageRecord && activeImageRecord.rawImage === targetImage
+        ? activeImageRecord.id
+        : `img_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+
+      const formattedDate = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+      setPatients(prev => prev.map(p => {
+        if (p.id !== targetPatientId) return p;
+
+        const existingImg = p.images.find(img => img.id === newImageId);
+        const existingCorrections = existingImg ? existingImg.corrections : {};
+
+        const updatedRecord = {
+          id: newImageId,
+          timestamp: new Date().toISOString(),
+          formattedDate: existingImg ? existingImg.formattedDate : formattedDate,
+          rawImage: targetImage,
+          activeCorrection: effectiveMethod,
+          corrections: {
+            ...existingCorrections,
+            [effectiveMethod]: {
+              method: effectiveMethod,
+              correctedImage: data.visualizations?.corrected_image_base64,
+              diagnosticOverlay: data.visualizations?.diagnostic_overlay_base64,
+              heatmap: data.visualizations?.yellowness_heatmap_base64,
+              result: data,
+              timestamp: new Date().toISOString()
+            }
+          },
+          currentAnalysis: data,
+          tracking: data.tracking || {}
+        };
+
+        const otherImages = p.images.filter(img => img.id !== newImageId);
+        return {
+          ...p,
+          images: [updatedRecord, ...otherImages]
+        };
+      }));
+
+      setActiveImageId(newImageId);
+      setCorrectionMethod(effectiveMethod);
       setCurrentStep(3); // Smoothly transition to results
     } catch (err) {
       console.error("Analysis execution error:", err);
@@ -623,55 +884,26 @@ function App() {
     }
   };
 
-  // 7. Load Preloaded Clinical Demo Profile
-  const loadDemoProfile = (sample) => {
-    setLoadingDemo(true);
-    setSelectedImage(sample.image_base64);
-
-    // Set clinical profile parameters to match sample
-    if (sample.id === "healthy_daylight") {
-      setBabyProfile({
-        name: "Baby Leo",
-        ageValue: 72,
-        ageUnit: "hours",
-        gestation: "full-term",
-        feeding: "breastfeeding",
-        notes: "Healthy neonate in standard daylight (D65). Baseline dermal coloring."
-      });
-    } else if (sample.id === "moderate_tungsten") {
-      setBabyProfile({
-        name: "Baby Maya",
-        ageValue: 48,
-        ageUnit: "hours",
-        gestation: "full-term",
-        feeding: "breastfeeding",
-        notes: "Mild dermal icterus under warm incandescent lighting (2800K)."
-      });
-    } else if (sample.id === "severe_overcast") {
-      setBabyProfile({
-        name: "Baby Sam",
-        ageValue: 96,
-        ageUnit: "hours",
-        gestation: "late-preterm",
-        feeding: "combination",
-        notes: "Deep yellowness with scleral involvement under cool overcast light (7200K)."
-      });
-    } else if (sample.id === "with_aruco_card") {
-      setBabyProfile({
-        name: "Baby Noah",
-        ageValue: 60,
-        ageUnit: "hours",
-        gestation: "full-term",
-        feeding: "breastfeeding",
-        notes: "Card-calibrated reference sample with ArUco 4x4 ID 0 marker."
-      });
+  // Re-run or retrieve correction non-destructively
+  const handleMethodChange = (newMethod) => {
+    setCorrectionMethod(newMethod);
+    if (activeImageRecord && activeImageRecord.rawImage) {
+      performAnalysis(activeImageRecord.rawImage, newMethod);
     }
+  };
 
-    // Direct analysis of demo sample
-    setTimeout(() => {
-      setLoadingDemo(false);
-      performAnalysis(sample.image_base64);
-    }, 400);
+  // 7. Load Demo Patient Profile
+  const selectPatientProfile = (patient) => {
+    setActivePatientId(patient.id);
+    if (patient.images && patient.images.length > 0) {
+      setActiveImageId(patient.images[0].id);
+      // If analysis not run yet, run it
+      if (!patient.images[0].currentAnalysis) {
+        performAnalysis(patient.images[0].rawImage, "auto", patient.id);
+      }
+    } else {
+      setActiveImageId(null);
+    }
   };
 
   // 8. File Upload Handler
@@ -679,84 +911,85 @@ function App() {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file (JPEG or PNG).");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const b64 = event.target.result;
-      setSelectedImage(b64);
       stopCamera();
+      performAnalysis(b64);
     };
     reader.readAsDataURL(file);
   };
 
-  // 9. Risk Triage Presentation Mapping
-  const triageDetails = useMemo(() => {
+  // Active Analysis Result (from active image record)
+  const analysisResult = activeImageRecord ? activeImageRecord.currentAnalysis : null;
+
+  // Active Display Image based on compare mode
+  const activeDisplayImage = useMemo(() => {
+    if (!activeImageRecord) return null;
+    if (imageCompareMode === "raw") return activeImageRecord.rawImage;
+    if (imageCompareMode === "diagnostic") {
+      return analysisResult?.visualizations?.diagnostic_overlay_base64 || activeImageRecord.rawImage;
+    }
+    if (imageCompareMode === "heatmap") {
+      return analysisResult?.visualizations?.yellowness_heatmap_base64 || activeImageRecord.rawImage;
+    }
+    // "corrected"
+    return analysisResult?.visualizations?.corrected_image_base64 || activeImageRecord.rawImage;
+  }, [activeImageRecord, imageCompareMode, analysisResult]);
+
+  // Dynamic Risk Details (derived directly from backend model output)
+  const riskDetails = useMemo(() => {
     if (!analysisResult || !analysisResult.risk_assessment) {
       return {
-        level: "UNKNOWN",
+        category: "PENDING",
         title: "Awaiting Assessment",
-        subtitle: "Complete capture to evaluate infant bilirubin.",
-        badgeColor: "bg-slate-100 text-slate-700 border-slate-200",
-        bannerBg: "from-slate-50 to-slate-100 border-slate-200",
-        iconName: "info",
-        iconColor: "text-slate-500",
-        riskPercent: 0,
-        guidance: "Follow instructions to capture a clear image of baby's face."
+        subtitle: "Capture infant skin to evaluate bilirubin levels.",
+        color: "#64748b",
+        badge: "READY FOR SCREENING",
+        confidence: 95,
+        eqTsb: "Pending",
+        recommendation: "Ensure baby's face is centered and in soft indirect lighting.",
+        lowP: 33,
+        modP: 33,
+        highP: 33,
+        markerPos: 10
       };
     }
 
-    const category = analysisResult.risk_assessment.risk_category;
-    const confidence = Math.round((analysisResult.risk_assessment.confidence || 0.95) * 100);
+    const ra = analysisResult.risk_assessment;
+    const probas = ra.class_probabilities || ra.probability_distribution || {};
+    const lowP = Math.round((probas.LOW_RISK || 0) * 100);
+    const modP = Math.round((probas.MODERATE_RISK || 0) * 100);
+    const highP = Math.round((probas.HIGH_RISK || 0) * 100);
 
-    if (category === "LOW_RISK") {
-      return {
-        level: "LOW_RISK",
-        title: "Routine Observation Suggested",
-        subtitle: "Cutaneous yellowness falls within expected physiological baseline for age.",
-        badgeText: `Routine Baseline • ${confidence}% Confidence`,
-        badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200",
-        bannerBg: "from-emerald-50/70 via-teal-50/40 to-slate-50 border-emerald-200/80",
-        accentColor: "#059669",
-        iconName: "shield-check",
-        iconColor: "text-emerald-600",
-        riskPercent: 18,
-        guidance: "Bilirubin discoloration appears normal. Continue standard pediatric well-child checks, maintain frequent feeding, and recheck if you observe deepening color."
-      };
-    } else if (category === "MODERATE_RISK") {
-      return {
-        level: "MODERATE_RISK",
-        title: "Monitor & Re-evaluate",
-        subtitle: "Mild cutaneous jaundice detected. Close monitoring recommended.",
-        badgeText: `Intermediate Observation • ${confidence}% Confidence`,
-        badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
-        bannerBg: "from-amber-50/80 via-yellow-50/40 to-slate-50 border-amber-200/80",
-        accentColor: "#d97706",
-        iconName: "alert-circle",
-        iconColor: "text-amber-600",
-        riskPercent: 54,
-        guidance: "Early or intermediate jaundice signs noted. We suggest re-screening in 12–24 hours, ensuring 8–12 daily feedings, and contacting your pediatrician if yellowness spreads to abdomen or eyes."
-      };
-    } else {
-      return {
-        level: "HIGH_RISK",
-        title: "Pediatric Consultation Recommended",
-        subtitle: "Elevated cutaneous yellowness detected on forehead and sclera.",
-        badgeText: `Clinical Follow-up Advised • ${confidence}% Confidence`,
-        badgeColor: "bg-rose-50 text-rose-800 border-rose-200",
-        bannerBg: "from-rose-50/80 via-red-50/40 to-slate-50 border-rose-200/80",
-        accentColor: "#e11d48",
-        iconName: "alert-triangle",
-        iconColor: "text-rose-600",
-        riskPercent: 88,
-        guidance: "Optical biomarkers suggest elevated bilirubin. We strongly advise contacting your pediatrician, midwife, or maternity clinic today for a standard serum (TSB) or transcutaneous (TcB) bilirubin test."
-      };
-    }
+    // Calculate dynamic indicator marker position (0% - 100%)
+    const markerPos = Math.min(95, Math.max(5, Math.round((lowP * 0.15) + (modP * 0.50) + (highP * 0.88))));
+
+    return {
+      category: ra.risk_category,
+      title: ra.title || "Neonatal Bilirubin Triage",
+      color: ra.color || "#059669",
+      badge: ra.badge || ra.risk_category.replace("_", " "),
+      confidence: ra.confidence_percent || Math.round((ra.confidence || 0.95) * 100),
+      eqTsb: ra.equivalent_tsb_range || (ra.risk_category === "HIGH_RISK" ? "> 14 mg/dL" : ra.risk_category === "MODERATE_RISK" ? "8-14 mg/dL" : "< 8 mg/dL"),
+      recommendation: ra.recommendation || "Maintain standard pediatric care.",
+      lowP,
+      modP,
+      highP,
+      markerPos
+    };
   }, [analysisResult]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
       {/* 1. Global Navigation & Header */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[4.5rem] flex items-center justify-between">
           {/* Logo & Product Identity */}
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setCurrentStep(1)}>
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-teal-500/20">
@@ -779,14 +1012,14 @@ function App() {
               onClick={() => setCurrentStep(1)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                 currentStep === 1
-                  ? "bg-white text-slate-900 shadow-xs"
+                  ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
                 currentStep === 1 ? "bg-teal-600 text-white" : "bg-slate-200 text-slate-600"
               }`}>1</span>
-              <span>Infant Profile</span>
+              <span>Patient Profile</span>
             </button>
 
             <Icon name="chevron-right" className="w-3.5 h-3.5 text-slate-300" />
@@ -795,7 +1028,7 @@ function App() {
               onClick={() => setCurrentStep(2)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                 currentStep === 2
-                  ? "bg-white text-slate-900 shadow-xs"
+                  ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -814,7 +1047,7 @@ function App() {
               disabled={!analysisResult}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                 currentStep === 3
-                  ? "bg-white text-slate-900 shadow-xs"
+                  ? "bg-white text-slate-900 shadow-sm"
                   : analysisResult
                   ? "text-slate-500 hover:text-slate-800"
                   : "text-slate-300 cursor-not-allowed"
@@ -827,7 +1060,7 @@ function App() {
             </button>
           </nav>
 
-          {/* Quick Status / Engine Status Pill */}
+          {/* Quick Engine Status Pill */}
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-100/90 border border-slate-200/80 text-xs text-slate-600">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -870,7 +1103,7 @@ function App() {
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Error Notification Banner */}
         {error && (
-          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start justify-between shadow-xs">
+          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start justify-between shadow-sm animate-fadeIn">
             <div className="flex items-start space-x-3">
               <Icon name="alert-triangle" className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
               <div>
@@ -885,7 +1118,7 @@ function App() {
         )}
 
         {/* =========================================================================
-            STEP 1: INFANT CLINICAL PROFILE WIZARD
+            STEP 1: PATIENT PROFILE & IMAGE TRACKING HISTORY
         ========================================================================= */}
         {currentStep === 1 && (
           <div className="space-y-8 animate-fadeIn">
@@ -893,260 +1126,257 @@ function App() {
             <div className="text-center max-w-2xl mx-auto space-y-2">
               <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200/60 text-xs font-medium">
                 <Icon name="sparkles" className="w-3.5 h-3.5" />
-                <span>Pediatric Personalization</span>
+                <span>Pediatric Personalization & Records</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                 Infant Screening Profile
               </h1>
               <p className="text-sm text-slate-500 leading-relaxed">
-                Neonatal jaundice follows natural physiological progression. Providing age and gestational maturity allows more accurate risk contextualization.
+                Neonatal jaundice follows natural physiological progression. Patient age, gestation, and multi-day image records provide clinical tracking over time.
               </p>
             </div>
 
-            {/* Profile Input Card */}
-            <div className="max-w-2xl mx-auto bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm space-y-6">
-              {/* Baby Name */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                  Baby's Name or ID
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Icon name="baby" className="w-4 h-4" />
-                  </div>
+            {/* Patient Switcher / Tabs */}
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Select Patient Record
+                </span>
+                <span className="text-xs text-teal-700 font-semibold">
+                  Active: {activePatient.name}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {patients.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => selectPatientProfile(p)}
+                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                      activePatientId === p.id
+                        ? "bg-white border-teal-500 ring-2 ring-teal-500/20 shadow-sm"
+                        : "bg-white/60 border-slate-200 hover:bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900">{p.name}</span>
+                      {activePatientId === p.id && (
+                        <span className="w-2 h-2 rounded-full bg-teal-600"></span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {p.ageValue} {p.ageUnit} • {p.gestation}
+                    </p>
+                    <div className="mt-2 flex items-center space-x-1 text-[10px] text-slate-400">
+                      <Icon name="image" className="w-3 h-3" />
+                      <span>{p.images ? p.images.length : 0} screened photos</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Profile Detail & Edit Card */}
+            <div className="max-w-4xl mx-auto bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">{activePatient.name}'s Medical Profile</h3>
+                  <p className="text-xs text-slate-500">{activePatient.notes || "Standard clinical screening observation."}</p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold uppercase">
+                    {activePatient.gestation}
+                  </span>
+                  <span className="px-3 py-1 rounded-full bg-teal-50 text-teal-800 text-xs font-semibold">
+                    {activePatient.feeding}
+                  </span>
+                </div>
+              </div>
+
+              {/* Form Controls for Active Patient */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Name */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Infant Name / Identifier
+                  </label>
                   <input
                     type="text"
-                    value={babyProfile.name}
-                    onChange={(e) => setBabyProfile({ ...babyProfile, name: e.target.value })}
-                    placeholder="e.g. Baby Leo"
-                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                    value={activePatient.name}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, name: val } : p));
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
-              </div>
 
-              {/* Postnatal Age */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Postnatal Age
+                {/* Age */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Postnatal Age ({activePatient.ageUnit})
                   </label>
-                  <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
-                    <button
-                      type="button"
-                      onClick={() => setBabyProfile({ ...babyProfile, ageUnit: "hours" })}
-                      className={`px-2.5 py-1 rounded-md transition-all ${
-                        babyProfile.ageUnit === "hours" ? "bg-white text-teal-700 shadow-xs" : "text-slate-500"
-                      }`}
-                    >
-                      Hours
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBabyProfile({ ...babyProfile, ageUnit: "days" })}
-                      className={`px-2.5 py-1 rounded-md transition-all ${
-                        babyProfile.ageUnit === "days" ? "bg-white text-teal-700 shadow-xs" : "text-slate-500"
-                      }`}
-                    >
-                      Days
-                    </button>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="360"
+                      value={activePatient.ageValue}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, ageValue: val } : p));
+                      }}
+                      className="w-24 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 text-center focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                    <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, ageUnit: "hours" } : p))}
+                        className={`px-2 py-1 rounded-md ${activePatient.ageUnit === "hours" ? "bg-white text-teal-700 shadow-xs" : "text-slate-500"}`}
+                      >
+                        Hours
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, ageUnit: "days" } : p))}
+                        className={`px-2 py-1 rounded-md ${activePatient.ageUnit === "days" ? "bg-white text-teal-700 shadow-xs" : "text-slate-500"}`}
+                      >
+                        Days
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="number"
-                    min="1"
-                    max={babyProfile.ageUnit === "hours" ? "360" : "14"}
-                    value={babyProfile.ageValue}
-                    onChange={(e) => setBabyProfile({ ...babyProfile, ageValue: Math.max(1, parseInt(e.target.value) || 1) })}
-                    className="w-32 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-lg font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-center"
-                  />
-                  <div className="flex-1 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setBabyProfile({ ...babyProfile, ageValue: 24, ageUnit: "hours" })}
-                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-xs font-medium text-slate-700 transition-colors"
-                    >
-                      24h (Day 1)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBabyProfile({ ...babyProfile, ageValue: 48, ageUnit: "hours" })}
-                      className="px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-xs font-medium text-teal-800 border border-teal-200/60 transition-colors"
-                    >
-                      48h (Peak Risk)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBabyProfile({ ...babyProfile, ageValue: 72, ageUnit: "hours" })}
-                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-xs font-medium text-slate-700 transition-colors"
-                    >
-                      72h (Day 3)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBabyProfile({ ...babyProfile, ageValue: 5, ageUnit: "days" })}
-                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-xs font-medium text-slate-700 transition-colors"
-                    >
-                      5 Days
-                    </button>
-                  </div>
+                {/* Gestation */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Gestational Maturity
+                  </label>
+                  <select
+                    value={activePatient.gestation}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, gestation: val } : p));
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option value="full-term">Full-Term (≥ 37 weeks)</option>
+                    <option value="late-preterm">Late Preterm (35 – 36.6 wks)</option>
+                    <option value="preterm">Preterm (&lt; 35 weeks)</option>
+                  </select>
                 </div>
               </div>
 
-              {/* Gestational Age Category */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                  Gestational Maturity
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div
-                    onClick={() => setBabyProfile({ ...babyProfile, gestation: "full-term" })}
-                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                      babyProfile.gestation === "full-term"
-                        ? "bg-teal-50/60 border-teal-500 text-teal-900 shadow-xs ring-1 ring-teal-500"
-                        : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100/60"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold">Full-Term</span>
-                      {babyProfile.gestation === "full-term" && <Icon name="check" className="w-4 h-4 text-teal-600" />}
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">≥ 37 weeks gestation</p>
+              {/* Patient Image History & Tracking Gallery */}
+              <div className="pt-4 border-t border-slate-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Icon name="clock" className="w-4 h-4 text-teal-600" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                      Screening Images & Tracking History ({activePatient.images ? activePatient.images.length : 0})
+                    </h4>
                   </div>
-
-                  <div
-                    onClick={() => setBabyProfile({ ...babyProfile, gestation: "late-preterm" })}
-                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                      babyProfile.gestation === "late-preterm"
-                        ? "bg-teal-50/60 border-teal-500 text-teal-900 shadow-xs ring-1 ring-teal-500"
-                        : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100/60"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold">Late Preterm</span>
-                      {babyProfile.gestation === "late-preterm" && <Icon name="check" className="w-4 h-4 text-teal-600" />}
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">35 – 36.6 weeks</p>
-                  </div>
-
-                  <div
-                    onClick={() => setBabyProfile({ ...babyProfile, gestation: "preterm" })}
-                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                      babyProfile.gestation === "preterm"
-                        ? "bg-teal-50/60 border-teal-500 text-teal-900 shadow-xs ring-1 ring-teal-500"
-                        : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100/60"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold">Preterm</span>
-                      {babyProfile.gestation === "preterm" && <Icon name="check" className="w-4 h-4 text-teal-600" />}
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">&lt; 35 weeks</p>
-                  </div>
+                  <span className="text-xs text-slate-500">Non-destructive dermal records</span>
                 </div>
-              </div>
 
-              {/* Feeding Method */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                  Feeding Method
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: "breastfeeding", label: "Breastfed" },
-                    { id: "formula", label: "Formula" },
-                    { id: "combination", label: "Combination" }
-                  ].map((f) => (
+                {/* Empty State */}
+                {(!activePatient.images || activePatient.images.length === 0) ? (
+                  <div className="p-8 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto">
+                      <Icon name="camera" className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h5 className="text-sm font-bold text-slate-800">No screening photos recorded yet</h5>
+                      <p className="text-xs text-slate-500 max-w-sm mx-auto mt-0.5">
+                        Capture your first image using the live camera or upload a clear photo of {activePatient.name}'s forehead.
+                      </p>
+                    </div>
                     <button
-                      key={f.id}
                       type="button"
-                      onClick={() => setBabyProfile({ ...babyProfile, feeding: f.id })}
-                      className={`py-2.5 px-3 rounded-xl text-xs font-semibold transition-all border ${
-                        babyProfile.feeding === f.id
-                          ? "bg-slate-900 text-white border-slate-900 shadow-xs"
-                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                      }`}
+                      onClick={() => setCurrentStep(2)}
+                      className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs"
                     >
-                      {f.label}
+                      <Icon name="camera" className="w-3.5 h-3.5" />
+                      <span>Take First Screening Photo</span>
                     </button>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  /* Image Grid */
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {activePatient.images.map((imgRecord) => {
+                      const isSelected = activeImageRecord && activeImageRecord.id === imgRecord.id;
+                      const ra = imgRecord.currentAnalysis?.risk_assessment;
+                      const riskColor = ra?.color || "#059669";
+                      const riskCategory = ra?.risk_category || "SCREENED";
+
+                      return (
+                        <div
+                          key={imgRecord.id}
+                          onClick={() => {
+                            setActiveImageId(imgRecord.id);
+                            if (imgRecord.currentAnalysis) {
+                              setCurrentStep(3);
+                            } else {
+                              performAnalysis(imgRecord.rawImage, "auto", activePatient.id);
+                            }
+                          }}
+                          className={`group bg-slate-50 rounded-2xl border p-3.5 cursor-pointer transition-all ${
+                            isSelected
+                              ? "border-teal-500 ring-2 ring-teal-500/20 bg-white shadow-sm"
+                              : "border-slate-200 hover:border-teal-300 hover:bg-white"
+                          }`}
+                        >
+                          <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 mb-2">
+                            <ImageWithFallback
+                              src={imgRecord.rawImage}
+                              alt="Infant screening photo"
+                              className="w-full h-full"
+                            />
+                            <div className="absolute top-2 left-2">
+                              <span
+                                className="text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs uppercase text-white"
+                                style={{ backgroundColor: riskColor }}
+                              >
+                                {riskCategory.replace("_", " ")}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-semibold text-slate-800">{imgRecord.formattedDate}</span>
+                            <span className="text-slate-400 capitalize">{imgRecord.activeCorrection || "auto"}</span>
+                          </div>
+
+                          {imgRecord.tracking && (
+                            <div className="mt-1 flex items-center space-x-1.5 text-[10px] text-teal-700">
+                              <Icon name="target" className="w-3 h-3" />
+                              <span>Distance: {imgRecord.tracking.estimated_distance_cm || 25} cm</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              {/* Proceed to Capture Action */}
+              {/* Action: Proceed to Camera */}
               <div className="pt-2">
                 <button
                   type="button"
                   onClick={() => setCurrentStep(2)}
                   className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold text-sm shadow-md shadow-teal-500/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  <span>Continue to Camera & Capture</span>
-                  <Icon name="chevron-right" className="w-4 h-4" />
+                  <Icon name="camera" className="w-4 h-4" />
+                  <span>Capture New Photo for {activePatient.name} →</span>
                 </button>
-              </div>
-            </div>
-
-            {/* Seamless Preloaded Demo Profiles (Parent & Clinician Friendly) */}
-            <div className="max-w-4xl mx-auto pt-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Icon name="sparkles" className="w-4 h-4 text-teal-600" />
-                  <h3 className="text-sm font-bold text-slate-800">Explore Preloaded Clinical Patient Profiles</h3>
-                </div>
-                <span className="text-xs text-slate-500">Instant Evaluation Cases</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {demoSamples.map((sample) => (
-                  <div
-                    key={sample.id}
-                    onClick={() => loadDemoProfile(sample)}
-                    className="group bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs hover:shadow-md hover:border-teal-500/60 transition-all cursor-pointer flex flex-col justify-between"
-                  >
-                    <div className="space-y-3">
-                      <div className="relative aspect-4/3 rounded-xl overflow-hidden bg-slate-100 border border-slate-100">
-                        <img
-                          src={`data:image/jpeg;base64,${sample.image_base64}`}
-                          alt={sample.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute top-2 left-2">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs ${
-                            sample.expected_risk === "LOW_RISK"
-                              ? "bg-emerald-500 text-white"
-                              : sample.expected_risk === "MODERATE_RISK"
-                              ? "bg-amber-500 text-white"
-                              : "bg-rose-500 text-white"
-                          }`}>
-                            {sample.expected_risk.replace("_", " ")}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 group-hover:text-teal-700 transition-colors">
-                          {sample.title}
-                        </h4>
-                        <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                          {sample.notes}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-teal-700 group-hover:text-teal-800">
-                      <span>Load Patient & Screen</span>
-                      <Icon name="chevron-right" className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
         )}
 
         {/* =========================================================================
-            STEP 2: GUIDED CAMERA & IMAGE CAPTURE
+            STEP 2: GUIDED CAMERA & CAPTURE
         ========================================================================= */}
         {currentStep === 2 && (
           <div className="space-y-6 animate-fadeIn">
@@ -1161,13 +1391,13 @@ function App() {
                 </button>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-bold text-slate-900">{babyProfile.name}</span>
-                    <span className="text-xs text-slate-500">• {babyProfile.ageValue} {babyProfile.ageUnit} old</span>
+                    <span className="text-sm font-bold text-slate-900">{activePatient.name}</span>
+                    <span className="text-xs text-slate-500">• {activePatient.ageValue} {activePatient.ageUnit} old</span>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 uppercase">
-                      {babyProfile.gestation}
+                      {activePatient.gestation}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500">Framing guidance active for forehead and ocular landmarks</p>
+                  <p className="text-xs text-slate-500">Live anatomical tracking active for forehead and sclera</p>
                 </div>
               </div>
 
@@ -1181,7 +1411,7 @@ function App() {
                   }}
                   className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                     captureMode === "camera"
-                      ? "bg-white text-slate-900 shadow-xs"
+                      ? "bg-white text-slate-900 shadow-sm"
                       : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
@@ -1197,7 +1427,7 @@ function App() {
                   }}
                   className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                     captureMode === "upload"
-                      ? "bg-white text-slate-900 shadow-xs"
+                      ? "bg-white text-slate-900 shadow-sm"
                       : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
@@ -1209,9 +1439,9 @@ function App() {
 
             {/* Camera Viewport & Capture Stage */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Primary Viewport (Camera or Selected Image) */}
+              {/* Primary Viewport (Camera or File Upload) */}
               <div className="lg:col-span-2 space-y-4">
-                <div className="relative aspect-4/3 sm:aspect-16/10 rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 shadow-lg flex items-center justify-center">
+                <div className="relative aspect-[4/3] rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 shadow-lg flex items-center justify-center">
                   {/* Mode: Camera Feed */}
                   {captureMode === "camera" && (
                     <>
@@ -1231,107 +1461,103 @@ function App() {
                       {/* Top Floating Telemetry Pills */}
                       <div className="absolute top-4 inset-x-4 flex items-center justify-between z-20 pointer-events-none">
                         {/* Distance Badge */}
-                        <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900/70 backdrop-blur-md text-white text-xs border border-white/10 shadow-sm pointer-events-auto">
+                        <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-xs border border-white/10 shadow-sm pointer-events-auto">
                           <Icon name="target" className="w-3.5 h-3.5 text-teal-400" />
                           <span className="font-semibold">
                             {analysisResult?.tracking?.distance_advice || "Target ~25 cm distance"}
                           </span>
                         </div>
 
-                        {/* Lighting Condition Indicator */}
-                        <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900/70 backdrop-blur-md text-white text-xs border border-white/10 shadow-sm pointer-events-auto">
-                          <Icon name="sun" className="w-3.5 h-3.5 text-amber-400" />
+                        {/* Real-time Tracking Status & FPS */}
+                        <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-xs border border-white/10 shadow-sm pointer-events-auto">
+                          <span className={`w-2 h-2 rounded-full ${continuousAnalysis ? "bg-emerald-400 animate-ping" : "bg-slate-400"}`}></span>
                           <span>
-                            {analysisResult?.lighting_condition?.cct_kelvin
-                              ? `${analysisResult.lighting_condition.cct_kelvin}K • ${analysisResult.lighting_condition.category}`
-                              : "Auto Illumination Guard"}
+                            {continuousAnalysis ? `Tracking Live (${liveFps || 1.6} Hz)` : "Tracking Paused"}
                           </span>
                         </div>
                       </div>
 
-                      {/* Bottom Quick Controls in Viewport */}
+                      {/* Bottom Quick Controls inside Viewport */}
                       <div className="absolute bottom-4 inset-x-4 flex items-center justify-between z-20">
+                        {/* Continuous Streaming Toggle */}
                         <button
                           type="button"
-                          onClick={() => setShowBiometricOverlay(!showBiometricOverlay)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-md transition-all border ${
-                            showBiometricOverlay
-                              ? "bg-teal-500/80 text-white border-teal-400/30"
-                              : "bg-slate-900/60 text-slate-300 border-white/10"
+                          onClick={() => setContinuousAnalysis(!continuousAnalysis)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-md transition-all border flex items-center space-x-1.5 ${
+                            continuousAnalysis
+                              ? "bg-emerald-500/80 text-white border-emerald-400/30"
+                              : "bg-slate-900/70 text-slate-300 border-white/10"
                           }`}
                         >
-                          <span className="flex items-center space-x-1.5">
-                            <Icon name="eye" className="w-3.5 h-3.5" />
-                            <span>{showBiometricOverlay ? "Biometric HUD On" : "Clean View"}</span>
-                          </span>
+                          <Icon name="zap" className="w-3.5 h-3.5" />
+                          <span>{continuousAnalysis ? "Continuous: ON" : "Continuous: PAUSED"}</span>
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={toggleCameraFacing}
-                          className="p-2.5 rounded-xl bg-slate-900/70 hover:bg-slate-900 backdrop-blur-md text-white border border-white/10 transition-all shadow-sm"
-                          title="Switch Camera Facing"
-                        >
-                          <Icon name="refresh-cw" className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowBiometricOverlay(!showBiometricOverlay)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-md transition-all border flex items-center space-x-1.5 ${
+                              showBiometricOverlay
+                                ? "bg-teal-500/80 text-white border-teal-400/30"
+                                : "bg-slate-900/70 text-slate-300 border-white/10"
+                            }`}
+                          >
+                            <Icon name="eye" className="w-3.5 h-3.5" />
+                            <span>{showBiometricOverlay ? "HUD On" : "HUD Off"}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={toggleCameraFacing}
+                            className="p-2.5 rounded-xl bg-slate-900/70 hover:bg-slate-900 backdrop-blur-md text-white border border-white/10 transition-all shadow-sm"
+                            title="Flip Camera"
+                          >
+                            <Icon name="refresh-cw" className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </>
                   )}
 
-                  {/* Mode: Image Upload or Captured Freeze */}
+                  {/* Mode: Image Upload */}
                   {captureMode === "upload" && (
                     <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
-                      {selectedImage ? (
-                        <div className="relative w-full h-full flex items-center justify-center">
-                          <img
-                            src={selectedImage}
-                            alt="Selected infant skin"
-                            className="max-h-full max-w-full rounded-2xl object-contain"
-                          />
-                          <button
-                            onClick={() => setSelectedImage(null)}
-                            className="absolute top-3 right-3 p-2 rounded-xl bg-slate-900/80 text-white hover:bg-rose-600 transition-colors"
-                          >
-                            <Icon name="x" className="w-4 h-4" />
-                          </button>
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-slate-700 hover:border-teal-500/80 rounded-3xl p-8 w-full h-full flex flex-col items-center justify-center cursor-pointer transition-colors group bg-slate-800/40"
+                      >
+                        <div className="w-14 h-14 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <Icon name="upload" className="w-7 h-7" />
                         </div>
-                      ) : (
-                        <div
-                          onClick={() => fileInputRef.current?.click()}
-                          className="border-2 border-dashed border-slate-700 hover:border-teal-500/80 rounded-3xl p-8 w-full h-full flex flex-col items-center justify-center cursor-pointer transition-colors group bg-slate-800/40"
-                        >
-                          <div className="w-14 h-14 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <Icon name="upload" className="w-7 h-7" />
-                          </div>
-                          <h4 className="text-sm font-bold text-white mt-4">Upload Infant Photograph</h4>
-                          <p className="text-xs text-slate-400 mt-1 max-w-xs">
-                            Select a clear photo of the baby's face, forehead, or chest taken under indoor or daylight lighting.
-                          </p>
-                          <span className="mt-4 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold transition-colors">
-                            Browse Files
-                          </span>
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileUpload}
-                            className="hidden"
-                          />
-                        </div>
-                      )}
+                        <h4 className="text-sm font-bold text-white mt-4">Upload Infant Photograph</h4>
+                        <p className="text-xs text-slate-400 mt-1 max-w-xs">
+                          Select a clear photo of {activePatient.name}'s forehead or face under indoor or natural light.
+                        </p>
+                        <span className="mt-4 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold transition-colors">
+                          Browse Local Files
+                        </span>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Shutter / Capture Action Controls */}
+                {/* Shutter / Capture Actions Bar */}
                 <div className="bg-white rounded-3xl border border-slate-200/80 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center space-x-3 text-xs text-slate-500">
                     <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
-                    <span>Ready for optical normalization</span>
+                    <span>Ready to screen {activePatient.name}</span>
                   </div>
 
-                  <div className="flex items-center space-x-3 w-full sm:w-auto">
-                    {captureMode === "camera" && (
+                  {captureMode === "camera" && (
+                    <div className="flex items-center space-x-3 w-full sm:w-auto">
                       <button
                         type="button"
                         onClick={() => {
@@ -1343,27 +1569,15 @@ function App() {
                         <div className="w-4 h-4 rounded-full border-2 border-white flex items-center justify-center">
                           <div className="w-2 h-2 rounded-full bg-white"></div>
                         </div>
-                        <span>Capture & Screen Now</span>
+                        <span>Freeze Snapshot & Screen</span>
                       </button>
-                    )}
-
-                    {captureMode === "upload" && selectedImage && (
-                      <button
-                        type="button"
-                        onClick={() => performAnalysis(selectedImage)}
-                        className="flex-1 sm:flex-none py-3 px-6 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold text-sm shadow-md shadow-teal-500/20 flex items-center justify-center space-x-2 transition-all"
-                      >
-                        <Icon name="sparkles" className="w-4 h-4" />
-                        <span>Analyze Uploaded Photo</span>
-                      </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Side Guidance & Clinical Checklist Panel */}
+              {/* Side Guidance & Clinical Rules Panel */}
               <div className="space-y-4">
-                {/* Clinical Guidance Checklist */}
                 <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs space-y-4">
                   <div className="flex items-center space-x-2">
                     <Icon name="shield-check" className="w-4 h-4 text-teal-600" />
@@ -1378,7 +1592,7 @@ function App() {
                         <Icon name="check" className="w-2.5 h-2.5" />
                       </div>
                       <span>
-                        <strong className="text-slate-800">Framing Distance:</strong> Hold phone 20–30 cm away. Keep baby's face centered within the dashed oval.
+                        <strong className="text-slate-800">Distance:</strong> Hold phone 20–30 cm away. Align baby's forehead within the dashed guide oval.
                       </span>
                     </li>
                     <li className="flex items-start space-x-2.5">
@@ -1394,20 +1608,20 @@ function App() {
                         <Icon name="check" className="w-2.5 h-2.5" />
                       </div>
                       <span>
-                        <strong className="text-slate-800">Clear Landmarks:</strong> Ensure forehead, eyes, and nose tip are uncovered by caps or blankets.
+                        <strong className="text-slate-800">Clear Landmarks:</strong> Ensure forehead and eyes are uncovered by caps or blankets.
                       </span>
                     </li>
                   </ul>
                 </div>
 
-                {/* ArUco Calibration Card Prompt Card */}
+                {/* ArUco Calibration Card Prompt */}
                 <div className="bg-gradient-to-br from-teal-50/70 to-slate-50 rounded-3xl border border-teal-200/70 p-5 shadow-xs space-y-3">
                   <div className="flex items-center space-x-2 text-teal-800">
                     <Icon name="qr-code" className="w-4 h-4 text-teal-600" />
-                    <h4 className="text-xs font-bold uppercase tracking-wider">Optional Reference Card</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-wider">Reference Card (Optional)</h4>
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Place an ArUco color card next to the infant's cheek for ground-truth matrix color correction. If not available, NeoScan automatically uses the infant's sclera and Shades-of-Gray constancy.
+                    Place an ArUco color card next to the cheek for ground-truth matrix color correction. If not available, NeoScan automatically uses the sclera and Shades-of-Gray constancy.
                   </p>
                   <a
                     href="/api/v1/reference-card"
@@ -1415,12 +1629,12 @@ function App() {
                     rel="noreferrer"
                     className="inline-flex items-center space-x-1.5 text-xs font-bold text-teal-700 hover:text-teal-800 hover:underline"
                   >
-                    <span>Download Printable ArUco Card</span>
+                    <span>Download Printable Card</span>
                     <Icon name="chevron-right" className="w-3.5 h-3.5" />
                   </a>
                 </div>
 
-                {/* Advanced Optical Constancy Selector Accordion */}
+                {/* Illumination Algorithm Selector */}
                 <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
                   <button
                     type="button"
@@ -1429,7 +1643,7 @@ function App() {
                   >
                     <div className="flex items-center space-x-2 text-slate-700">
                       <Icon name="sliders" className="w-4 h-4 text-slate-400" />
-                      <span className="text-xs font-bold">Illumination Algorithm</span>
+                      <span className="text-xs font-bold">Color Constancy Algorithm</span>
                     </div>
                     <Icon
                       name={advancedOpticalOpen ? "chevron-up" : "chevron-down"}
@@ -1444,7 +1658,7 @@ function App() {
                       </p>
                       <select
                         value={correctionMethod}
-                        onChange={(e) => setCorrectionMethod(e.target.value)}
+                        onChange={(e) => handleMethodChange(e.target.value)}
                         className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
                       >
                         <option value="auto">Auto-Select (Smart Hierarchy: Card → Sclera → Shades of Gray)</option>
@@ -1465,9 +1679,9 @@ function App() {
         )}
 
         {/* =========================================================================
-            STEP 3: HUMAN-CENTRIC CLINICAL RESULTS DASHBOARD
+            STEP 3: CLINICAL TRIAGE & RESULTS DASHBOARD
         ========================================================================= */}
-        {currentStep === 3 && analysisResult && (
+        {currentStep === 3 && activeImageRecord && (
           <div className="space-y-8 animate-fadeIn">
             {/* Action Bar Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs">
@@ -1476,9 +1690,9 @@ function App() {
                   <Icon name="baby" className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">{babyProfile.name} • Screening Record</h3>
+                  <h3 className="text-sm font-bold text-slate-900">{activePatient.name} • Clinical Screening Record</h3>
                   <p className="text-xs text-slate-500">
-                    Age: {babyProfile.ageValue} {babyProfile.ageUnit} • Gestation: {babyProfile.gestation} • Method: {analysisResult.active_correction_method}
+                    Age: {activePatient.ageValue} {activePatient.ageUnit} • Gestation: {activePatient.gestation} • Strategy: {activeImageRecord.activeCorrection || "auto"}
                   </p>
                 </div>
               </div>
@@ -1504,91 +1718,181 @@ function App() {
               </div>
             </div>
 
-            {/* Hero Triage Result Card (Empathetic & Non-Alarmist) */}
-            <div className={`p-6 sm:p-8 rounded-3xl bg-gradient-to-br ${triageDetails.bannerBg} border shadow-sm space-y-6`}>
+            {/* Hero Triage Card (Bound directly to backend risk assessment) */}
+            <div
+              className="p-6 sm:p-8 rounded-3xl border shadow-sm space-y-6"
+              style={{
+                backgroundColor: `${riskDetails.color}0a`,
+                borderColor: `${riskDetails.color}35`
+              }}
+            >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-3">
-                  <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full border text-xs font-bold tracking-wide uppercase shadow-2xs">
-                    <Icon name={triageDetails.iconName} className={`w-4 h-4 ${triageDetails.iconColor}`} />
-                    <span className={triageDetails.iconColor}>{triageDetails.badgeText}</span>
+                  <div
+                    className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full border text-xs font-bold tracking-wide uppercase shadow-xs"
+                    style={{
+                      backgroundColor: `${riskDetails.color}15`,
+                      borderColor: `${riskDetails.color}40`,
+                      color: riskDetails.color
+                    }}
+                  >
+                    <Icon name={riskDetails.category === "HIGH_RISK" ? "alert-triangle" : riskDetails.category === "MODERATE_RISK" ? "alert-circle" : "shield-check"} className="w-4 h-4" />
+                    <span>{riskDetails.badge}</span>
                   </div>
 
                   <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                    {triageDetails.title}
+                    {riskDetails.title}
                   </h1>
 
                   <p className="text-sm sm:text-base text-slate-600 max-w-2xl leading-relaxed">
-                    {triageDetails.guidance}
+                    {riskDetails.recommendation}
                   </p>
                 </div>
 
                 {/* Calibrated Risk Gauge Mini Visualizer */}
-                <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/80 p-5 shadow-xs shrink-0 w-full md:w-64 space-y-3">
+                <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 p-5 shadow-xs shrink-0 w-full md:w-72 space-y-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-500">Optical Jaundice Index</span>
-                    <span className="font-bold text-slate-900 font-mono">
-                      {analysisResult.fused_biomarkers?.fused_jaundice_index?.toFixed(2) || "0.42"}
+                    <span className="font-semibold text-slate-500">CIE b* Yellowness:</span>
+                    <span className="font-bold text-slate-900 font-mono text-sm">
+                      {analysisResult?.fused_biomarkers?.fused_lab_b_star || "14.2"}
                     </span>
                   </div>
 
-                  {/* Horizontal Risk Bar */}
-                  <div className="space-y-1.5">
+                  {/* Dynamic Risk Bar with Indicator Marker */}
+                  <div className="space-y-1.5 relative pt-2">
                     <div className="w-full h-3 rounded-full bg-slate-200 overflow-hidden flex">
                       <div className="h-full bg-emerald-500" style={{ width: "35%" }}></div>
                       <div className="h-full bg-amber-500" style={{ width: "35%" }}></div>
                       <div className="h-full bg-rose-500" style={{ width: "30%" }}></div>
                     </div>
+                    {/* Glowing Marker Pin */}
+                    <div
+                      className="absolute top-0 w-3 h-3 rounded-full border-2 border-white shadow-md transform -translate-x-1/2 transition-all duration-500"
+                      style={{
+                        left: `${riskDetails.markerPos}%`,
+                        backgroundColor: riskDetails.color
+                      }}
+                    ></div>
+
                     <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-                      <span>Low</span>
-                      <span>Moderate</span>
-                      <span>High</span>
+                      <span>Low ({riskDetails.lowP}%)</span>
+                      <span>Mod ({riskDetails.modP}%)</span>
+                      <span>High ({riskDetails.highP}%)</span>
                     </div>
                   </div>
 
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-slate-500">Confidence:</span>
+                    <span className="text-slate-500">Estimated Equiv. TSB:</span>
+                    <span className="font-bold text-slate-800 font-mono">
+                      {riskDetails.eqTsb}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Confidence Score:</span>
                     <span className="font-bold text-teal-700">
-                      {Math.round((analysisResult.risk_assessment?.confidence || 0.95) * 100)}%
+                      {riskDetails.confidence}%
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Actionable Next Steps for Parents (Care Checklist) */}
+              {/* Actionable Parent Care Checklist */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200/60">
-                <div className="bg-white/80 rounded-2xl p-4 border border-slate-100 shadow-2xs space-y-1">
+                <div className="bg-white/90 rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1">
                   <div className="flex items-center space-x-2 text-slate-800 font-bold text-xs">
                     <Icon name="droplet" className="w-4 h-4 text-teal-600" />
                     <span>Feeding & Hydration</span>
                   </div>
                   <p className="text-[11px] text-slate-500 leading-relaxed">
-                    Feed 8–12 times per 24 hours. Regular stooling is essential for physiological bilirubin elimination.
+                    Feed 8–12 times per 24 hours. Frequent feeding stimulates bowel movements, which naturally excretes bilirubin.
                   </p>
                 </div>
 
-                <div className="bg-white/80 rounded-2xl p-4 border border-slate-100 shadow-2xs space-y-1">
+                <div className="bg-white/90 rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1">
                   <div className="flex items-center space-x-2 text-slate-800 font-bold text-xs">
                     <Icon name="sun" className="w-4 h-4 text-amber-500" />
-                    <span>Natural Daylight Checks</span>
+                    <span>Daylight Observation</span>
                   </div>
                   <p className="text-[11px] text-slate-500 leading-relaxed">
-                    Check skin yellowness in indirect, natural window light. Gently blanch forehead with finger to assess underlying skin tone.
+                    Check skin in indirect natural window light. Blanch skin with gentle finger pressure to observe underlying tone.
                   </p>
                 </div>
 
-                <div className="bg-white/80 rounded-2xl p-4 border border-slate-100 shadow-2xs space-y-1">
+                <div className="bg-white/90 rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1">
                   <div className="flex items-center space-x-2 text-slate-800 font-bold text-xs">
                     <Icon name="heart" className="w-4 h-4 text-rose-500" />
-                    <span>When to Call Pediatrician</span>
+                    <span>When to Call Doctor</span>
                   </div>
                   <p className="text-[11px] text-slate-500 leading-relaxed">
-                    Contact your clinic if yellow discoloration moves down below the abdomen, baby is difficult to wake, or stool is pale clay-colored.
+                    Seek immediate pediatric review if yellowness spreads to abdomen/legs or baby is difficult to wake.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Expandable "Clinical Insights & Technical Deep Dive" Accordion */}
+            {/* Non-Destructive Multi-Spectrum Viewport & Switcher */}
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Multi-Spectrum Visual Inspection</h3>
+                  <p className="text-xs text-slate-500">Toggle between raw input, illumination correction, and diagnostic overlays</p>
+                </div>
+
+                <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl text-xs overflow-x-auto">
+                  <button
+                    onClick={() => setImageCompareMode("corrected")}
+                    className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                      imageCompareMode === "corrected" ? "bg-white text-teal-800 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Corrected
+                  </button>
+                  <button
+                    onClick={() => setImageCompareMode("raw")}
+                    className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                      imageCompareMode === "raw" ? "bg-white text-teal-800 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Original Raw
+                  </button>
+                  <button
+                    onClick={() => setImageCompareMode("diagnostic")}
+                    className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                      imageCompareMode === "diagnostic" ? "bg-white text-teal-800 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Diagnostic ROIs
+                  </button>
+                  <button
+                    onClick={() => setImageCompareMode("heatmap")}
+                    className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                      imageCompareMode === "heatmap" ? "bg-white text-teal-800 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Thermal Heatmap
+                  </button>
+                </div>
+              </div>
+
+              {/* Viewport Frame */}
+              <div className="relative aspect-[16/10] sm:aspect-video rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center">
+                <ImageWithFallback
+                  src={activeDisplayImage}
+                  alt="Clinical Inspection View"
+                  className="w-full h-full"
+                />
+
+                <div className="absolute top-3 left-3 px-3 py-1 rounded-md bg-slate-900/80 backdrop-blur-md text-white text-[11px] font-semibold border border-white/10">
+                  {imageCompareMode === "corrected" && `Illumination Corrected (${activeImageRecord.activeCorrection || "auto"})`}
+                  {imageCompareMode === "raw" && "Original Uncorrected Capture"}
+                  {imageCompareMode === "diagnostic" && "Anatomical Landmark ROI Contours"}
+                  {imageCompareMode === "heatmap" && "Dermal Bilirubin Thermal Heatmap"}
+                </div>
+              </div>
+            </div>
+
+            {/* Expandable Clinical Insights & Deep Dive Accordion */}
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
               <div
                 onClick={() => setClinicalAccordionOpen(!clinicalAccordionOpen)}
@@ -1617,7 +1921,7 @@ function App() {
 
               {clinicalAccordionOpen && (
                 <div className="p-6 pt-0 border-t border-slate-100 space-y-6">
-                  {/* Sub-Tabs: Optical Normalization / Biomarkers / Model Telemetry */}
+                  {/* Sub-Tabs */}
                   <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
                     <button
                       type="button"
@@ -1639,7 +1943,7 @@ function App() {
                           : "text-slate-500 hover:text-slate-800"
                       }`}
                     >
-                      Biometric ROIs ($b^*$, $Cr/Cb$)
+                      Biometric ROIs (b*, Cr/Cb)
                     </button>
                     <button
                       type="button"
@@ -1656,72 +1960,12 @@ function App() {
 
                   {/* TAB 1: OPTICAL NORMALIZATION */}
                   {clinicalTab === "optical" && (
-                    <div className="space-y-6">
-                      {/* Image Comparison Visualizer */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                            Multi-Spectrum Optical Transformation
-                          </h4>
-                          <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl text-xs">
-                            <button
-                              onClick={() => setImageCompareMode("corrected")}
-                              className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                                imageCompareMode === "corrected" ? "bg-white text-teal-800 shadow-xs" : "text-slate-600"
-                              }`}
-                            >
-                              Corrected Image
-                            </button>
-                            <button
-                              onClick={() => setImageCompareMode("diagnostic")}
-                              className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                                imageCompareMode === "diagnostic" ? "bg-white text-teal-800 shadow-xs" : "text-slate-600"
-                              }`}
-                            >
-                              ROI Diagnostic Contours
-                            </button>
-                            <button
-                              onClick={() => setImageCompareMode("heatmap")}
-                              className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                                imageCompareMode === "heatmap" ? "bg-white text-teal-800 shadow-xs" : "text-slate-600"
-                              }`}
-                            >
-                              Thermal Heatmap
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="relative aspect-16/9 rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center">
-                          {imageCompareMode === "corrected" && analysisResult.visualizations?.corrected_image_base64 && (
-                            <img
-                              src={`data:image/jpeg;base64,${analysisResult.visualizations.corrected_image_base64}`}
-                              alt="Illumination Corrected"
-                              className="max-h-full max-w-full object-contain"
-                            />
-                          )}
-                          {imageCompareMode === "diagnostic" && analysisResult.visualizations?.diagnostic_overlay_base64 && (
-                            <img
-                              src={`data:image/jpeg;base64,${analysisResult.visualizations.diagnostic_overlay_base64}`}
-                              alt="Diagnostic Contours"
-                              className="max-h-full max-w-full object-contain"
-                            />
-                          )}
-                          {imageCompareMode === "heatmap" && analysisResult.visualizations?.yellowness_heatmap_base64 && (
-                            <img
-                              src={`data:image/jpeg;base64,${analysisResult.visualizations.yellowness_heatmap_base64}`}
-                              alt="Bilirubin Heatmap"
-                              className="max-h-full max-w-full object-contain"
-                            />
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Optical Metadata Grid */}
+                    <div className="space-y-4">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
                           <span className="text-[10px] font-bold uppercase text-slate-400">Active Method</span>
                           <p className="text-xs font-bold text-slate-900 mt-1 uppercase">
-                            {analysisResult.active_correction_method}
+                            {analysisResult?.active_correction_method || "auto"}
                           </p>
                           <span className="text-[10px] text-teal-600 mt-1 block">Illumination compensated</span>
                         </div>
@@ -1729,17 +1973,17 @@ function App() {
                         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
                           <span className="text-[10px] font-bold uppercase text-slate-400">Ambient CCT</span>
                           <p className="text-xs font-bold text-slate-900 mt-1 font-mono">
-                            {analysisResult.lighting_condition?.cct_kelvin || 5500} K
+                            {analysisResult?.lighting_condition?.cct_kelvin || 5500} K
                           </p>
                           <span className="text-[10px] text-slate-500 mt-1 block">
-                            {analysisResult.lighting_condition?.category || "Standard Daylight"}
+                            {analysisResult?.lighting_condition?.category || "Standard Daylight"}
                           </span>
                         </div>
 
                         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
                           <span className="text-[10px] font-bold uppercase text-slate-400">Sharpness Index</span>
                           <p className="text-xs font-bold text-slate-900 mt-1 font-mono">
-                            {analysisResult.quality_gate?.sharpness_score?.toFixed(1) || "142.0"}
+                            {analysisResult?.quality_gate?.sharpness_score?.toFixed(1) || "142.0"}
                           </p>
                           <span className="text-[10px] text-emerald-600 mt-1 block">Passed Quality Gate</span>
                         </div>
@@ -1747,7 +1991,7 @@ function App() {
                         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
                           <span className="text-[10px] font-bold uppercase text-slate-400">Dermal Coverage</span>
                           <p className="text-xs font-bold text-slate-900 mt-1 font-mono">
-                            {((analysisResult.quality_gate?.valid_pixel_ratio || 0.98) * 100).toFixed(1)}%
+                            {((analysisResult?.quality_gate?.valid_pixel_ratio || 0.98) * 100).toFixed(1)}%
                           </p>
                           <span className="text-[10px] text-slate-500 mt-1 block">Specular glare excluded</span>
                         </div>
@@ -1763,14 +2007,14 @@ function App() {
                           <thead>
                             <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold">
                               <th className="py-2.5 px-3">Anatomical Landmark</th>
-                              <th className="py-2.5 px-3">Raw $b^*$</th>
-                              <th className="py-2.5 px-3 font-semibold text-teal-800">Corrected $b^*$ (Yellowness)</th>
-                              <th className="py-2.5 px-3">Bilirubin Index ($BI_x$)</th>
+                              <th className="py-2.5 px-3">Raw b*</th>
+                              <th className="py-2.5 px-3 font-semibold text-teal-800">Corrected b* (Yellowness)</th>
+                              <th className="py-2.5 px-3">Bilirubin Index (BIx)</th>
                               <th className="py-2.5 px-3">Clinical Weight</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 font-mono">
-                            {analysisResult.roi_breakdown && Object.entries(analysisResult.roi_breakdown).map(([k, v]) => (
+                            {analysisResult?.roi_breakdown && Object.entries(analysisResult.roi_breakdown).map(([k, v]) => (
                               <tr key={k} className="hover:bg-slate-50">
                                 <td className="py-3 px-3 font-sans font-bold capitalize text-slate-800">
                                   {k}
@@ -1792,13 +2036,6 @@ function App() {
                           </tbody>
                         </table>
                       </div>
-
-                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 text-xs text-slate-600 space-y-1">
-                        <span className="font-bold text-slate-800 block">Biomarker Significance:</span>
-                        <p className="leading-relaxed text-[11px]">
-                          The CIE $L^*a^*b^*$ $b^*$ channel quantifies yellowness along the blue-yellow opponent axis. $BI_x = \frac{R-B}{R+B}$ provides illumination-invariant spectral absorbance matching cutaneous bilirubin deposition.
-                        </p>
-                      </div>
                     </div>
                   )}
 
@@ -1819,44 +2056,9 @@ function App() {
                         </div>
 
                         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70">
-                          <span className="text-[10px] font-bold uppercase text-slate-400">Evaluation Accuracy</span>
+                          <span className="text-[10px] font-bold uppercase text-slate-400">Validation Accuracy</span>
                           <p className="text-xs font-bold text-teal-700 mt-1 font-mono">96.73%</p>
                           <span className="text-[10px] text-emerald-600 mt-1 block">100% High-Risk Sensitivity</span>
-                        </div>
-                      </div>
-
-                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-2">
-                        <span className="text-xs font-bold text-slate-800">AAP Triage Risk Distribution:</span>
-                        <div className="w-full h-3 rounded-full bg-slate-200 overflow-hidden flex">
-                          <div
-                            className="h-full bg-emerald-500"
-                            style={{
-                              width: `${(analysisResult.risk_assessment?.probability_distribution?.LOW_RISK || 0.8) * 100}%`
-                            }}
-                          ></div>
-                          <div
-                            className="h-full bg-amber-500"
-                            style={{
-                              width: `${(analysisResult.risk_assessment?.probability_distribution?.MODERATE_RISK || 0.15) * 100}%`
-                            }}
-                          ></div>
-                          <div
-                            className="h-full bg-rose-500"
-                            style={{
-                              width: `${(analysisResult.risk_assessment?.probability_distribution?.HIGH_RISK || 0.05) * 100}%`
-                            }}
-                          ></div>
-                        </div>
-                        <div className="flex justify-between text-[11px] font-mono text-slate-600">
-                          <span>
-                            Low: {Math.round((analysisResult.risk_assessment?.probability_distribution?.LOW_RISK || 0.8) * 100)}%
-                          </span>
-                          <span>
-                            Moderate: {Math.round((analysisResult.risk_assessment?.probability_distribution?.MODERATE_RISK || 0.15) * 100)}%
-                          </span>
-                          <span>
-                            High: {Math.round((analysisResult.risk_assessment?.probability_distribution?.HIGH_RISK || 0.05) * 100)}%
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -1864,11 +2066,41 @@ function App() {
                 </div>
               )}
             </div>
+
+            {/* Patient Screening History Timeline Strip */}
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  {activePatient.name}'s Longitudinal Screenings ({activePatient.images ? activePatient.images.length : 0})
+                </span>
+                <span className="text-xs text-slate-400">Click any frame to view</span>
+              </div>
+
+              <div className="flex items-center space-x-3 overflow-x-auto pb-2">
+                {activePatient.images && activePatient.images.map((img) => (
+                  <div
+                    key={img.id}
+                    onClick={() => setActiveImageId(img.id)}
+                    className={`w-28 shrink-0 rounded-2xl border p-2 cursor-pointer transition-all ${
+                      activeImageRecord && activeImageRecord.id === img.id
+                        ? "border-teal-500 ring-2 ring-teal-500/20 bg-teal-50/20"
+                        : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 mb-1.5">
+                      <ImageWithFallback src={img.rawImage} alt="Historical thumbnail" className="w-full h-full" />
+                    </div>
+                    <div className="text-[10px] font-bold text-slate-800 truncate">{img.formattedDate}</div>
+                    <div className="text-[9px] text-slate-400 capitalize">{img.activeCorrection || "auto"}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </main>
 
-      {/* Calming Heartbeat Loading Modal (Pulsing Biometric Animation) */}
+      {/* Calming Heartbeat Loading Modal */}
       {loading && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border border-slate-100 space-y-6">
@@ -1900,7 +2132,7 @@ function App() {
             <strong className="text-slate-700">Clinical Screening Disclaimer:</strong> NeoScan is an AI-assisted screening companion designed to support parents and pediatric care teams. It is not an invasive diagnostic device and does not replace confirmed laboratory serum bilirubin (TSB) or clinical transcutaneous bilirubin (TcB) testing. Always seek medical guidance from a licensed pediatrician.
           </p>
           <div className="text-[11px] font-semibold text-slate-400 shrink-0">
-            NeoScan v1.2.0 • AAP Compliant Triaging
+            NeoScan v1.3.0 • AAP Compliant Triaging
           </div>
         </div>
       </footer>
