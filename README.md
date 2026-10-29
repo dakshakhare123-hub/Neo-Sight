@@ -42,6 +42,42 @@ Open your browser to:
 
 ---
 
+## ⚙️ Configuration & Environment Variables
+
+NeoScan v2.1 uses environment variables (or a local `.env` file) to control the screening engine:
+
+| Variable | Default | Purpose |
+| :--- | :--- | :--- |
+| `NEOSCAN_ENABLED` | `true` | When `true`, uses the real `neoscan_ml` screening model and strict quality gating. When `false`, uses the rule-based optical fallback engine. |
+| `NEOSCAN_MODEL` | `models/model.joblib` | Path to the trained ML model bundle. If missing, returns HTTP 503 `MODEL_UNAVAILABLE` with guidance. |
+| `MAX_UPLOAD_MB` | `15` | Maximum image upload size in megabytes before rejecting with HTTP 413 `FILE_TOO_LARGE`. |
+
+### Offline Model Training Instructions
+Training is run completely offline on public, ethically sourced datasets (e.g. NJN dataset):
+```bash
+# 1. Prepare data manifest with perceptual-hash grouping (prevents infant data leakage)
+python3 neoscan_ml/prepare_manifest.py data/raw/njn/normal data/raw/njn/jaundice -o neoscan_ml/data/manifest.csv
+
+# 2. Train and validate candidate models using GroupKFold
+python3 neoscan_ml/train.py --manifest neoscan_ml/data/manifest.csv --out-dir models/
+
+# 3. Verify the model metrics and test AUC
+cat models/metrics.json
+```
+
+### Instant Rollback Instructions
+To safely revert to the legacy engine without any code edits:
+```bash
+# Method 1: Environment variable switch (zero-downtime rollback)
+export NEOSCAN_ENABLED=false
+python3 -m uvicorn backend.app.main:app --port 8000
+
+# Method 2: Git branch switch
+git checkout main
+```
+
+---
+
 ## 📊 Empirical Hackathon Pitch Evidence
 
 Tested across **2,500 independent evaluation samples** under extreme Correlated Color Temperature (CCT) shifts from **2,500K (warm tungsten) to 7,800K (cool overcast)**:

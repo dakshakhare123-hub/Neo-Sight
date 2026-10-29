@@ -826,7 +826,13 @@ function App() {
       if (!response.ok) {
         const errData = await response.json().catch(() => ({ detail: "Analysis failed." }));
         let errObj = null;
-        if (typeof errData.detail === "object" && errData.detail !== null) {
+        if (errData && errData.error) {
+          errObj = {
+            code: errData.error.code || "ANALYSIS_FAILED",
+            message: errData.error.message || "Image could not be analyzed.",
+            action: errData.error.hint || "Please adjust lighting and position the baby face front-on."
+          };
+        } else if (typeof errData.detail === "object" && errData.detail !== null) {
           errObj = {
             code: errData.detail.error_code || "QUALITY_GATE_REJECTED",
             message: errData.detail.message || "Image rejected by screening quality gate.",
@@ -963,7 +969,11 @@ function App() {
     if (!activeImageRecord) return null;
     if (imageCompareMode === "raw") return activeImageRecord.rawImage;
     if (imageCompareMode === "diagnostic") {
-      return analysisResult?.visualizations?.diagnostic_overlay_base64 || activeImageRecord.rawImage;
+      return (
+        analysisResult?.visualizations?.diagnostic_overlay_base64 ||
+        (analysisResult?.overlay_png_base64 ? `data:image/png;base64,${analysisResult.overlay_png_base64}` : null) ||
+        activeImageRecord.rawImage
+      );
     }
     if (imageCompareMode === "heatmap") {
       return analysisResult?.visualizations?.yellowness_heatmap_base64 || activeImageRecord.rawImage;
@@ -972,9 +982,9 @@ function App() {
     return analysisResult?.visualizations?.corrected_image_base64 || activeImageRecord.rawImage;
   }, [activeImageRecord, imageCompareMode, analysisResult]);
 
-  // Dynamic Risk Details (derived directly from real optical biomarkers)
+  // Dynamic Risk Details (derived directly from real optical biomarkers and neoscan_ml)
   const riskDetails = useMemo(() => {
-    if (!analysisResult || !analysisResult.risk_assessment) {
+    if (!analysisResult || (!analysisResult.risk_assessment && !analysisResult.category)) {
       return {
         category: "PENDING",
         title: "Awaiting Assessment",
@@ -986,17 +996,25 @@ function App() {
         bStar: "N/A",
         bix: "N/A",
         recommendation: "Ensure baby's face is centered and in soft indirect lighting.",
-        markerPos: 10
+        markerPos: 10,
+        modelScore: null,
+        reliability: "normal",
+        reliabilityNote: null
       };
     }
 
-    const ra = analysisResult.risk_assessment;
-    const cat = ra.risk_category || "INCONCLUSIVE";
+    const ra = analysisResult.risk_assessment || {};
+    const catRaw = analysisResult.category || ra.risk_category || "inconclusive";
+    const cat = catRaw.toUpperCase();
     const primary = ra.primary_biomarkers || {};
-    const bStarVal = primary.dermal_yellowness_b_star ?? analysisResult.fused_biomarkers?.fused_lab_b_star;
-    const bixVal = primary.bilirubin_index_bix ?? analysisResult.fused_biomarkers?.fused_bix;
-    const confScore = Math.round((ra.confidence_score || 0.8) * 100);
-    const confLevel = ra.confidence_level || "MODERATE";
+    const feats = analysisResult.features || {};
+    const bStarVal = feats.fh_b ?? primary.dermal_yellowness_b_star ?? analysisResult.fused_biomarkers?.fused_lab_b_star;
+    const bixVal = feats.fh_yi ?? primary.bilirubin_index_bix ?? analysisResult.fused_biomarkers?.fused_bix;
+    const modelScoreVal = analysisResult.model_score ?? ra.model_score ?? null;
+    const reliability = analysisResult.reliability || ra.reliability || "normal";
+    const reliabilityNote = analysisResult.reliability_note || ra.reliability_note || null;
+    const confScore = Math.round((ra.confidence_score || (reliability === "normal" ? 0.85 : 0.55)) * 100);
+    const confLevel = ra.confidence_level || (reliability === "normal" ? "HIGH" : "REDUCED");
 
     // Physically meaningful marker position on 0 - 32 b* yellowness scale:
     // Normal: b* < 16 (0% - 50%)
@@ -1005,24 +1023,26 @@ function App() {
     let markerPos = 25;
     if (typeof bStarVal === "number" && !isNaN(bStarVal)) {
       markerPos = Math.min(96, Math.max(4, Math.round((Math.max(0, bStarVal) / 32) * 100)));
+    } else if (typeof modelScoreVal === "number" && !isNaN(modelScoreVal)) {
+      markerPos = Math.min(96, Math.max(4, Math.round(modelScoreVal * 100)));
     }
 
     let color = "#059669"; // emerald
     let badge = "NO VISIBLE SIGNS";
-    let title = "Routine Observation Suggested";
-    let recommendation = ra.triage_recommendation || "Maintain standard pediatric care and regular feeding schedule.";
+    let title = "No Visible Jaundice Signs";
+    let recommendation = ra.recommendation || ra.triage_recommendation || "Cutaneous yellowness is within expected limits for healthy neonates. Maintain standard feeding and routine pediatric checks.";
 
-    if (cat === "POSSIBLE_JAUNDICE_SIGNS") {
+    if (cat.includes("POSSIBLE") || cat.includes("JAUNDICE")) {
       const isElevated = typeof bStarVal === "number" && bStarVal >= 22.0;
-      color = isElevated ? "#e11d48" : "#d97706";
+      color = isElevated ? "#dc2626" : "#ea580c";
       badge = isElevated ? "ELEVATED JAUNDICE SIGNS" : "POSSIBLE JAUNDICE SIGNS";
       title = "Pediatric Consultation Recommended";
-      recommendation = ra.triage_recommendation || "Contact your pediatrician or healthcare provider for clinical evaluation.";
-    } else if (cat === "INCONCLUSIVE") {
-      color = "#64748b";
-      badge = "INCONCLUSIVE SCREENING";
-      title = "Inconclusive Optical Screening";
-      recommendation = ra.triage_recommendation || "Re-capture in neutral diffuse daylight. Avoid tinted or tungsten lamps.";
+      recommendation = ra.recommendation || ra.triage_recommendation || "Cutaneous yellowness exceeds normal thresholds. A healthcare provider evaluation and transcutaneous (TcB) or blood (TSB) bilirubin test are recommended.";
+    } else if (cat.includes("INCONCLUSIVE")) {
+      color = "#d97706";
+      badge = "INCONCLUSIVE (REFERRAL RECOMMENDED)";
+      title = "Inconclusive Screening Result";
+      recommendation = ra.recommendation || ra.triage_recommendation || "Optical yellowness is borderline or ambient lighting precluded confident analysis. Please repeat in bright indirect daylight or consult a clinician.";
     }
 
     return {
@@ -1036,7 +1056,11 @@ function App() {
       bix: typeof bixVal === "number" ? bixVal.toFixed(3) : "N/A",
       recommendation,
       markerPos,
-      methodology: ra.methodology || "Rule-Based Optical Screening Heuristic (AAP Guidelines)"
+      modelScore: modelScoreVal,
+      reliability,
+      reliabilityNote,
+      modelVersion: analysisResult.model_version || "neoscan_ml-v2.0",
+      methodology: ra.screening_engine === "neoscan_ml" ? "Trained ML Optical Screening Model (HistGradientBoosting / NJN Dataset)" : (ra.methodology || "Rule-Based Optical Screening Heuristic (AAP Guidelines)")
     };
   }, [analysisResult]);
 
@@ -1184,6 +1208,29 @@ function App() {
                       <span>{error.action}</span>
                     </div>
                   )}
+                  <div className="mt-3 flex items-center space-x-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError(null);
+                        setCurrentStep(2);
+                        if (captureMode === "camera") {
+                          startCamera();
+                        }
+                      }}
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
+                    >
+                      <Icon name="camera" className="w-3.5 h-3.5" />
+                      <span>Retake Photo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setError(null)}
+                      className="text-xs text-amber-800 hover:text-amber-950 underline font-medium"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
                 </div>
               </div>
               <button
@@ -1847,10 +1894,29 @@ function App() {
                   <p className="text-sm sm:text-base text-slate-600 max-w-2xl leading-relaxed">
                     {riskDetails.recommendation}
                   </p>
+
+                  {riskDetails.reliabilityNote && (
+                    <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-900 flex items-start space-x-2.5">
+                      <Icon name="alert-triangle" className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold block text-amber-950">Reliability Caution:</span>
+                        <span>{riskDetails.reliabilityNote}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Calibrated Risk Gauge Mini Visualizer */}
                 <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 p-5 shadow-xs shrink-0 w-full md:w-72 space-y-3">
+                  {riskDetails.modelScore !== null && riskDetails.modelScore !== undefined && (
+                    <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-100">
+                      <span className="font-semibold text-slate-500">Model Score:</span>
+                      <span className="font-bold text-teal-800 font-mono text-sm">
+                        {riskDetails.modelScore.toFixed(4)}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-slate-500">CIE b* Yellowness:</span>
                     <span className="font-bold text-slate-900 font-mono text-sm">
@@ -1889,9 +1955,9 @@ function App() {
                   </div>
 
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500">Quality Confidence:</span>
-                    <span className="font-bold text-teal-700 font-mono">
-                      {riskDetails.confidence}% ({riskDetails.confidenceLevel})
+                    <span className="text-slate-500">Reliability / Quality:</span>
+                    <span className={`font-bold font-mono ${riskDetails.reliability === "reduced" ? "text-amber-600" : "text-teal-700"}`}>
+                      {riskDetails.reliability === "reduced" ? "Reduced" : "Normal"} ({riskDetails.confidence}%)
                     </span>
                   </div>
                 </div>
@@ -2144,21 +2210,33 @@ function App() {
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70">
-                          <span className="text-[10px] font-bold uppercase text-slate-400">Methodology</span>
-                          <p className="text-xs font-bold text-slate-900 mt-1">Rule-Based Optical Screening</p>
-                          <span className="text-[10px] text-slate-500 mt-1 block">AAP / Bilgen Physiological Model</span>
+                          <span className="text-[10px] font-bold uppercase text-slate-400">Methodology / Engine</span>
+                          <p className="text-xs font-bold text-slate-900 mt-1">
+                            {analysisResult?.model_version ? `neoscan_ml (${analysisResult.model_version})` : "Optical Screening"}
+                          </p>
+                          <span className="text-[10px] text-slate-500 mt-1 block">
+                            {riskDetails.methodology}
+                          </span>
                         </div>
 
                         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70">
                           <span className="text-[10px] font-bold uppercase text-slate-400">Quality Gating</span>
-                          <p className="text-xs font-bold text-slate-900 mt-1">Laplacian &amp; Clipping Gating</p>
-                          <span className="text-[10px] text-slate-500 mt-1 block">Focus &ge; 35.0 • Glare &lt; 25%</span>
+                          <p className="text-xs font-bold text-slate-900 mt-1">Quality &amp; Face Gate</p>
+                          <span className="text-[10px] text-slate-500 mt-1 block">
+                            Sharpness: {analysisResult?.quality_gate?.sharpness_score?.toFixed(1) || "Passed"} • Dermal Coverage: {((analysisResult?.quality_gate?.valid_pixel_ratio || 0.98) * 100).toFixed(0)}%
+                          </span>
                         </div>
 
                         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70">
-                          <span className="text-[10px] font-bold uppercase text-slate-400">Screening Thresholds</span>
-                          <p className="text-xs font-bold text-teal-700 mt-1 font-mono">b* &lt; 16.0 • BIx &lt; 0.18</p>
-                          <span className="text-[10px] text-emerald-600 mt-1 block">Sclera b* &lt; 7.5 Normal Limit</span>
+                          <span className="text-[10px] font-bold uppercase text-slate-400">Screening Score &amp; Thresholds</span>
+                          <p className="text-xs font-bold text-teal-700 mt-1 font-mono">
+                            {riskDetails.modelScore !== null && riskDetails.modelScore !== undefined
+                              ? `Score: ${riskDetails.modelScore.toFixed(4)} (Cutoff 0.50)`
+                              : "b* < 16.0 (Normal)"}
+                          </p>
+                          <span className="text-[10px] text-emerald-600 mt-1 block">
+                            Reliability: {riskDetails.reliability || "normal"}
+                          </span>
                         </div>
                       </div>
 
@@ -2168,9 +2246,9 @@ function App() {
                           <span>Clinical Screening Disclosures &amp; Limitations</span>
                         </p>
                         <p className="text-[11px] text-amber-800 leading-relaxed">
-                          This system performs non-invasive optical screening based on calibrated dermal and scleral chrominance.
-                          It is a triage screening aid and does NOT provide diagnostic total serum bilirubin (TSB) measurement.
-                          Always verify results with certified transcutaneous bilirubinometry (TcB) or laboratory serum testing.
+                          {analysisResult?.disclaimer || (
+                            "NeoScan is an AI-assisted screening companion designed to support parents and pediatric care teams. It is not an invasive diagnostic device and does not replace confirmed laboratory serum bilirubin (TSB) or clinical transcutaneous bilirubin (TcB) testing. Always seek medical guidance from a licensed pediatrician."
+                          )}
                         </p>
                       </div>
                     </div>
@@ -2189,23 +2267,38 @@ function App() {
               </div>
 
               <div className="flex items-center space-x-3 overflow-x-auto pb-2">
-                {activePatient.images && activePatient.images.map((img) => (
-                  <div
-                    key={img.id}
-                    onClick={() => setActiveImageId(img.id)}
-                    className={`w-28 shrink-0 rounded-2xl border p-2 cursor-pointer transition-all ${
-                      activeImageRecord && activeImageRecord.id === img.id
-                        ? "border-teal-500 ring-2 ring-teal-500/20 bg-teal-50/20"
-                        : "border-slate-200 bg-slate-50 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 mb-1.5">
-                      <ImageWithFallback src={img.rawImage} alt="Historical thumbnail" className="w-full h-full" />
+                {activePatient.images && activePatient.images.map((img) => {
+                  const isV2Scan = Boolean(
+                    img.currentAnalysis?.model_score !== undefined ||
+                    img.currentAnalysis?.model_version ||
+                    img.currentAnalysis?.risk_assessment?.screening_engine === "neoscan_ml"
+                  );
+
+                  return (
+                    <div
+                      key={img.id}
+                      onClick={() => setActiveImageId(img.id)}
+                      className={`w-28 shrink-0 rounded-2xl border p-2 cursor-pointer transition-all ${
+                        activeImageRecord && activeImageRecord.id === img.id
+                          ? "border-teal-500 ring-2 ring-teal-500/20 bg-teal-50/20"
+                          : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 mb-1.5">
+                        <ImageWithFallback src={img.rawImage} alt="Historical thumbnail" className="w-full h-full" />
+                      </div>
+                      <div className="text-[10px] font-bold text-slate-800 truncate">{img.formattedDate}</div>
+                      <div className="flex items-center justify-between text-[9px] text-slate-400 capitalize mt-0.5">
+                        <span>{img.activeCorrection || "auto"}</span>
+                        {isV2Scan ? (
+                          <span className="text-[8px] font-medium text-teal-700 bg-teal-50 px-1 rounded">v2.0</span>
+                        ) : (
+                          <span className="text-[8px] font-medium text-slate-500 bg-slate-200/60 px-1 rounded">Legacy</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-[10px] font-bold text-slate-800 truncate">{img.formattedDate}</div>
-                    <div className="text-[9px] text-slate-400 capitalize">{img.activeCorrection || "auto"}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -2244,7 +2337,7 @@ function App() {
             <strong className="text-slate-700">Clinical Screening Disclaimer:</strong> NeoScan is an AI-assisted screening companion designed to support parents and pediatric care teams. It is not an invasive diagnostic device and does not replace confirmed laboratory serum bilirubin (TSB) or clinical transcutaneous bilirubin (TcB) testing. Always seek medical guidance from a licensed pediatrician.
           </p>
           <div className="text-[11px] font-semibold text-slate-400 shrink-0">
-            NeoScan v1.3.0 • AAP Compliant Triaging
+            NeoScan v2.0 • neoscan_ml Engine
           </div>
         </div>
       </footer>

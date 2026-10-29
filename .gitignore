@@ -3,7 +3,7 @@
 node_modules/
 .venv/
 venv/
-data/
+/data/
 frontend/vendor/babel.min.*
 
 # Python cache & logs
@@ -11,6 +11,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.log
+
+# ML data, heavy artifacts and archives
+neoscan_ml.zip
+models/*.png
+models/rejected_images.csv
+neoscan_ml/data/manifest.csv
 
 # System files
 .DS_Store

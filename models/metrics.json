@@ -1,0 +1,55 @@
+{
+  "version": "neoscan-hgb-202610291256",
+  "selected_model": "hgb",
+  "cv_auc": {
+    "logreg": 0.6348739869979516,
+    "hgb": 0.6910677709502182,
+    "rf": 0.6757502894291566
+  },
+  "thresholds": {
+    "clear_below": 0.027013244621169764,
+    "flag_at_or_above": 0.06130363158312312,
+    "target_sens": 0.9,
+    "safe_sens": 0.97
+  },
+  "test": {
+    "metrics": {
+      "auc": 0.7714285714285714,
+      "sens_flagged": 0.9333333333333333,
+      "sens_not_cleared": 0.9333333333333333,
+      "spec_cleared": 0.16326530612244897,
+      "false_flag_rate": 0.673469387755102,
+      "inconclusive_rate": 0.125,
+      "brier": 0.15558085200904745
+    },
+    "ci95": {
+      "auc": [
+        0.5942609329446065,
+        0.9154195011337868
+      ],
+      "sens_flagged": [
+        0.7777777777777778,
+        1.0
+      ],
+      "sens_not_cleared": [
+        0.7777777777777778,
+        1.0
+      ],
+      "spec_cleared": [
+        0.0681439393939394,
+        0.2745220588235294
+      ],
+      "false_flag_rate": [
+        0.5332978723404255,
+        0.8
+      ]
+    },
+    "n_images": 64,
+    "n_groups": 63,
+    "n_jaundiced": 15
+  },
+  "label_shuffle_auc_mean": 0.4568810553147983,
+  "n_images_used": 318,
+  "n_rejected": 442,
+  "note": "Final deployed model is refit on all usable data; the test numbers above come from the model fit on the training portion only."
+}

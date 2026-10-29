@@ -57,3 +57,13 @@ class ClinicalRiskCategories:
     LOW_RISK = "LOW_RISK"            # Equivalent TSB < 8 mg/dL (Physiological / Safe)
     MODERATE_RISK = "MODERATE_RISK"  # Equivalent TSB 8-14 mg/dL (Repeat screen in 24h)
     HIGH_RISK = "HIGH_RISK"          # Equivalent TSB > 14 mg/dL (Immediate serum bilirubin test)
+
+
+import os
+
+class NeoScanMLConfig:
+    """Configuration for real neonatal jaundice ML analysis module."""
+    ENABLED: bool = os.environ.get("NEOSCAN_ENABLED", "true").lower() in ("true", "1", "yes")
+    MODEL_PATH: str = os.environ.get("NEOSCAN_MODEL", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models", "model.joblib")))
+    MAX_UPLOAD_BYTES: int = int(os.environ.get("NEOSCAN_MAX_UPLOAD_BYTES", 15 * 1024 * 1024))
+

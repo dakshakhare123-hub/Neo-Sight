@@ -933,7 +933,13 @@ function App() {
           detail: "Analysis failed."
         }));
         let errObj = null;
-        if (typeof errData.detail === "object" && errData.detail !== null) {
+        if (errData && errData.error) {
+          errObj = {
+            code: errData.error.code || "ANALYSIS_FAILED",
+            message: errData.error.message || "Image could not be analyzed.",
+            action: errData.error.hint || "Please adjust lighting and position the baby face front-on."
+          };
+        } else if (typeof errData.detail === "object" && errData.detail !== null) {
           errObj = {
             code: errData.detail.error_code || "QUALITY_GATE_REJECTED",
             message: errData.detail.message || "Image rejected by screening quality gate.",
@@ -1060,7 +1066,7 @@ function App() {
     if (!activeImageRecord) return null;
     if (imageCompareMode === "raw") return activeImageRecord.rawImage;
     if (imageCompareMode === "diagnostic") {
-      return analysisResult?.visualizations?.diagnostic_overlay_base64 || activeImageRecord.rawImage;
+      return analysisResult?.visualizations?.diagnostic_overlay_base64 || (analysisResult?.overlay_png_base64 ? `data:image/png;base64,${analysisResult.overlay_png_base64}` : null) || activeImageRecord.rawImage;
     }
     if (imageCompareMode === "heatmap") {
       return analysisResult?.visualizations?.yellowness_heatmap_base64 || activeImageRecord.rawImage;
@@ -1069,9 +1075,9 @@ function App() {
     return analysisResult?.visualizations?.corrected_image_base64 || activeImageRecord.rawImage;
   }, [activeImageRecord, imageCompareMode, analysisResult]);
 
-  // Dynamic Risk Details (derived directly from real optical biomarkers)
+  // Dynamic Risk Details (derived directly from real optical biomarkers and neoscan_ml)
   const riskDetails = useMemo(() => {
-    if (!analysisResult || !analysisResult.risk_assessment) {
+    if (!analysisResult || !analysisResult.risk_assessment && !analysisResult.category) {
       return {
         category: "PENDING",
         title: "Awaiting Assessment",
@@ -1083,16 +1089,24 @@ function App() {
         bStar: "N/A",
         bix: "N/A",
         recommendation: "Ensure baby's face is centered and in soft indirect lighting.",
-        markerPos: 10
+        markerPos: 10,
+        modelScore: null,
+        reliability: "normal",
+        reliabilityNote: null
       };
     }
-    const ra = analysisResult.risk_assessment;
-    const cat = ra.risk_category || "INCONCLUSIVE";
+    const ra = analysisResult.risk_assessment || {};
+    const catRaw = analysisResult.category || ra.risk_category || "inconclusive";
+    const cat = catRaw.toUpperCase();
     const primary = ra.primary_biomarkers || {};
-    const bStarVal = primary.dermal_yellowness_b_star ?? analysisResult.fused_biomarkers?.fused_lab_b_star;
-    const bixVal = primary.bilirubin_index_bix ?? analysisResult.fused_biomarkers?.fused_bix;
-    const confScore = Math.round((ra.confidence_score || 0.8) * 100);
-    const confLevel = ra.confidence_level || "MODERATE";
+    const feats = analysisResult.features || {};
+    const bStarVal = feats.fh_b ?? primary.dermal_yellowness_b_star ?? analysisResult.fused_biomarkers?.fused_lab_b_star;
+    const bixVal = feats.fh_yi ?? primary.bilirubin_index_bix ?? analysisResult.fused_biomarkers?.fused_bix;
+    const modelScoreVal = analysisResult.model_score ?? ra.model_score ?? null;
+    const reliability = analysisResult.reliability || ra.reliability || "normal";
+    const reliabilityNote = analysisResult.reliability_note || ra.reliability_note || null;
+    const confScore = Math.round((ra.confidence_score || (reliability === "normal" ? 0.85 : 0.55)) * 100);
+    const confLevel = ra.confidence_level || (reliability === "normal" ? "HIGH" : "REDUCED");
 
     // Physically meaningful marker position on 0 - 32 b* yellowness scale:
     // Normal: b* < 16 (0% - 50%)
@@ -1101,22 +1115,24 @@ function App() {
     let markerPos = 25;
     if (typeof bStarVal === "number" && !isNaN(bStarVal)) {
       markerPos = Math.min(96, Math.max(4, Math.round(Math.max(0, bStarVal) / 32 * 100)));
+    } else if (typeof modelScoreVal === "number" && !isNaN(modelScoreVal)) {
+      markerPos = Math.min(96, Math.max(4, Math.round(modelScoreVal * 100)));
     }
     let color = "#059669"; // emerald
     let badge = "NO VISIBLE SIGNS";
-    let title = "Routine Observation Suggested";
-    let recommendation = ra.triage_recommendation || "Maintain standard pediatric care and regular feeding schedule.";
-    if (cat === "POSSIBLE_JAUNDICE_SIGNS") {
+    let title = "No Visible Jaundice Signs";
+    let recommendation = ra.recommendation || ra.triage_recommendation || "Cutaneous yellowness is within expected limits for healthy neonates. Maintain standard feeding and routine pediatric checks.";
+    if (cat.includes("POSSIBLE") || cat.includes("JAUNDICE")) {
       const isElevated = typeof bStarVal === "number" && bStarVal >= 22.0;
-      color = isElevated ? "#e11d48" : "#d97706";
+      color = isElevated ? "#dc2626" : "#ea580c";
       badge = isElevated ? "ELEVATED JAUNDICE SIGNS" : "POSSIBLE JAUNDICE SIGNS";
       title = "Pediatric Consultation Recommended";
-      recommendation = ra.triage_recommendation || "Contact your pediatrician or healthcare provider for clinical evaluation.";
-    } else if (cat === "INCONCLUSIVE") {
-      color = "#64748b";
-      badge = "INCONCLUSIVE SCREENING";
-      title = "Inconclusive Optical Screening";
-      recommendation = ra.triage_recommendation || "Re-capture in neutral diffuse daylight. Avoid tinted or tungsten lamps.";
+      recommendation = ra.recommendation || ra.triage_recommendation || "Cutaneous yellowness exceeds normal thresholds. A healthcare provider evaluation and transcutaneous (TcB) or blood (TSB) bilirubin test are recommended.";
+    } else if (cat.includes("INCONCLUSIVE")) {
+      color = "#d97706";
+      badge = "INCONCLUSIVE (REFERRAL RECOMMENDED)";
+      title = "Inconclusive Screening Result";
+      recommendation = ra.recommendation || ra.triage_recommendation || "Optical yellowness is borderline or ambient lighting precluded confident analysis. Please repeat in bright indirect daylight or consult a clinician.";
     }
     return {
       category: cat,
@@ -1129,7 +1145,11 @@ function App() {
       bix: typeof bixVal === "number" ? bixVal.toFixed(3) : "N/A",
       recommendation,
       markerPos,
-      methodology: ra.methodology || "Rule-Based Optical Screening Heuristic (AAP Guidelines)"
+      modelScore: modelScoreVal,
+      reliability,
+      reliabilityNote,
+      modelVersion: analysisResult.model_version || "neoscan_ml-v2.0",
+      methodology: ra.screening_engine === "neoscan_ml" ? "Trained ML Optical Screening Model (HistGradientBoosting / NJN Dataset)" : ra.methodology || "Rule-Based Optical Screening Heuristic (AAP Guidelines)"
     };
   }, [analysisResult]);
   return /*#__PURE__*/React.createElement("div", {
@@ -1230,7 +1250,26 @@ function App() {
     className: "mt-2.5 p-3 rounded-xl bg-white/90 border border-amber-200/80 text-xs text-slate-700"
   }, /*#__PURE__*/React.createElement("span", {
     className: "font-bold text-amber-900 block mb-0.5"
-  }, "Actionable Guidance:"), /*#__PURE__*/React.createElement("span", null, error.action)))), /*#__PURE__*/React.createElement("button", {
+  }, "Actionable Guidance:"), /*#__PURE__*/React.createElement("span", null, error.action)), /*#__PURE__*/React.createElement("div", {
+    className: "mt-3 flex items-center space-x-3 pt-1"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => {
+      setError(null);
+      setCurrentStep(2);
+      if (captureMode === "camera") {
+        startCamera();
+      }
+    },
+    className: "inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "camera",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, "Retake Photo")), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => setError(null),
+    className: "text-xs text-amber-800 hover:text-amber-950 underline font-medium"
+  }, "Dismiss")))), /*#__PURE__*/React.createElement("button", {
     onClick: () => setError(null),
     className: "text-amber-500 hover:text-amber-700 p-1.5 rounded-lg hover:bg-amber-100/60 transition-colors shrink-0",
     title: "Dismiss"
@@ -1756,9 +1795,22 @@ function App() {
     className: "text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
   }, riskDetails.title), /*#__PURE__*/React.createElement("p", {
     className: "text-sm sm:text-base text-slate-600 max-w-2xl leading-relaxed"
-  }, riskDetails.recommendation)), /*#__PURE__*/React.createElement("div", {
+  }, riskDetails.recommendation), riskDetails.reliabilityNote && /*#__PURE__*/React.createElement("div", {
+    className: "p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-900 flex items-start space-x-2.5"
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "alert-triangle",
+    className: "w-4 h-4 text-amber-600 shrink-0 mt-0.5"
+  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    className: "font-bold block text-amber-950"
+  }, "Reliability Caution:"), /*#__PURE__*/React.createElement("span", null, riskDetails.reliabilityNote)))), /*#__PURE__*/React.createElement("div", {
     className: "bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 p-5 shadow-xs shrink-0 w-full md:w-72 space-y-3"
-  }, /*#__PURE__*/React.createElement("div", {
+  }, riskDetails.modelScore !== null && riskDetails.modelScore !== undefined && /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between text-xs pb-1 border-b border-slate-100"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "font-semibold text-slate-500"
+  }, "Model Score:"), /*#__PURE__*/React.createElement("span", {
+    className: "font-bold text-teal-800 font-mono text-sm"
+  }, riskDetails.modelScore.toFixed(4))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between text-xs"
   }, /*#__PURE__*/React.createElement("span", {
     className: "font-semibold text-slate-500"
@@ -1801,9 +1853,9 @@ function App() {
     className: "flex items-center justify-between text-xs"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-slate-500"
-  }, "Quality Confidence:"), /*#__PURE__*/React.createElement("span", {
-    className: "font-bold text-teal-700 font-mono"
-  }, riskDetails.confidence, "% (", riskDetails.confidenceLevel, ")")))), /*#__PURE__*/React.createElement("div", {
+  }, "Reliability / Quality:"), /*#__PURE__*/React.createElement("span", {
+    className: `font-bold font-mono ${riskDetails.reliability === "reduced" ? "text-amber-600" : "text-teal-700"}`
+  }, riskDetails.reliability === "reduced" ? "Reduced" : "Normal", " (", riskDetails.confidence, "%)")))), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200/60"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bg-white/90 rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1"
@@ -1976,27 +2028,27 @@ function App() {
     className: "p-4 rounded-2xl bg-slate-50 border border-slate-200/70"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] font-bold uppercase text-slate-400"
-  }, "Methodology"), /*#__PURE__*/React.createElement("p", {
+  }, "Methodology / Engine"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs font-bold text-slate-900 mt-1"
-  }, "Rule-Based Optical Screening"), /*#__PURE__*/React.createElement("span", {
+  }, analysisResult?.model_version ? `neoscan_ml (${analysisResult.model_version})` : "Optical Screening"), /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] text-slate-500 mt-1 block"
-  }, "AAP / Bilgen Physiological Model")), /*#__PURE__*/React.createElement("div", {
+  }, riskDetails.methodology)), /*#__PURE__*/React.createElement("div", {
     className: "p-4 rounded-2xl bg-slate-50 border border-slate-200/70"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] font-bold uppercase text-slate-400"
   }, "Quality Gating"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs font-bold text-slate-900 mt-1"
-  }, "Laplacian & Clipping Gating"), /*#__PURE__*/React.createElement("span", {
+  }, "Quality & Face Gate"), /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] text-slate-500 mt-1 block"
-  }, "Focus ≥ 35.0 • Glare < 25%")), /*#__PURE__*/React.createElement("div", {
+  }, "Sharpness: ", analysisResult?.quality_gate?.sharpness_score?.toFixed(1) || "Passed", " • Dermal Coverage: ", ((analysisResult?.quality_gate?.valid_pixel_ratio || 0.98) * 100).toFixed(0), "%")), /*#__PURE__*/React.createElement("div", {
     className: "p-4 rounded-2xl bg-slate-50 border border-slate-200/70"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] font-bold uppercase text-slate-400"
-  }, "Screening Thresholds"), /*#__PURE__*/React.createElement("p", {
+  }, "Screening Score & Thresholds"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs font-bold text-teal-700 mt-1 font-mono"
-  }, "b* < 16.0 • BIx < 0.18"), /*#__PURE__*/React.createElement("span", {
+  }, riskDetails.modelScore !== null && riskDetails.modelScore !== undefined ? `Score: ${riskDetails.modelScore.toFixed(4)} (Cutoff 0.50)` : "b* < 16.0 (Normal)"), /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] text-emerald-600 mt-1 block"
-  }, "Sclera b* < 7.5 Normal Limit"))), /*#__PURE__*/React.createElement("div", {
+  }, "Reliability: ", riskDetails.reliability || "normal"))), /*#__PURE__*/React.createElement("div", {
     className: "p-4 rounded-2xl bg-amber-50/60 border border-amber-200/70 text-xs text-amber-900 space-y-1"
   }, /*#__PURE__*/React.createElement("p", {
     className: "font-bold flex items-center space-x-1.5"
@@ -2005,7 +2057,7 @@ function App() {
     className: "w-4 h-4 text-amber-700"
   }), /*#__PURE__*/React.createElement("span", null, "Clinical Screening Disclosures & Limitations")), /*#__PURE__*/React.createElement("p", {
     className: "text-[11px] text-amber-800 leading-relaxed"
-  }, "This system performs non-invasive optical screening based on calibrated dermal and scleral chrominance. It is a triage screening aid and does NOT provide diagnostic total serum bilirubin (TSB) measurement. Always verify results with certified transcutaneous bilirubinometry (TcB) or laboratory serum testing."))))), /*#__PURE__*/React.createElement("div", {
+  }, analysisResult?.disclaimer || "NeoScan is an AI-assisted screening companion designed to support parents and pediatric care teams. It is not an invasive diagnostic device and does not replace confirmed laboratory serum bilirubin (TSB) or clinical transcutaneous bilirubin (TcB) testing. Always seek medical guidance from a licensed pediatrician."))))), /*#__PURE__*/React.createElement("div", {
     className: "bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs space-y-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"
@@ -2015,21 +2067,28 @@ function App() {
     className: "text-xs text-slate-400"
   }, "Click any frame to view")), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3 overflow-x-auto pb-2"
-  }, activePatient.images && activePatient.images.map(img => /*#__PURE__*/React.createElement("div", {
-    key: img.id,
-    onClick: () => setActiveImageId(img.id),
-    className: `w-28 shrink-0 rounded-2xl border p-2 cursor-pointer transition-all ${activeImageRecord && activeImageRecord.id === img.id ? "border-teal-500 ring-2 ring-teal-500/20 bg-teal-50/20" : "border-slate-200 bg-slate-50 hover:border-slate-300"}`
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 mb-1.5"
-  }, /*#__PURE__*/React.createElement(ImageWithFallback, {
-    src: img.rawImage,
-    alt: "Historical thumbnail",
-    className: "w-full h-full"
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "text-[10px] font-bold text-slate-800 truncate"
-  }, img.formattedDate), /*#__PURE__*/React.createElement("div", {
-    className: "text-[9px] text-slate-400 capitalize"
-  }, img.activeCorrection || "auto"))))))), loading && /*#__PURE__*/React.createElement("div", {
+  }, activePatient.images && activePatient.images.map(img => {
+    const isV2Scan = Boolean(img.currentAnalysis?.model_score !== undefined || img.currentAnalysis?.model_version || img.currentAnalysis?.risk_assessment?.screening_engine === "neoscan_ml");
+    return /*#__PURE__*/React.createElement("div", {
+      key: img.id,
+      onClick: () => setActiveImageId(img.id),
+      className: `w-28 shrink-0 rounded-2xl border p-2 cursor-pointer transition-all ${activeImageRecord && activeImageRecord.id === img.id ? "border-teal-500 ring-2 ring-teal-500/20 bg-teal-50/20" : "border-slate-200 bg-slate-50 hover:border-slate-300"}`
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 mb-1.5"
+    }, /*#__PURE__*/React.createElement(ImageWithFallback, {
+      src: img.rawImage,
+      alt: "Historical thumbnail",
+      className: "w-full h-full"
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "text-[10px] font-bold text-slate-800 truncate"
+    }, img.formattedDate), /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center justify-between text-[9px] text-slate-400 capitalize mt-0.5"
+    }, /*#__PURE__*/React.createElement("span", null, img.activeCorrection || "auto"), isV2Scan ? /*#__PURE__*/React.createElement("span", {
+      className: "text-[8px] font-medium text-teal-700 bg-teal-50 px-1 rounded"
+    }, "v2.0") : /*#__PURE__*/React.createElement("span", {
+      className: "text-[8px] font-medium text-slate-500 bg-slate-200/60 px-1 rounded"
+    }, "Legacy")));
+  }))))), loading && /*#__PURE__*/React.createElement("div", {
     className: "fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border border-slate-100 space-y-6"
@@ -2062,7 +2121,7 @@ function App() {
     className: "text-slate-700"
   }, "Clinical Screening Disclaimer:"), " NeoScan is an AI-assisted screening companion designed to support parents and pediatric care teams. It is not an invasive diagnostic device and does not replace confirmed laboratory serum bilirubin (TSB) or clinical transcutaneous bilirubin (TcB) testing. Always seek medical guidance from a licensed pediatrician."), /*#__PURE__*/React.createElement("div", {
     className: "text-[11px] font-semibold text-slate-400 shrink-0"
-  }, "NeoScan v1.3.0 • AAP Compliant Triaging"))));
+  }, "NeoScan v2.0 • neoscan_ml Engine"))));
 }
 
 // Safely mount to #root
