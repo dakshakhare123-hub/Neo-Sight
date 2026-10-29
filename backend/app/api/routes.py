@@ -43,7 +43,8 @@ def health_check():
         "status": "online",
         "service": "NeoScan Clinical Screening Engine",
         "version": "2.0.0",
-        "screening_method": "rule_based_optical_heuristic",
+        "screening_method": "trained_ml_svm_rbf" if classifier.has_ml_model else "rule_based_optical_heuristic",
+        "ml_model_loaded": classifier.has_ml_model,
         "mediapipe_active": face_extractor.has_mediapipe,
         "supported_methods": [
             "auto", "card_ccm", "sclera_wb", "shades_of_gray", 
@@ -158,13 +159,16 @@ def analyze_image(payload: AnalyzeRequest):
             }
         )
 
-    # 7. Transparent Rule-Based Classification
+    # 7. Trained Medical ML Risk Classification (with OOD Gating)
     fused_biomarkers = features_meta["fused_biomarkers"]
     risk_assessment = classifier.predict_risk(
         fused_metrics=fused_biomarkers,
         calibration_method=active_method,
         quality_meta=quality_meta,
-        roi_breakdown=features_meta["rois"]
+        roi_breakdown=features_meta["rois"],
+        raw_bgr=raw_bgr,
+        corrected_bgr=corrected_bgr,
+        valid_mask=valid_mask
     )
 
     # 8. Tracking Telemetry (Real Coordinates)
