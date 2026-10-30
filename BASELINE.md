@@ -1,37 +1,37 @@
-# Baseline Status & Safety Net — Mobile Transformation
+# Baseline Status & Safety Net — Triage Recommendation Fix
 
-**Branch:** `feat/mobile`  
-**Base Commit:** `c02fa99` (Tip of `fix/capture-labels-logo`)  
+**Branch:** `fix/triage-always-consult`  
+**Base Commit:** `8c2f3c6` (Tip of `feat/mobile`)  
 **Date:** 2026-10-30  
-**Status:** ALL TESTS PASSING (71 Total Tests Verified)
+**Status:** ALL TESTS PASSING (82 Total Tests Verified)
 
 ---
 
-## 1. Automated Test Baseline
+## 1. Automated Test Baseline & Regression Safety Net
 
-Prior to beginning Phase 1 study or Phase 2 mobile styling on `feat/mobile`, all test suites and compiler pipelines were executed to establish a strict regression safety net:
+All test suites and compiler pipelines were executed to establish a strict regression safety net:
 
-### A. Python Backend & Mobile Characterisation Tests
+### A. Python Backend & Decision Matrix Characterisation Tests
 - **Command**: `MPLCONFIGDIR=/tmp python3 -m unittest discover tests`
-- **Result**: `Ran 56 tests in 1.092s: OK (56 passed, 0 failures, 0 errors)`
+- **Result**: `Ran 66 tests in 1.135s: OK (66 passed, 0 failures, 0 errors)`
   * `tests/test_characterisation.py` (6/6 pass)
   * `tests/test_mobile_characterisation.py` (7/7 pass)
   * `tests/test_capture_controls_characterisation.py` (8/8 pass)
   * `tests/test_neoscan_integration.py` (10/10 pass)
   * `tests/test_profile_characterisation.py` (5/5 pass)
   * `tests/test_triage_insights_characterisation.py` (4/4 pass)
-  * `tests/test_triage_decision_matrix.py` (10/10 pass)
+  * `tests/test_triage_decision_matrix.py` (15/15 pass)
   * `tests/test_bstar_scale.py` (5/5 pass)
   * `tests/test_inspection_modes.py` (1/1 pass)
 
 ### B. NeoScan ML Unit Tests
 - **Command**: `MPLCONFIGDIR=/tmp PYTHONPATH=backend python3 -m unittest discover backend/neoscan_ml/tests`
-- **Result**: `Ran 8 tests in 0.216s: OK (7 passed, 1 skipped as baseline)`
+- **Result**: `Ran 8 tests in 0.209s: OK (7 passed, 1 skipped as baseline)`
   * `backend/neoscan_ml/tests/test_pipeline.py` (8/8 pass)
 
 ### C. Node.js Triage Decision Engine Tests
 - **Command**: `.tools/node-v20.18.0-darwin-arm64/bin/node tests/test_frontend_triage.mjs`
-- **Result**: `Ran 7 tests in 0.045s: OK (7 passed, 0 failures)`
+- **Result**: `Ran 8 tests in 0.045s: OK (8 passed, 0 failures)`
   * Error state handling
   * Missing / pending screening state
   * Normal infant routine monitoring
@@ -39,10 +39,11 @@ Prior to beginning Phase 1 study or Phase 2 mobile styling on `feat/mobile`, all
   * Possible jaundice signs recommendation
   * Preterm infant risk escalation
   * Inconclusive daylight retake
+  * Moderate b* (16.5) independence on normal vs jaundiced infants
 
 ### D. Production Bundle Compilation
 - **Command**: `.tools/node-v20.18.0-darwin-arm64/bin/node frontend/build.cjs`
-- **Result**: `[NeoScan Build] Compiled App.jsx -> app.js (147528 bytes) successfully! (0 syntax errors, 0 Babel warnings)`
+- **Result**: `[NeoScan Build] Compiled App.jsx -> app.js (179746 bytes) successfully! (0 syntax errors, 0 Babel warnings)`
 
 ---
 

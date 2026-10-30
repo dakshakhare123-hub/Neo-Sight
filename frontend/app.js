@@ -741,12 +741,15 @@ function computeTriage({
     COLORS,
     DISCLAIMER
   } = TRIAGE_CONFIG;
+
+  // 1. Error state: Never render a recommendation on a failed image
   if (error) {
     const errMsg = typeof error === "string" ? error : error.message || "Image quality check failed.";
     const errHint = typeof error === "object" ? error.action || error.hint || "Adjust lighting and ensure the face is clearly visible." : "Retake photo in natural daylight.";
     return {
       level: "none",
       headline: "Assessment Unavailable (Quality Alert)",
+      recommendation: "",
       badge: "RETAKE PHOTO",
       color: COLORS.WARNING,
       reasons: [`Image rejected by quality gate: ${errMsg}`],
@@ -758,10 +761,13 @@ function computeTriage({
       isActionable: false
     };
   }
+
+  // 2. Missing analysis state: Never guess or output a default recommendation
   if (!analysisResult || !analysisResult.category && !analysisResult.risk_assessment?.risk_category) {
     return {
       level: "none",
       headline: "Awaiting Screening Capture",
+      recommendation: "",
       badge: "READY FOR SCREENING",
       color: COLORS.NEUTRAL,
       reasons: ["No patient image has been evaluated yet."],
@@ -811,23 +817,32 @@ function computeTriage({
   }
   let confNote = null;
   if (reliability === "reduced") {
-    confNote = reliabilityNote || "Ambient lighting was non-uniform or insufficient background was present for illuminant correction. Clinical evaluation should not be delayed.";
+    confNote = reliabilityNote || "Ambient lighting was non-uniform or insufficient background was present for illuminant correction. Retake in better light; clinical evaluation should not be delayed.";
     reasons.push("Image reliability flag: Reduced confidence due to ambient lighting conditions.");
   }
+
+  // Case A: Analysis shows POSSIBLE_JAUNDICE_SIGNS
   if (["possible_jaundice_signs", "possible", "jaundice"].includes(catNorm)) {
     if (modelScore !== null) {
-      reasons.unshift(`Optical machine learning screening model score: ${modelScore.toFixed(4)} (exceeds threshold ${TRIAGE_CONFIG.MODEL_THRESHOLD.toFixed(2)}).`);
+      reasons.unshift(`Optical machine learning screening score (${modelScore.toFixed(4)}) indicates possible jaundice signs.`);
     }
     if (bStar !== null) {
-      reasons.splice(1, 0, `Calibrated cutaneous yellowness b* = ${bStar.toFixed(1)} (elevated dermal chrominance).`);
+      if (bStar >= 20.0) {
+        reasons.splice(1, 0, `Calibrated cutaneous yellowness b* = ${bStar.toFixed(1)} (elevated dermal chrominance ≥ 20).`);
+      } else if (bStar >= 14.0) {
+        reasons.splice(1, 0, `Calibrated cutaneous yellowness b* = ${bStar.toFixed(1)} (moderate dermal chrominance).`);
+      } else {
+        reasons.splice(1, 0, `Calibrated cutaneous yellowness b* = ${bStar.toFixed(1)}.`);
+      }
     }
-    advice.push("Contact your pediatrician or healthcare provider for an immediate in-person clinical assessment.");
+    advice.push("Contact your paediatrician, GP, or midwife for an immediate in-person clinical assessment.");
     advice.push("A transcutaneous bilirubin (TcB) or total serum bilirubin (TSB) blood test is recommended to determine if phototherapy is indicated.");
-    advice.push("Maintain frequent feeding (8–12 times per 24 hours) to stimulate bowel movements.");
+    advice.push("Maintain regular, frequent feeding (8–12 times per 24 hours) to support bilirubin excretion.");
     if (isEarlyOnset || isPreterm || isFeedingProblem) {
       return {
         level: "urgent",
-        headline: "Immediate Pediatric Evaluation Required",
+        headline: "Immediate Paediatric Evaluation Required",
+        recommendation: "Paediatric consultation recommended",
         badge: "URGENT EVALUATION",
         color: COLORS.URGENT,
         reasons,
@@ -841,7 +856,8 @@ function computeTriage({
     }
     return {
       level: "elevated",
-      headline: "Pediatric Consultation Recommended",
+      headline: "Paediatric consultation recommended",
+      recommendation: "Paediatric consultation recommended",
       badge: "CLINICAL EVALUATION ADVISED",
       color: COLORS.ELEVATED,
       reasons,
@@ -853,18 +869,22 @@ function computeTriage({
       isActionable: true
     };
   }
+
+  // Case B: Analysis is INCONCLUSIVE
   if (["inconclusive", "borderline", "referral"].includes(catNorm)) {
     if (modelScore !== null) {
-      reasons.unshift(`Model score ${modelScore.toFixed(4)} falls in the indeterminate screening interval.`);
+      reasons.unshift(`Optical machine learning score (${modelScore.toFixed(4)}) falls in the indeterminate screening interval.`);
     }
     reasons.splice(1, 0, "Optical yellowness is borderline or ambient illuminant precluded definitive automated classification.");
-    advice.push("Retake the screening photograph in bright, indirect, even daylight.");
+    advice.push("Retake the screening photograph in bright, indirect, even daylight with the baby face front-on.");
+    advice.push("Avoid artificial tungsten lamps, coloured casts, or harsh shadows on the infant's skin.");
     advice.push("If you have any clinical concerns, or if the infant appears visibly yellow, do not wait for a retake—seek healthcare provider evaluation.");
     if (isEarlyOnset || isPreterm || isFeedingProblem) {
       advice.unshift("Due to infant risk factors, proceed directly to clinical evaluation rather than relying on image retakes.");
       return {
         level: "urgent",
         headline: "Clinical Assessment Advised (Risk Factors Present)",
+        recommendation: "Inconclusive: retake the photo in even daylight; seek clinical assessment if you are concerned",
         badge: "CLINICAL REVIEW ADVISED",
         color: COLORS.URGENT,
         reasons,
@@ -878,7 +898,8 @@ function computeTriage({
     }
     return {
       level: "warning",
-      headline: "Inconclusive: Retake in Daylight",
+      headline: "Inconclusive: retake the photo in even daylight; seek clinical assessment if you are concerned",
+      recommendation: "Inconclusive: retake the photo in even daylight; seek clinical assessment if you are concerned",
       badge: "INCONCLUSIVE — RETAKE PHOTO",
       color: COLORS.WARNING,
       reasons,
@@ -890,21 +911,30 @@ function computeTriage({
       isActionable: true
     };
   }
+
+  // Case C: Analysis shows NO_VISIBLE_SIGNS
   if (["no_visible_signs", "normal", "routine"].includes(catNorm)) {
     if (modelScore !== null) {
-      reasons.unshift(`Model score ${modelScore.toFixed(4)} is within normal physiological limits (below threshold ${TRIAGE_CONFIG.MODEL_THRESHOLD.toFixed(2)}).`);
+      reasons.unshift(`Optical machine learning score (${modelScore.toFixed(4)}) is within normal physiological limits.`);
     }
     if (bStar !== null) {
-      reasons.splice(1, 0, `Calibrated cutaneous yellowness b* = ${bStar.toFixed(1)} is within typical baseline limits.`);
+      if (bStar < 14.0) {
+        reasons.splice(1, 0, `Calibrated cutaneous yellowness b* = ${bStar.toFixed(1)} is within low baseline limits (< 14).`);
+      } else if (bStar < 20.0) {
+        reasons.splice(1, 0, `Calibrated cutaneous yellowness b* = ${bStar.toFixed(1)} is in the moderate band (14–20); optical screening score remains within normal limits.`);
+      } else {
+        reasons.splice(1, 0, `Calibrated cutaneous yellowness b* = ${bStar.toFixed(1)}.`);
+      }
     }
     advice.push("Continue routine newborn monitoring and observe skin in natural daylight daily.");
     advice.push("Ensure regular infant feeding (8–12 times per 24 hours).");
-    advice.push("Contact your pediatrician immediately if yellowness develops or spreads to abdomen or eyes, or if the baby feeds poorly or becomes difficult to wake.");
+    advice.push("Seek prompt medical care if the baby looks yellow later, feeds poorly, or is unusually sleepy or difficult to wake.");
     if (isEarlyOnset) {
       advice.unshift("Jaundice appearing in the first 24 hours of life is non-physiological regardless of visual appearance. Have a clinician examine the baby.");
       return {
         level: "urgent",
-        headline: "Pediatric Review Advised (Early Postnatal Age)",
+        headline: "Paediatric Review Advised (Early Postnatal Age)",
+        recommendation: "Paediatric Review Advised (Early Postnatal Age)",
         badge: "EARLY ONSET REVIEW",
         color: COLORS.URGENT,
         reasons,
@@ -921,6 +951,7 @@ function computeTriage({
       return {
         level: "elevated",
         headline: "Clinical Review Advised (Feeding Concern)",
+        recommendation: "Clinical Review Advised (Feeding Concern)",
         badge: "CLINICAL REVIEW ADVISED",
         color: COLORS.ELEVATED,
         reasons,
@@ -934,7 +965,8 @@ function computeTriage({
     }
     return {
       level: "normal",
-      headline: "No Visible Signs Detected — Routine Monitoring",
+      headline: "No visible signs detected. Continue routine monitoring",
+      recommendation: "No visible signs detected. Continue routine monitoring",
       badge: "ROUTINE OBSERVATION",
       color: COLORS.NORMAL,
       reasons,
@@ -949,6 +981,7 @@ function computeTriage({
   return {
     level: "warning",
     headline: "Clinical Assessment Advised (Unrecognized Output)",
+    recommendation: "Clinical Assessment Advised (Unrecognized Output)",
     badge: "REVIEW REQUIRED",
     color: COLORS.WARNING,
     reasons: [`Unrecognized screening outcome category: '${rawCat}'.`],
@@ -2132,7 +2165,7 @@ function App() {
     return {
       ...triage,
       title: triage.headline,
-      recommendation: triage.advice && triage.advice.length > 0 ? triage.advice[0] : "",
+      recommendation: triage.recommendation || triage.headline || "",
       adviceList: triage.advice || [],
       reasonsList: triage.reasons || [],
       confidence: confScore,
@@ -3219,7 +3252,7 @@ function App() {
     className: "text-2xl sm:text-3xl font-extrabold text-plum-950 tracking-tight"
   }, riskDetails.title), /*#__PURE__*/React.createElement("p", {
     className: "text-sm sm:text-base text-plum-700 max-w-2xl leading-relaxed"
-  }, riskDetails.recommendation), riskDetails.reasonsList && riskDetails.reasonsList.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, riskDetails.adviceList && riskDetails.adviceList.length > 0 ? riskDetails.adviceList[0] : riskDetails.recommendation), riskDetails.reasonsList && riskDetails.reasonsList.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "pt-2 space-y-1.5 bg-white/60 p-3.5 rounded-2xl border border-lavender-200/70"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-xs font-bold uppercase tracking-wider text-plum-900 block"

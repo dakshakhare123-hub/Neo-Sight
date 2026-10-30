@@ -29,16 +29,22 @@ class TriageDecision:
     confidence_note: Optional[str]
     model_score: Optional[float]
     category: str
+    recommendation: str = ""
     disclaimer: str = (
         "NeoScan is an AI-assisted screening companion designed to support parents and pediatric care teams. "
         "It is not an invasive diagnostic device and does not replace confirmed laboratory serum bilirubin (TSB) "
         "or clinical transcutaneous bilirubin (TcB) testing. Always seek medical guidance from a licensed pediatrician."
     )
 
+    def __post_init__(self):
+        if not self.recommendation:
+            self.recommendation = self.headline
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "level": self.level,
             "headline": self.headline,
+            "recommendation": self.recommendation,
             "badge": self.badge,
             "color": self.color,
             "reasons": self.reasons,
@@ -74,6 +80,7 @@ def compute_triage(
         return TriageDecision(
             level="none",
             headline="Assessment Unavailable (Quality Alert)",
+            recommendation="",
             badge="RETAKE PHOTO",
             color="#9E5700",
             reasons=[f"Image rejected by quality gate: {err_msg}"],
@@ -88,6 +95,7 @@ def compute_triage(
         return TriageDecision(
             level="none",
             headline="Awaiting Screening Capture",
+            recommendation="",
             badge="READY FOR SCREENING",
             color="#725B7E",
             reasons=["No patient image has been evaluated yet."],
@@ -119,25 +127,31 @@ def compute_triage(
     # 4. Confidence / Reliability Note
     conf_note = None
     if reliability == "reduced":
-        conf_note = reliability_note or "Ambient lighting was non-uniform or insufficient background was present for illuminant correction. Clinical evaluation should not be delayed."
+        conf_note = reliability_note or "Ambient lighting was non-uniform or insufficient background was present for illuminant correction. Retake in better light; clinical evaluation should not be delayed."
         reasons.append("Image reliability flag: Reduced confidence due to ambient lighting conditions.")
 
     # 5. Core Decision Logic Combining Image Analysis + Clinical Red Flags
     # Case A: Analysis shows POSSIBLE_JAUNDICE_SIGNS
     if cat_norm in ("possible_jaundice_signs", "possible", "jaundice"):
         if model_score is not None:
-            reasons.insert(0, f"Optical machine learning screening model score: {model_score:.4f} (exceeds threshold 0.50).")
+            reasons.insert(0, f"Optical machine learning screening score ({model_score:.4f}) indicates possible jaundice signs.")
         if b_star is not None:
-            reasons.insert(1, f"Calibrated cutaneous yellowness b* = {b_star:.1f} (elevated dermal chrominance).")
+            if b_star >= 20.0:
+                reasons.insert(1, f"Calibrated cutaneous yellowness b* = {b_star:.1f} (elevated dermal chrominance ≥ 20).")
+            elif b_star >= 14.0:
+                reasons.insert(1, f"Calibrated cutaneous yellowness b* = {b_star:.1f} (moderate dermal chrominance).")
+            else:
+                reasons.insert(1, f"Calibrated cutaneous yellowness b* = {b_star:.1f}.")
 
-        advice.append("Contact your pediatrician or healthcare provider for an immediate in-person clinical assessment.")
+        advice.append("Contact your paediatrician, GP, or midwife for an immediate in-person clinical assessment.")
         advice.append("A transcutaneous bilirubin (TcB) or total serum bilirubin (TSB) blood test is recommended to determine if phototherapy is indicated.")
-        advice.append("Maintain frequent feeding (8–12 times per 24 hours) to stimulate bowel movements.")
+        advice.append("Maintain regular, frequent feeding (8–12 times per 24 hours) to support bilirubin excretion.")
 
         if is_early_onset or is_preterm or is_feeding_problem:
             return TriageDecision(
                 level="urgent",
-                headline="Immediate Pediatric Evaluation Required",
+                headline="Immediate Paediatric Evaluation Required",
+                recommendation="Paediatric consultation recommended",
                 badge="URGENT EVALUATION",
                 color="#8F1D40",  # Crimson-Plum (WCAG AAA)
                 reasons=reasons,
@@ -148,7 +162,8 @@ def compute_triage(
             )
         return TriageDecision(
             level="elevated",
-            headline="Pediatric Consultation Recommended",
+            headline="Paediatric consultation recommended",
+            recommendation="Paediatric consultation recommended",
             badge="CLINICAL EVALUATION ADVISED",
             color="#8F1D40",
             reasons=reasons,
@@ -161,17 +176,19 @@ def compute_triage(
     # Case B: Analysis is INCONCLUSIVE
     if cat_norm in ("inconclusive", "borderline", "referral"):
         if model_score is not None:
-            reasons.insert(0, f"Model score {model_score:.4f} falls in the indeterminate screening interval.")
+            reasons.insert(0, f"Optical machine learning score ({model_score:.4f}) falls in the indeterminate screening interval.")
         reasons.insert(1, "Optical yellowness is borderline or ambient illuminant precluded definitive automated classification.")
 
-        advice.append("Retake the screening photograph in bright, indirect, even daylight.")
-        advice.append("If you have any clinical concerns, or if the infant appears visibly yellow, do not wait for a retake—seek healthcare provider evaluation.")
+        advice.append("Retake the screening photograph in bright, indirect, even daylight with the baby face front-on.")
+        advice.append("Avoid artificial tungsten lamps, coloured casts, or harsh shadows on the infant's skin.")
+        advice.append("If you have any clinical concerns, or if the infant appears visibly yellow, do not wait for a retake—seek clinical assessment.")
 
         if is_early_onset or is_preterm or is_feeding_problem:
             advice.insert(0, "Due to infant risk factors, proceed directly to clinical evaluation rather than relying on image retakes.")
             return TriageDecision(
                 level="urgent",
                 headline="Clinical Assessment Advised (Risk Factors Present)",
+                recommendation="Inconclusive: retake the photo in even daylight; seek clinical assessment if you are concerned",
                 badge="CLINICAL REVIEW ADVISED",
                 color="#8F1D40",
                 reasons=reasons,
@@ -182,7 +199,8 @@ def compute_triage(
             )
         return TriageDecision(
             level="warning",
-            headline="Inconclusive: Retake in Daylight",
+            headline="Inconclusive: retake the photo in even daylight; seek clinical assessment if you are concerned",
+            recommendation="Inconclusive: retake the photo in even daylight; seek clinical assessment if you are concerned",
             badge="INCONCLUSIVE — RETAKE PHOTO",
             color="#9E5700",  # Amber-Gold (WCAG AA)
             reasons=reasons,
@@ -195,20 +213,26 @@ def compute_triage(
     # Case C: Analysis shows NO_VISIBLE_SIGNS
     if cat_norm in ("no_visible_signs", "normal", "routine"):
         if model_score is not None:
-            reasons.insert(0, f"Model score {model_score:.4f} is within normal physiological limits (below threshold 0.50).")
+            reasons.insert(0, f"Optical machine learning score ({model_score:.4f}) is within normal physiological limits.")
         if b_star is not None:
-            reasons.insert(1, f"Calibrated cutaneous yellowness b* = {b_star:.1f} is within typical baseline limits.")
+            if b_star < 14.0:
+                reasons.insert(1, f"Calibrated cutaneous yellowness b* = {b_star:.1f} is within low baseline limits (< 14).")
+            elif b_star < 20.0:
+                reasons.insert(1, f"Calibrated cutaneous yellowness b* = {b_star:.1f} is in the moderate band (14–20); optical screening score remains within normal limits.")
+            else:
+                reasons.insert(1, f"Calibrated cutaneous yellowness b* = {b_star:.1f}.")
 
         advice.append("Continue routine newborn monitoring and observe skin in natural daylight daily.")
         advice.append("Ensure regular infant feeding (8–12 times per 24 hours).")
-        advice.append("Contact your pediatrician immediately if yellowness develops or spreads to abdomen or eyes, or if the baby feeds poorly or becomes difficult to wake.")
+        advice.append("Seek prompt medical care if the baby looks yellow later, feeds poorly, or is unusually sleepy or difficult to wake.")
 
         # RED FLAG ESCALATION: Even if the image appears normal, jaundice in the first 24h is pathological!
         if is_early_onset:
             advice.insert(0, "Jaundice appearing in the first 24 hours of life is non-physiological regardless of visual appearance. Have a clinician examine the baby.")
             return TriageDecision(
                 level="urgent",
-                headline="Pediatric Review Advised (Early Postnatal Age)",
+                headline="Paediatric Review Advised (Early Postnatal Age)",
+                recommendation="Paediatric Review Advised (Early Postnatal Age)",
                 badge="EARLY ONSET REVIEW",
                 color="#8F1D40",
                 reasons=reasons,
@@ -222,6 +246,7 @@ def compute_triage(
             return TriageDecision(
                 level="elevated",
                 headline="Clinical Review Advised (Feeding Concern)",
+                recommendation="Clinical Review Advised (Feeding Concern)",
                 badge="CLINICAL REVIEW ADVISED",
                 color="#8F1D40",
                 reasons=reasons,
@@ -233,7 +258,8 @@ def compute_triage(
 
         return TriageDecision(
             level="normal",
-            headline="No Visible Signs Detected — Routine Monitoring",
+            headline="No visible signs detected. Continue routine monitoring",
+            recommendation="No visible signs detected. Continue routine monitoring",
             badge="ROUTINE OBSERVATION",
             color="#1E6F43",  # Sage-Emerald (WCAG AA)
             reasons=reasons,
@@ -247,6 +273,7 @@ def compute_triage(
     return TriageDecision(
         level="warning",
         headline="Clinical Assessment Advised (Unrecognized Output)",
+        recommendation="Clinical Assessment Advised (Unrecognized Output)",
         badge="REVIEW REQUIRED",
         color="#9E5700",
         reasons=[f"Unrecognized screening outcome category: '{category}'."],

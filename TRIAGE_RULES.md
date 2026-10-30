@@ -1,7 +1,7 @@
 # Clinical Triage Rules & Decision Matrix
 
 **Module:** NeoScan Pediatric Triage Engine  
-**Version:** 2.2.0  
+**Version:** 2.3.0  
 **Compliance:** AAP (American Academy of Pediatrics) 2022 Hyperbilirubinemia Screening Guidelines  
 **Date:** 2026-10-30  
 
@@ -9,16 +9,17 @@
 
 ## 1. Decision Matrix & Urgency Levels
 
-| Analysis Category | Reliability | Patient Red Flags | Triage Level | Headline | Badge | Core Actionable Recommendation |
+| Analysis Category | Reliability | Patient Red Flags | Triage Level | Headline & Recommendation | Badge | Core Actionable Guidance |
 | :--- | :--- | :--- | :---: | :--- | :--- | :--- |
-| **`possible_jaundice_signs`** | Any | Age < 24h OR Preterm OR Poor Feeding | **`urgent`** | **Immediate Pediatric Evaluation Required** | `URGENT EVALUATION` | Same-day clinical assessment and immediate total serum bilirubin (TSB) measurement required due to high-risk clinical factors. |
-| **`possible_jaundice_signs`** | `normal` | None | **`elevated`** | **Pediatric Consultation Recommended** | `CLINICAL EVALUATION ADVISED` | Cutaneous yellowness exceeds normal thresholds. A healthcare provider evaluation and transcutaneous (TcB) or blood (TSB) bilirubin test are recommended. |
-| **`possible_jaundice_signs`** | `reduced` | None | **`elevated`** | **Pediatric Consultation Recommended (Lower Confidence)** | `CLINICAL EVALUATION ADVISED` | Cutaneous yellowness is elevated, but ambient lighting was uneven. Clinical assessment is advised; never downgrade urgency for reduced reliability. |
-| **`inconclusive`** | Any | Age < 24h OR Preterm | **`urgent`** | **Clinical Assessment Advised (Risk Factors Present)** | `CLINICAL REVIEW ADVISED` | Optical yellowness is borderline, but patient risk factors warrant direct clinical evaluation. |
-| **`inconclusive`** | Any | None | **`warning`** | **Inconclusive: Retake in Daylight** | `INCONCLUSIVE — RETAKE PHOTO` | Optical yellowness is borderline or ambient lighting precluded confident analysis. Retake photo in bright, indirect daylight or consult a pediatrician if concerned. |
-| **`no_visible_signs`** | Any | Age < 24h (Onset < 24h) | **`urgent`** | **Pediatric Review Advised (Early Postnatal Age)** | `EARLY ONSET REVIEW` | While skin analysis detected no severe signs, any suspected icterus in the first 24 hours of life is non-physiological and warrants medical review. |
-| **`no_visible_signs`** | Any | None | **`normal`** | **No Visible Signs Detected — Routine Monitoring** | `ROUTINE OBSERVATION` | Cutaneous yellowness is within expected limits for healthy neonates. Continue regular feeding (8–12 times/24h) and routine pediatric checks. Never a substitute for medical diagnosis. |
-| **`error` / Failed** | Any | Any | **`none`** | **Assessment Unavailable (Quality Alert)** | `RETAKE PHOTO` | Image did not pass quality gating (e.g. blur, darkness, non-face). No triage recommendation is rendered. Review corrective action and retake. |
+| **`possible_jaundice_signs`** | Any | Age < 24h OR Preterm OR Poor Feeding | **`urgent`** | **Immediate Paediatric Evaluation Required** | `URGENT EVALUATION` | Same-day clinical assessment and immediate total serum bilirubin (TSB) measurement required due to high-risk clinical factors. |
+| **`possible_jaundice_signs`** | `normal` | None | **`elevated`** | **Paediatric consultation recommended** | `CLINICAL EVALUATION ADVISED` | Cutaneous yellowness exceeds normal thresholds. A healthcare provider evaluation and transcutaneous (TcB) or blood (TSB) bilirubin test are recommended. |
+| **`possible_jaundice_signs`** | `reduced` | None | **`elevated`** | **Paediatric consultation recommended** | `CLINICAL EVALUATION ADVISED` | Cutaneous yellowness is elevated, but ambient lighting was uneven. Clinical assessment is advised; never downgrade urgency for reduced reliability. |
+| **`inconclusive`** | Any | Age < 24h OR Preterm | **`urgent`** | **Clinical Assessment Advised (Risk Factors Present)** | `CLINICAL REVIEW ADVISED` | Optical yellowness is borderline, but patient risk factors warrant direct clinical evaluation rather than waiting for retakes. |
+| **`inconclusive`** | Any | None | **`warning`** | **Inconclusive: retake the photo in even daylight; seek clinical assessment if you are concerned** | `INCONCLUSIVE — RETAKE PHOTO` | Optical yellowness is borderline or ambient lighting precluded confident analysis. Retake photo in bright, indirect daylight or consult a paediatrician if concerned. |
+| **`no_visible_signs`** | Any | Age < 24h (Onset < 24h) | **`urgent`** | **Paediatric Review Advised (Early Postnatal Age)** | `EARLY ONSET REVIEW` | While skin analysis detected no severe signs, any suspected icterus in the first 24 hours of life is non-physiological and warrants urgent medical review. |
+| **`no_visible_signs`** | Any | Feeding Concern | **`elevated`** | **Clinical Review Advised (Feeding Concern)** | `CLINICAL REVIEW ADVISED` | Feeding difficulties require clinical review regardless of skin color. |
+| **`no_visible_signs`** | Any | None | **`normal`** | **No visible signs detected. Continue routine monitoring** | `ROUTINE OBSERVATION` | Cutaneous yellowness is within expected limits for healthy neonates. Continue regular feeding (8–12 times/24h) and routine paediatric checks. Never clearance or "no jaundice". |
+| **`error` / Failed** | Any | Any | **`none`** | **Assessment Unavailable (Quality Alert)** | `RETAKE PHOTO` | Image did not pass quality gating (e.g. blur, darkness, non-face). No recommendation is rendered. Review corrective action and retake. |
 | **Missing Image** | None | Any | **`none`** | **Awaiting Screening Capture** | `READY FOR SCREENING` | No patient photo has been evaluated yet. Capture or upload a photo to generate an objective screening recommendation. |
 
 ---

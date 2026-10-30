@@ -261,7 +261,7 @@ def _build_adapter_response(
             "badge": triage_dec.badge,
             "color": triage_dec.color,
             "title": triage_dec.headline,
-            "recommendation": triage_dec.advice[0] if triage_dec.advice else "",
+            "recommendation": triage_dec.recommendation or (triage_dec.advice[0] if triage_dec.advice else ""),
             "advice": triage_dec.advice,
             "reasons": triage_dec.reasons,
             "triage_level": triage_dec.level,

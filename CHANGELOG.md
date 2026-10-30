@@ -1,6 +1,20 @@
-# NeoScan Changelog — Smartphone & Mobile Transformation
+# NeoScan Changelog
 
-All notable changes to mobile readiness, smartphone camera, responsive layout, PWA, and native scaffolding on branch `feat/mobile`.
+All notable changes to triage recommendation logic, smartphone readiness, and clinical workflows on branch `fix/triage-always-consult`.
+
+---
+
+## [Triage Fix 2.3.0] - 2026-10-30
+### Fixed
+- **Deterministic Triage Recommendation:** Fixed the defect where the recommendation was persistently set to "Paediatric consultation recommended" across all images. Recommendations are now a strict, deterministic function of the `neoscan_ml` analysis outcome and patient demographic inputs:
+  - `possible_jaundice_signs` $\to$ `"Paediatric consultation recommended"` (Level: `elevated` / `urgent`)
+  - `inconclusive` $\to$ `"Inconclusive: retake the photo in even daylight; seek clinical assessment if you are concerned"` (Level: `warning` / `urgent`)
+  - `no_visible_signs` $\to$ `"No visible signs detected. Continue routine monitoring"` (Level: `normal`)
+- **Moderate $b^*$ Independence:** Decoupled moderate cutaneous yellowness ($14.0 \le b^* < 20.0$) from falsely triggering paediatric consultation recommendations when the screening model evaluates an image as `no_visible_signs`.
+- **Recommendation & Headline Alignment:** Synchronized `headline`, `recommendation`, and `advice` in `backend/app/core/triage_rules.py`, `frontend/src/triage.js`, and `frontend/src/App.jsx`.
+- **Red-Flag Escalation:** Maintained strict non-destructive clinical escalation for infant risk factors (postnatal age $< 24$ hours, prematurity $< 37$ weeks, feeding difficulties or lethargy).
+- **Reduced Reliability Confidence Caution:** Preserved explicit lower-confidence advisory for reduced reliability without downgrading clinical urgency.
+- **Error & Missing State Safety:** Ensured failed quality gates and pending scans render `"Assessment Unavailable (Quality Alert)"` or `"Awaiting Screening Capture"` with level `"none"` and no clinical recommendation.
 
 ---
 

@@ -176,7 +176,7 @@ class TestTriageDecisionMatrix(unittest.TestCase):
             feeding="breastfeeding"
         )
         self.assertEqual(res.level, "urgent")
-        self.assertEqual(res.headline, "Immediate Pediatric Evaluation Required")
+        self.assertEqual(res.headline, "Immediate Paediatric Evaluation Required")
         self.assertEqual(res.badge, "URGENT EVALUATION")
 
     def test_poor_feeding_escalates_recommendation(self):
@@ -190,6 +190,47 @@ class TestTriageDecisionMatrix(unittest.TestCase):
         )
         self.assertEqual(res.level, "urgent")
         self.assertIn("Feeding difficulties", "".join(res.reasons))
+
+    def test_feeding_difficulties_with_normal_image_escalates(self):
+        """Rule 6: Feeding difficulties escalate normal image to clinical review."""
+        res = compute_triage(
+            category="no_visible_signs",
+            model_score=0.015,
+            age_hours=48,
+            gestation="full-term",
+            feeding="poor"
+        )
+        self.assertEqual(res.level, "elevated")
+        self.assertIn("Feeding Concern", res.headline)
+
+    def test_inconclusive_with_early_onset_escalates_to_urgent(self):
+        """Rule 6: Inconclusive scan with age < 24h escalates to urgent review."""
+        res = compute_triage(
+            category="inconclusive",
+            model_score=0.045,
+            age_hours=16,
+            gestation="full-term"
+        )
+        self.assertEqual(res.level, "urgent")
+        self.assertIn("Risk Factors Present", res.headline)
+
+    def test_disclaimer_preserved(self):
+        """Rule 8: Disclaimer must be present and state non-invasive screening aid status."""
+        res = compute_triage("no_visible_signs", model_score=0.01)
+        self.assertIn("screening companion", res.disclaimer)
+        self.assertIn("not an invasive diagnostic device", res.disclaimer)
+
+    def test_reasons_contain_biomarker_and_score(self):
+        """Rule 7: Reasons list must name model score and b* factors transparently."""
+        res = compute_triage(
+            category="no_visible_signs",
+            model_score=0.0241,
+            b_star=15.8,
+            age_hours=72
+        )
+        self.assertTrue(any("0.0241" in r for r in res.reasons))
+        self.assertTrue(any("15.8" in r for r in res.reasons))
+        self.assertTrue(any("moderate band" in r for r in res.reasons))
 
 
 if __name__ == "__main__":
