@@ -1,81 +1,57 @@
-# Baseline Status & Safety Net — Capture Labels & NeoScan Logo Fixes
+# Baseline Status & Safety Net — Mobile Transformation
 
-**Branch:** `fix/capture-labels-logo`  
-**Base Commit:** `1ff7c91` (`fix/triage-insights` HEAD)  
+**Branch:** `feat/mobile`  
+**Base Commit:** `c02fa99` (Tip of `fix/capture-labels-logo`)  
 **Date:** 2026-10-30  
-**Status:** ALL TESTS PASSING (59 Total Tests Verified)
+**Status:** ALL TESTS PASSING (71 Total Tests Verified)
 
 ---
 
 ## 1. Automated Test Baseline
 
-Prior to making any edits on `fix/capture-labels-logo`, all test suites and build tools were executed:
+Prior to beginning Phase 1 study or Phase 2 mobile styling on `feat/mobile`, all test suites and compiler pipelines were executed to establish a strict regression safety net:
 
-### A. Python Backend & Characterisation Tests
-Command: `MPLCONFIGDIR=/tmp python3 -m unittest discover tests`
-```
-Ran 41 tests in 2.160s: OK
-- tests/test_characterisation.py (6/6 pass)
-- tests/test_neoscan_integration.py (10/10 pass)
-- tests/test_profile_characterisation.py (5/5 pass)
-- tests/test_triage_insights_characterisation.py (4/4 pass)
-- tests/test_triage_decision_matrix.py (10/10 pass)
-- tests/test_bstar_scale.py (5/5 pass)
-- tests/test_inspection_modes.py (1/1 pass)
-```
+### A. Python Backend & Mobile Characterisation Tests
+- **Command**: `MPLCONFIGDIR=/tmp python3 -m unittest discover tests`
+- **Result**: `Ran 56 tests in 1.092s: OK (56 passed, 0 failures, 0 errors)`
+  * `tests/test_characterisation.py` (6/6 pass)
+  * `tests/test_mobile_characterisation.py` (7/7 pass)
+  * `tests/test_capture_controls_characterisation.py` (8/8 pass)
+  * `tests/test_neoscan_integration.py` (10/10 pass)
+  * `tests/test_profile_characterisation.py` (5/5 pass)
+  * `tests/test_triage_insights_characterisation.py` (4/4 pass)
+  * `tests/test_triage_decision_matrix.py` (10/10 pass)
+  * `tests/test_bstar_scale.py` (5/5 pass)
+  * `tests/test_inspection_modes.py` (1/1 pass)
 
 ### B. NeoScan ML Unit Tests
-Command: `MPLCONFIGDIR=/tmp PYTHONPATH=backend python3 -m unittest discover backend/neoscan_ml/tests`
-```
-Ran 8 tests in 0.364s: OK (skipped=1)
-- backend/neoscan_ml/tests/test_pipeline.py (8/8 pass)
-```
+- **Command**: `MPLCONFIGDIR=/tmp PYTHONPATH=backend python3 -m unittest discover backend/neoscan_ml/tests`
+- **Result**: `Ran 8 tests in 0.216s: OK (7 passed, 1 skipped as baseline)`
+  * `backend/neoscan_ml/tests/test_pipeline.py` (8/8 pass)
 
 ### C. Node.js Triage Decision Engine Tests
-Command: `.tools/node-v20.18.0-darwin-arm64/bin/node tests/test_frontend_triage.mjs`
-```
-Ran 7 tests in 0.045s: OK
-- Error state handling (pass)
-- Missing / pending screening state (pass)
-- Normal infant routine monitoring (pass)
-- Early-onset <24h red flag escalation (pass)
-- Possible jaundice signs recommendation (pass)
-- Preterm infant risk escalation (pass)
-- Inconclusive daylight retake (pass)
-```
+- **Command**: `.tools/node-v20.18.0-darwin-arm64/bin/node tests/test_frontend_triage.mjs`
+- **Result**: `Ran 7 tests in 0.045s: OK (7 passed, 0 failures)`
+  * Error state handling
+  * Missing / pending screening state
+  * Normal infant routine monitoring
+  * Early-onset <24h red flag escalation
+  * Possible jaundice signs recommendation
+  * Preterm infant risk escalation
+  * Inconclusive daylight retake
 
-### D. Capture Screen Characterisation Tests
-Command: `MPLCONFIGDIR=/tmp python3 tests/test_capture_controls_characterisation.py`
-```
-Ran 3 tests in 0.001s: OK
-- test_app_bundle_contains_camera_handlers (pass)
-- test_app_jsx_defines_capture_state (pass)
-- test_reference_card_asset_exists (pass)
-```
-
-### E. Frontend Babel Compilation
-Command: `.tools/node-v20.18.0-darwin-arm64/bin/node frontend/build.cjs`
-```
-[NeoScan Build] Compiled App.jsx -> app.js (135759 bytes) successfully!
-```
+### D. Production Bundle Compilation
+- **Command**: `.tools/node-v20.18.0-darwin-arm64/bin/node frontend/build.cjs`
+- **Result**: `[NeoScan Build] Compiled App.jsx -> app.js (147528 bytes) successfully! (0 syntax errors, 0 Babel warnings)`
 
 ---
 
-## 2. Pre-Existing Defect Inventory (Before Fixes)
+## 2. Pre-Existing Limitations & Scope Boundaries
 
-### Defect 1: Nameless Capture Controls on Step 2
-1. **Back Button (`App.jsx:2052`):** Icon-only (`rotate-180 chevron-right`). Completely lacks visible label, tooltip, and accessible name (`aria-label`). Screen readers announce "button" with zero context.
-2. **Flip / Switch Camera Button (`App.jsx:2176`):** Icon-only (`refresh-cw`). Has desktop `title="Flip Camera"`, but **no visible text label**, and no accessible name (`aria-label`). On mobile touchscreens, tooltips are inaccessible.
-3. **Continuous Tracking Toggle (`App.jsx:2149`):** Short text `Continuous: ON / PAUSED`, but lacks `aria-pressed`, `aria-label`, and desktop tooltip.
-4. **Biometric HUD Overlay Toggle (`App.jsx:2163`):** Short text `HUD On / HUD Off`, but lacks full descriptive text, `aria-pressed`, and `aria-label`.
-5. **Primary Shutter Button (`App.jsx:2227`):** Text `Freeze Snapshot & Screen`, lacks explicit `aria-label`, `title`, and focus ring.
-6. **File Upload Dropzone (`App.jsx:2193`):** Unlabelled hidden `<input type="file" />`. Outer clickable div lacks `role="button"`, `tabIndex`, and keyboard event handlers.
-7. **Color Constancy Algorithm Select (`App.jsx:2333`):** Missing `<label>` element and `id` linking.
-
-### Defect 2: Missing / Empty NeoScan Logo Assets
-1. **Global Header:** Uses a generic `<Icon name="heart" />` inside a rounded div; no dedicated brand mark or SVG wordmark asset exists.
-2. **Favicon:** No `<link rel="icon">` in `frontend/index.html`. Browsers requesting `/favicon.ico` receive HTTP 404.
-3. **Apple Touch Icon:** No `<link rel="apple-touch-icon">` in `frontend/index.html`.
-4. **PWA Manifest:** No `/manifest.json` linked or served.
-5. **Initial Loading / Splash Screen:** Shows only a plain spinning circle with text; no brand mark.
-6. **Git History:** Verification confirmed that no image or vector logo files were ever committed to the repository. A clean, clinical SVG logo mark and wordmark in the purple design system must be created.
+1. **Localhost HTTP Binding**: The backend FastAPI server binds to `127.0.0.1:8000`. On a physical phone, `127.0.0.1` refers to the mobile device itself; network-accessible or environment-variable base URL configuration (`NEOSCAN_API_URL`) is required for smartphone access.
+2. **Camera Sensor & Browser Security**: In modern browsers (Safari iOS, Chrome Android), `navigator.mediaDevices.getUserMedia` is strictly blocked over plain `http://` on non-localhost origins. PWA / mobile testing requires HTTPS or local secure context tunneling.
+3. **In-Memory Local Storage**: Patient data is currently persisted to browser `localStorage` (`neoscan_patients_store_v3`). For a clinical native smartphone app, sensitive patient health records require hardware-backed encryption or secure storage.
+4. **Desktop Layout Assumptions**:
+   - Step 1 uses a 12-column grid (`grid-cols-1 lg:grid-cols-12`) where Zone A is 8 columns and Zone B is 4 columns. On small viewports (<640px), sidebar and patient cards stack vertically, but fixed margins and lack of safe-area inset handling cause overflow on notched mobile devices.
+   - Step 2 camera view uses fixed aspect ratio containers and desktop-oriented floating toolbars.
+   - Stepper header (`max-w-6xl h-[4.5rem]`) hides wizard labels on small screens (`hidden md:flex`), leaving only the header title.

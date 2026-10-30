@@ -1,40 +1,159 @@
-# Feature Inventory — Capture Screen Controls & Brand Logo Locations
+# NeoScan Feature & Architecture Inventory
 
-**Branch:** `fix/capture-labels-logo`  
-**Date:** 2026-10-30  
-**Status:** COMPLETE AUDIT
-
----
-
-## 1. Inventory of Interactive Controls on Step 2 (Capture & Guidance)
-
-| # | Control Name | DOM Element / Ref | Current Label / Appearance | Current Accessible Name (`aria-label` / `title`) | Missing / Defective Properties | Target Fix |
-| :- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1** | **Back to Profile** | `<button onClick={() => setCurrentStep(1)}>` | Icon only: `rotate-180 chevron-right` | None | No visible text, no `aria-label`, no `title`. Screen readers announce "button" with no name. | Add visible text label "Back", `title="Back to Patient Profile"`, `aria-label="Back to Patient Profile"`, $\ge 44\times 44$px touch target. |
-| **2** | **Mode: Live Camera** | `<button onClick={() => setCaptureMode("camera")}>` | Icon (`camera`) + "Live Camera" | None | Missing `aria-pressed`, missing `title`, missing focus ring. | Add `aria-pressed={captureMode === "camera"}`, `title="Switch to live camera capture"`, visible focus ring. |
-| **3** | **Mode: Upload Photo** | `<button onClick={() => setCaptureMode("upload")}>` | Icon (`upload`) + "Upload Photo" | None | Missing `aria-pressed`, missing `title`, missing focus ring. | Add `aria-pressed={captureMode === "upload"}`, `title="Switch to local photo upload"`, visible focus ring. |
-| **4** | **Continuous Stream Toggle** | `<button onClick={() => setContinuousAnalysis(!continuousAnalysis)}>` | Icon (`zap`) + "Continuous: ON / PAUSED" | None | Cryptic label; lacks `aria-pressed`, `aria-label`, and explanatory tooltip. | Add `aria-label="Toggle continuous background tracking analysis"`, `aria-pressed={continuousAnalysis}`, `title="Toggle continuous streaming analysis"`. |
-| **5** | **Framing HUD Guide Toggle** | `<button onClick={() => setShowBiometricOverlay(!showBiometricOverlay)}>` | Icon (`eye`) + "HUD On / HUD Off" | None | Lacks full descriptive label, missing `aria-pressed`, missing `aria-label`. | Add clear visible text "Framing Guide: On / Off", `aria-label="Toggle biometric framing guide overlay"`, `aria-pressed={showBiometricOverlay}`, `title="Toggle anatomical alignment guide"`. |
-| **6** | **Switch Camera** | `<button onClick={toggleCameraFacing}>` | Icon only: `refresh-cw` | `title="Flip Camera"` | **Icon-only button!** No visible text label. Missing `aria-label`. Tooltip inaccessible on mobile devices. | Add visible text label "Switch Camera", `aria-label={`Switch camera (currently ${cameraFacing === "user" ? "front" : "rear"})`}`, `title="Switch between front and rear cameras"`, $\ge 44\times 44$px target. |
-| **7** | **Primary Shutter** | `<button onClick={() => performAnalysis(captureFrame())}>` | Concentric circles + "Freeze Snapshot & Screen" | None | Missing `aria-label`, missing `title`, missing prominent accessible focus ring. | Maintain prominent gradient design; add `aria-label="Capture photograph and start clinical screening analysis"`, `title="Capture and analyze photograph"`, high-contrast focus ring. |
-| **8** | **Upload Dropzone** | `<div onClick={() => fileInputRef.current?.click()}>` | Icon (`upload`) + "Upload Infant Photograph" | None | Not keyboard operable (no `role="button"`, no `tabIndex="0"`, no Enter/Space handler). | Add `role="button"`, `tabIndex="0"`, `onKeyDown` handler, `aria-label="Upload infant photograph for screening"`. |
-| **9** | **Hidden File Input** | `<input ref={fileInputRef} type="file">` | Hidden input | None | Lacks `id`, lacks `aria-label`. | Add `id="infant-photo-file-input"`, `aria-label="Choose infant photograph file from device"`. |
-| **10**| **Download Printable Card** | `<a href="/api/v1/reference-card" target="_blank">` | Text: "Download Printable Card" + arrow | None | Missing open-in-new-tab accessibility notice. | Add `aria-label="Download printable ArUco calibration reference card (opens in a new tab)"`, `title="Download printable ArUco calibration card"`. |
-| **11**| **Color Constancy Accordion** | `<button onClick={() => setAdvancedOpticalOpen(...)}>` | Icon (`sliders`) + "Color Constancy Algorithm" | None | Missing `aria-expanded`, missing `aria-controls`. | Add `aria-expanded={advancedOpticalOpen}`, `aria-controls="optical-method-select"`, `title="Toggle color constancy options"`. |
-| **12**| **Color Constancy Select** | `<select value={correctionMethod}>` | Native dropdown select | None | Unlabelled form control! No `<label>` or `id`. | Add `<label htmlFor="optical-method-select" className="sr-only">Color Constancy Algorithm</label>`, `id="optical-method-select"`, `aria-label="Select color constancy normalization method"`. |
-| **13**| **Retake Photo (in Error Banner)** | `<button onClick={() => { setError(null); setCurrentStep(2); }}>` | Icon (`camera`) + "Retake Photo" | None | Lacks `aria-label` and `title`. | Add `aria-label="Dismiss error and retake infant photograph"`, `title="Retake screening photo"`. |
-| **14**| **Dismiss (in Error Banner)** | `<button onClick={() => setError(null)}>` | Text: "Dismiss" | None | Lacks `aria-label` and `title`. | Add `aria-label="Dismiss this error banner"`, `title="Dismiss notice"`. |
-| **15**| **Close (in Error Banner)** | `<button onClick={() => setError(null)}>` | Icon only: `x` | `title="Dismiss"` | Lacks `aria-label`. | Add `aria-label="Close error alert"`. |
+**Branch:** `feat/mobile`  
+**Application**: NeoScan Clinical Pediatric Screening & Image Tracking  
+**Audience**: Healthcare professionals, community pediatricians, neonatal nurses, and caregivers  
 
 ---
 
-## 2. Inventory of Brand Identity & Logo Locations
+## 1. Screen & Component Inventory
 
-| Location | Component / File | Current Implementation | Defect Analysis | Target Fix |
+### Screen 1: Patient Profile & Longitudinal Dermal History (`Step 1`)
+- **Global Header**:
+  - `NeoScanLogo`: Interactive brand vector shield, wordmark, "Pediatric" badge. Navigates to Step 1 (`role="link"`, `tabIndex={0}`).
+  - Wizard Navigation Stepper: Step 1 (Patient Profile), Step 2 (Capture & Guidance), Step 3 (Triage & Insights). Labels hidden on mobile viewports (`hidden md:flex`).
+- **Sticky Patient Bar (`isScrolled`)**:
+  - Appears on vertical scroll. Displays patient initials badge, patient name, ID, age, gestation, and quick-action "Capture Photo" button.
+- **Hero Patient Summary Band**:
+  - Avatar badge with 2-letter uppercase initials (`style={{ background: "linear-gradient(135deg, #4C2365 0%, #7F5D99 100%)" }}`).
+  - Metadata chips: `#patient-id`, `Pediatric Record` with sparkles icon.
+  - Headline: Infant Name (`text-2xl sm:text-3xl font-extrabold`).
+  - Demographic pills: Age (value + units), Gestational age (full-term / late-preterm / early-preterm), Feeding method (breastfeeding / formula / combination), Total screened photo count.
+  - Primary Action Button: "Capture New Photo" (`btn-plum-primary`, navigates to Step 2, initializes camera).
+- **Zone A: Main Gallery Column (65% width on desktop)**:
+  - *Active Photo Spotlight*:
+    * High-resolution display of currently selected infant photo.
+    * Real-time outcome status badge overlay ("NO VISIBLE SIGNS", "POSSIBLE JAUNDICE SIGNS", "INCONCLUSIVE").
+    * Timestamp and active optical correction indicator.
+  - *Spotlight Action Bar*:
+    * "View Full Triage Analysis" (navigates to Step 3).
+    * "Retake Photo" (navigates to Step 2).
+    * "Delete Record" (removes active image from patient history).
+  - *Multi-Day Timeline Carousel*:
+    * Horizontal scrolling thumbnail tray for all historic images of the active patient.
+    * Visual selection indicator (plum border + ring).
+    * Version badge (`v2.0` for `neoscan_ml`, `Legacy` for legacy records).
+  - *Empty State View*:
+    * Displayed when infant has 0 photos. Features camera illustration and "Take First Screening Photo" call-to-action.
+- **Zone B: Clinical Sidebar (35% width on desktop)**:
+  - *Select Patient Record Card*:
+    * List of preloaded / stored infants: Baby Leo, Baby Maya, Baby Sam, Baby Noah.
+    * Infant initial badge (dynamic plum active vs lavender inactive).
+    * Photo count indicator.
+  - *Demographics & Clinical Parameters Card*:
+    * Form controls for Age Value (`number`), Age Unit (`hours` / `days`), Gestational Status (`select`), Feeding Method (`select`).
+    * Clinical Observations textarea.
+    * "Save Changes" button (`updateDemographics`).
+
+---
+
+### Screen 2: Guided Camera & Capture (`Step 2`)
+- **Navigation & Mode Selector Bar**:
+  - "Back to Patient Profile" button with left arrow icon ($44\times 44\text{px}$ touch target).
+  - Patient Context badge ("Screening: [Baby Name]").
+  - Capture Mode Switcher: "Live Camera" vs "Upload Image" (`aria-pressed`).
+- **Live Camera Viewport Container**:
+  - HTML5 `<video ref={videoRef} playsInline muted>` feed.
+  - Biometric HUD Canvas Overlay (`trackingCanvasRef`):
+    * Dashed oval face/forehead positioning reticle.
+    * Anatomical alignment cues.
+  - HUD Badges & Overlays:
+    * "Optimal screening distance" badge (top-left).
+    * Tracking Status indicator ("Tracking Live (X Hz)" vs "Tracking Paused").
+  - In-Viewport HUD Control Buttons:
+    * "Continuous: ON / PAUSED" toggle.
+    * "Framing Guide: ON / OFF" toggle.
+    * "Switch Camera" button (switches between rear/environment and front/user camera).
+  - *Camera Inactive Fallback Banner*:
+    * Displayed if stream is offline or camera permissions are denied.
+    * Features "Start Camera" button and "Upload Photo" alternative.
+- **Primary Shutter Bar**:
+  - "Ready to screen [Baby Name]" status indicator with live plum pulse.
+  - Primary Action Button: "Capture & Screen Photo" ($56\times 56\text{px}$ min height, linear plum-violet gradient, aperture ring icon, high-contrast white text).
+- **Upload Mode Container**:
+  - Drag-and-drop container (`role="button"`, `tabIndex={0}`, keyboard Enter / Space triggers).
+  - "Upload Infant Photograph" title, guidance text.
+  - "Browse Local Files" button.
+  - Hidden `<input type="file" id="infant-photo-file-input" accept="image/*">`.
+- **Side Guidance Panel**:
+  - *Capture Quality Rules*: Distance (20–30 cm), Indirect Lighting, Clear Landmarks guidance bullets.
+  - *Reference Card (Optional)*: Instructions for physical ArUco 4x4 ID 0 calibration card with "Download Printable Target (SVG)" link.
+  - *Color Constancy Algorithm Card*: Collapsible accordion with `<label>` and `<select id="optical-method-select">` (Auto / Shades-of-Gray / ArUco Card / Sclera).
+- **Error Notice Banner**:
+  - Displayed upon camera or API errors. Features error code, clinical message, corrective action, "Retake Photo", and "Dismiss" buttons.
+
+---
+
+### Screen 3: Triage & Insights (`Step 3`)
+- **Top Header Bar**:
+  - "Back to Capture" navigation button.
+  - Patient context indicator.
+  - "Retake Photo" secondary action button.
+- **Deterministic Triage Recommendation Card**:
+  - Severity Level Banner:
+    * Red/Crimson (`#8F1D40`): "URGENT PAEDIATRIC REFERRAL REQUIRED" / "PAEDIATRIC CONSULTATION RECOMMENDED"
+    * Amber (`#9E5700`): "INCONCLUSIVE — RETAKE ADVISED" / "REVIEW REQUIRED"
+    * Green (`#1E6F43`): "ROUTINE NEONATAL OBSERVATION"
+  - Clinical rationale bullet list based on age, gestation, $b^*$, and model score.
+  - Actionable clinical next steps.
+  - Statutory medical disclaimer.
+- **Multi-Spectrum Visual Inspection Studio**:
+  - 4 Mode Switcher: "Corrected", "Original Raw", "Diagnostic ROIs", "Yellowness Heat Map".
+  - High-resolution synchronized canvas/image frame displaying the selected optical layer.
+  - Mode clinical purpose explanation (e.g. skin pixel isolation, chromatic distribution).
+- **Quantitative Optical Biomarkers Grid**:
+  - *Model Risk Score Card*: Probability score (0.00 to 1.00), threshold indicator (0.50), confidence reliability flag.
+  - *CIE Lab $b^*$ Yellowness Scale Card*: Forehead $b^*$, Cheek $b^*$, Combined mean, segmented level bar (Low $<14.0$, Moderate $14.0\text{--}20.0$, Elevated $>20.0$).
+  - *Bilirubin Index & Chrominance*: Quantitative chromatic indices.
+  - *Optical Normalization & Quality Card*: Method applied, sharpness metric, exposure rating.
+- **Longitudinal Trendline Card**:
+  - Historical trajectory for patients with multiple screenings over time.
+- **Action Footer**:
+  - "Export Clinical Summary (PDF / Print)".
+  - "Return to Patient Profile".
+
+---
+
+### Modals & Global Components
+- **Calming Heartbeat Loading Modal**:
+  - Full-screen backdrop blur (`fixed inset-0 z-50 bg-plum-950/70`).
+  - Animated pulsing plum-violet avatar with heartbeat effect.
+  - Dynamic status text ("Evaluating Infant Skin...", "Calibrating optical illumination...").
+  - Looping progress bar.
+- **Medical Disclaimer Footer**:
+  - Persistent regulatory notice.
+  - NeoScan brand mark + engine version indicator (`NeoScan v2.0 • neoscan_ml Engine`).
+
+---
+
+## 2. API Endpoints Contract
+
+| Method | Path | Request Body | Response Envelope | Purpose |
 | :--- | :--- | :--- | :--- | :--- |
-| **Global Navigation Header** | `frontend/src/App.jsx:1342` | Gradient rounded div with `<Icon name="heart" />` + text "NeoScan" | Generic heart icon, not an authentic medical imaging brand mark. Lacks SVG asset fallback and explicit accessibility label. | Implement dedicated `NeoScanLogo` component featuring the authentic optical shield brand mark, wordmark, `alt="NeoScan Pediatric Screening"`, and text fallback. |
-| **Browser Tab Favicon** | `frontend/index.html` | None. Browser requests `/favicon.ico` $\rightarrow$ 404 Not Found. | Tab icon is blank/empty across Chrome, Safari, Firefox. | Add scalable `favicon.svg` and `favicon.ico` in the Deep Plum & Violet palette. Link in `index.html` `<head>`. Serve via FastAPI. |
-| **Apple Touch Icon** | `frontend/index.html` | None. Missing from `<head>`. | Blank icon when saved to iOS / iPadOS home screen. | Add high-resolution `apple-touch-icon.png` (180x180) and link in `<head>`. |
-| **PWA Web App Manifest** | `frontend/index.html` | None. No manifest file exists. | Missing PWA install metadata, theme color, and mobile splash icon. | Add `manifest.json` with theme color `#4C2365`, background `#F7F3FA`, and icons. Link via `<link rel="manifest">`. |
-| **Initial Loading / Splash** | `frontend/index.html:140` | Plain CSS spinning circle with text. | No brand mark or visual logo shown during pre-hydration loading. | Integrate the SVG brand logo mark directly above the spinner in `index.html`. |
-| **Sticky Condensed Header** | `frontend/src/App.jsx:1515` | Avatar initials "BL" + patient name. | No home/brand anchor in condensed view. | Ensure brand identity remains clear and accessible. |
+| `GET` | `/` | None | `text/html` | Serves Single Page Web Application |
+| `GET` | `/favicon.ico` | None | `image/x-icon` | Browser tab icon |
+| `GET` | `/manifest.json` | None | `application/manifest+json` | PWA installation manifest |
+| `GET` | `/apple-touch-icon.png` | None | `image/png` | iOS Home Screen bookmark icon |
+| `GET` | `/app/*` | None | Static files | Compiled React app (`app.js`, vendor scripts, assets) |
+| `GET` | `/static/docs/*` | None | Static files | Printable ArUco calibration targets |
+| `GET` | `/api/v1/health` | None | JSON `{status, service, supported_methods}` | Backend health & algorithm probe |
+| `GET` | `/api/v1/demo-samples` | None | JSON `{samples: [{id, name, description, image_base64}]}` | Clinical demo cases |
+| `POST` | `/api/v1/analyze` | JSON `{image_base64, correction_method, include_visualizations, age_hours, gestation, feeding}` | JSON `{status, category, model_score, reliability, features, visualizations, model_version}` | Full neonatal jaundice screening analysis |
+
+---
+
+## 3. Data Architecture & Persistence
+
+- **Client Storage**: `localStorage` key `neoscan_patients_store_v3` stores JSON array of patient records with embedded images and historical analysis snapshots.
+- **Image Data Format**: JPEG data URLs (`data:image/jpeg;base64,...`) captured at $0.95$ quality factor to maintain pixel color integrity without compression artifacts.
+- **Analysis Pipeline Flow**:
+  1. Image captured from device stream or selected from gallery.
+  2. Canvas extracts unmodified pixel data.
+  3. Client POSTs base64 payload to `/api/v1/analyze`.
+  4. Backend decodes image into NumPy array (BGR).
+  5. OpenCV `QualityGate` verifies dimensions ($\ge 240\times 240$), sharpness, and exposure.
+  6. `neoscan_ml` vision pipeline performs Haar cascade / face bounding box detection, skin segmentation, and illumination color constancy.
+  7. Feature extractor computes 13 optical parameters (CIE Lab $L^*a^*b^*$, YCrCb, color ratios).
+  8. SVM model (`Support_Vector_Machine`) evaluates bilirubin risk probability score.
+  9. Backend returns structured JSON with category (`no_visible_signs`, `possible_jaundice_signs`, `inconclusive`), score, features, and base64 diagnostic overlays.
+  10. Client deterministic triage engine combines model category with infant age and gestational risk factors to render clinical guidance.
