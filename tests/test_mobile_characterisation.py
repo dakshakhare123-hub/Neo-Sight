@@ -176,6 +176,27 @@ class TestMobileTransformationCharacterisation(unittest.TestCase):
         self.assertIn("isSessionLocked", content)
         self.assertIn("isBackgroundVeilActive", content)
 
+    def test_capacitor_native_configuration(self):
+        """Verifies capacitor.config.json, package.json scripts, and native bridge handling."""
+        cap_config_path = os.path.join(PROJECT_ROOT, "capacitor.config.json")
+        self.assertTrue(os.path.exists(cap_config_path), "capacitor.config.json must exist")
+        with open(cap_config_path, "r", encoding="utf-8") as f:
+            cap_config = json.load(f)
+
+        self.assertEqual(cap_config.get("appId"), "org.neoscan.pediatric")
+        self.assertEqual(cap_config.get("webDir"), "frontend")
+        self.assertIn("StatusBar", cap_config.get("plugins", {}))
+
+        pkg_path = os.path.join(PROJECT_ROOT, "package.json")
+        self.assertTrue(os.path.exists(pkg_path), "package.json must exist")
+        with open(pkg_path, "r", encoding="utf-8") as f:
+            pkg = json.load(f)
+        self.assertIn("cap:sync", pkg.get("scripts", {}))
+
+        with open(self.app_jsx_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        self.assertIn("window.Capacitor", content)
+
 
 if __name__ == "__main__":
     unittest.main()

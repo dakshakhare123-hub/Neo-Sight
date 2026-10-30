@@ -1219,6 +1219,23 @@ function App() {
   const currentRoisRef = useRef({});
   const targetRoisRef = useRef({});
 
+  // 0. Capacitor Native Bridge Lifecycle Initialization
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.Capacitor) {
+      try {
+        const { SplashScreen, StatusBar } = window.Capacitor.Plugins || {};
+        if (StatusBar) {
+          StatusBar.setBackgroundColor({ color: "#4C2365" }).catch(() => {});
+        }
+        if (SplashScreen) {
+          setTimeout(() => SplashScreen.hide().catch(() => {}), 500);
+        }
+      } catch (e) {
+        console.warn("[NeoScan Native Bridge] Capacitor init notice:", e);
+      }
+    }
+  }, []);
+
   // 1. Fetch demo samples & seed patient records
   useEffect(() => {
     fetch(`${API_BASE}/api/v1/demo-samples`)

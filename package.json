@@ -1,0 +1,36 @@
+{
+  "name": "neoscan-pediatric",
+  "version": "2.0.0",
+  "description": "Lighting-Robust Neonatal Jaundice Screening Engine for Smartphones (PWA & Native)",
+  "main": "frontend/app.js",
+  "scripts": {
+    "build": "node frontend/build.cjs",
+    "test": "node tests/test_frontend_triage.mjs",
+    "cap:sync": "cap sync",
+    "cap:add:android": "cap add android",
+    "cap:add:ios": "cap add ios",
+    "cap:open:android": "cap open android",
+    "cap:open:ios": "cap open ios",
+    "cap:run:android": "cap run android",
+    "cap:run:ios": "cap run ios"
+  },
+  "keywords": [
+    "neonatal-jaundice",
+    "pediatric-screening",
+    "bilirubin",
+    "color-constancy",
+    "capacitor",
+    "pwa",
+    "mobile-health"
+  ],
+  "author": "NeoScan Pediatric Engineering",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0"
+  }
+}
