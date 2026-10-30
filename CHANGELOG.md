@@ -1,46 +1,39 @@
-# Changelog — NeoScan Triage and Insights Fixes
+# Changelog — Capture Controls Accessibility & Brand Assets
 
-All notable changes in this release are strictly confined to the three clinical problems on the **Triage and Insights** page (Step 3).
+All notable changes to the capture controls, accessible names, logo, and icons on branch `fix/capture-labels-logo`.
 
----
+## [Unreleased] - 2026-10-30
 
-## [Unreleased] - Branch: `fix/triage-insights` - 2026-10-30
+### Added
+- **Brand Identity Suite**:
+  - `frontend/assets/logo-mark.svg`: 48×48 standalone SVG brand mark featuring a clinical purple shield, iris reticle, and amber core.
+  - `frontend/assets/logo.svg`: 200×48 horizontal brand logo with "NeoScan" wordmark and "PEDIATRIC" badge.
+  - `frontend/assets/logo-light.svg`: High-contrast logo variant for dark backgrounds.
+  - `frontend/favicon.svg`: Scalable SVG browser tab icon.
+  - `frontend/favicon.ico`: Multi-size (16×16, 32×32, 48×48) ICO file for legacy browser support.
+  - `frontend/apple-touch-icon.png`: 180×180 PNG icon for iOS Home Screen bookmarking.
+  - `frontend/icon-192.png` & `frontend/icon-512.png`: PNG launcher icons for Progressive Web App (PWA) installation.
+  - `frontend/manifest.json`: Web App Manifest defining app name, icons, and theme color `#4C2365`.
+- **Pre-Hydration Splash Screen**:
+  - Embedded vector brand mark in `frontend/index.html` within `#root`, displaying the NeoScan logo during initial JavaScript bundle load.
+- **FastAPI Asset Endpoints**:
+  - Route handlers in `backend/app/main.py` for `/favicon.ico`, `/manifest.json`, `/apple-touch-icon.png`, and `/apple-touch-icon-precomposed.png` supporting GET and HEAD requests.
+- **Accessible Capture Control Names**:
+  - Visible text labels, dynamic `aria-label`, and `title` tooltips for all Step 2 interactive controls (Back, Switch Camera, Live Camera / Upload Image tabs, Continuous Streaming toggle, Biometric Framing Guide toggle, Primary Shutter, File Dropzone, and Error Banner actions).
+  - Explicit `<label>` and ARIA relationship attributes for the color constancy algorithm select element.
+  - In-viewport action buttons ("Start Camera", "Upload Photo") for camera-inactive states.
 
-### 1. Fix 1: Deterministic Clinical Triage Engine
-- **Added `backend/app/core/triage_rules.py`**: Pure, side-effect-free clinical triage engine implementing American Academy of Pediatrics (AAP) 2022 Hyperbilirubinemia guidelines.
-- **Added `frontend/src/triage.js` & `frontend/src/triageConfig.js`**: Client-side mirror of the triage engine for instant reactivity and explainability.
-- **Removed Hardcoded Triage Mapping**: Replaced static fallback that previously forced *"Pediatric consultation recommended"* onto all infant images.
-- **Added Demographic Red-Flag Sensitivity**:
-  - Automatically escalates early-onset jaundice (< 24 hours postnatal age) to **URGENT EVALUATION** (`#8F1D40`), as early icterus is pathological regardless of visual skin appearance.
-  - Automatically escalates preterm (<37 weeks) and feeding-compromised infants.
-- **Added Safe Error & Pending States**:
-  - When an image fails the quality gate (e.g. no face detected, blurry, poor exposure), the page returns *"Assessment Unavailable (Quality Alert)"* with a *"RETAKE PHOTO"* action.
-  - When no image has been screened, displays *"Awaiting Screening Capture"* with zero clinical recommendation.
-- **Added Clinical Explainability**: Returns an array of explainable `reasons` detailing the exact model score, measured b\* cutaneous chrominance, lighting reliability caution, and patient demographic risk factors.
-- **Added Unit Test Suites**: `tests/test_triage_decision_matrix.py` (10 tests) and `tests/test_frontend_triage.mjs` (7 tests).
+### Changed
+- **Global Header**:
+  - Replaced the placeholder heart icon with the dedicated `NeoScanLogo` component rendering the brand shield mark, "NeoScan" wordmark, and "Pediatric" badge.
+  - Added keyboard navigation (`tabIndex={0}`, Enter / Space triggers) and accessible label `aria-label="NeoScan Pediatric Screening home (go to Patient Profile)"`.
+- **Footer**:
+  - Added compact vector `NeoScanLogo` mark beside the engine version indicator.
+- **Capture Touch Targets**:
+  - Standardized all buttons to minimum $44 \times 44\text{px}$ touch targets with visible focus rings for keyboard accessibility.
 
-### 2. Fix 2: Accurate CIE b\* Yellowness Scale
-- **Calibrated Physiological Scale**: Replaced arbitrary 0–32 linear range with an empirically grounded 0.0 to 30.0 b\* scale based on a cohort of 1,238 neonates (25th percentile: 10.7, median: 14.6, 75th percentile: 18.6, 95th percentile: 23.3).
-- **Added Yellow $\rightarrow$ Orange $\rightarrow$ Red Continuous Gradient**:
-  - Low / Routine: 0.0 to 14.0 b\* (Pale Yellow `#FEF08A` to Golden Yellow `#FBBF24`).
-  - Moderate / Borderline: 14.0 to 20.0 b\* (Amber `#F97316`).
-  - Elevated / High: 20.0 to 30.0+ b\* (Deep Crimson Red `#DC2626`).
-- **Added Numeric Ticks**: Clear visual marks at 0, 5, 10, 15, 20, 25, and 30+.
-- **Anatomical Breakdown**: Surfaces Forehead b\*, Cheeks b\*, and Combined median b\* values.
-- **Strict Marker Safety**: Marker pin is only rendered when a valid, measured cutaneous b\* value exists; eliminated old fallback that erroneously plotted `modelScore * 100` onto the b\* yellowness bar.
-- **Added Colorimetric Test Suite**: `tests/test_bstar_scale.py` validating OpenCV float Lab against reference CIE D65 2-degree observer values on Macbeth patches within $\Delta b^* < 0.16$ (tolerance $< 0.5$).
-
-### 3. Fix 3: Multi-Spectrum Visual Inspection Modes
-- **Added Real "Corrected" Mode**:
-  - Backend returns genuine illumination-normalized BGR image (`prepared.norm`) as JPEG base64 when background color constancy is applied (`colour_normalised: True`).
-  - When background pixels are insufficient for illuminant estimation, returns `None` and displays an amber notice banner: *"No illumination correction applied: Insufficient neutral background to calibrate illuminant"*.
-  - Strict prohibition of fake CSS filters (`sepia`, `hue-rotate`, etc.).
-- **Fixed "Diagnostic ROIs" Spatial Alignment**:
-  - Anatomical forehead and cheek bounding boxes are now scaled against the analyzed image frame dimensions (`w_an`, `h_an`), resolving the 4x top-left shrinkage bug.
-  - Generates PNG overlay directly from `draw_overlay(prepared)`.
-- **Relabeled and Re-Engineered "Yellowness Heat Map"**:
-  - Renamed tab from "Thermal Heatmap" to **"Yellowness Heat Map"** (RGB phone cameras have zero thermal sensitivity).
-  - Implemented `backend/app/core/heatmap.py` to compute per-pixel b\* chrominance on segmented skin, rendered using a Yellow $\rightarrow$ Amber $\rightarrow$ Red colormap, with background desaturated to 45% grayscale for anatomical focus.
-  - Added matching horizontal colormap legend beneath the viewport.
-- **Fixed Image Retake & Flickering**: Keyed viewport with `${patientId}_${imageId}_${mode}` to guarantee immediate update upon rescreening or mode switching.
-- **Added Inspection Test Suite**: `tests/test_inspection_modes.py` (verifying all modes, base64 data URIs, and alignment geometry).
+### Fixed
+- **Empty Logo & Favicon 404**:
+  - Resolved missing favicon and blank brand placeholder by provisioning genuine brand vector assets and adding `<link rel="icon">`, `<link rel="apple-touch-icon">`, and `<link rel="manifest">` tags in `frontend/index.html`.
+- **Nameless Capture Controls**:
+  - Resolved missing button labels and screen-reader names across the camera capture screen.

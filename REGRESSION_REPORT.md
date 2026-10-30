@@ -1,97 +1,140 @@
-# NeoScan Triage and Insights Regression & Verification Report
+# NeoScan Regression Report: Accessible Capture Controls & Brand Assets
 
-**Branch:** `fix/triage-insights`  
-**Date:** October 30, 2026  
-**Auditor / Engineer:** Senior Full-Stack & Clinical Medical-Imaging Engineer  
-**Status:** ALL VERIFICATIONS PASSED (49/49 Tests Passing)
+**Branch**: `fix/capture-labels-logo`  
+**Base Commit**: `1ff7c91` (`fix/triage-insights`)  
+**Target Delivery**: Fix nameless capture controls and empty logo assets without regression  
+**Status**: Verified & Passing  
 
 ---
 
 ## 1. Executive Summary
 
-Three clinical and visual defects on the NeoScan **Triage and Insights** page (Step 3) were identified, traced to root causes, and deterministically resolved:
-1. **Defect 1: Triage Recommendation Stuck:** Replaced the hardcoded recommendation with a pure, explainable, deterministic clinical triage engine conforming to AAP 2022 Hyperbilirubinemia guidelines with patient red-flag escalation and zero recommendation on error/pending states.
-2. **Defect 2: CIE b\* Yellowness Scale Inaccurate:** Grounded the scale in the physiological distribution of 1,238 neonates (0.0 to 30.0 b\*), displaying an accessible horizontal continuous gradient (Yellow $\rightarrow$ Amber $\rightarrow$ Red), 7 numeric ticks, 3 screening bands, and anatomical region breakdown (forehead, cheeks, combined).
-3. **Defect 3: Multi-Spectrum Inspection Broken:** Delivered genuine background-normalized image for "Corrected" mode (with an explicit banner when uncalibrated), pixel-aligned landmark overlays for "Diagnostic ROIs", and a genuine per-pixel dermal b\* heatmap relabeled to **"Yellowness Heat Map"** with a matching color legend (eliminating the scientifically fabricated "Thermal" label).
+This report documents the verification, accessibility audit, and regression testing for two targeted visual/UX defect repairs in NeoScan:
+1. **Defect 1 (Nameless Capture Controls)**: In Step 2 (Guided Camera & Capture), interactive buttons previously lacked visible text labels, descriptive tooltips, and accessible names for assistive technology. All controls now provide persistent visible text or contextual badges, WCAG-compliant accessible names (`aria-label`, `aria-pressed`, `title`), min $44 \times 44\text{px}$ touch targets, and high-visibility keyboard focus rings.
+2. **Defect 2 (Missing NeoScan Brand Assets)**: The application lacked brand image assets, vector logo files, favicons, and PWA metadata, resulting in browser 404 errors and blank placeholders in the header, splash screen, and browser tabs. A complete brand asset suite was generated, embedded, and integrated across the frontend markup, React components, and backend static/API route handlers.
+
+**Zero Clinical Logic Regression**: Camera stream acquisition, video-to-canvas extraction, color constancy transforms (Shades-of-Gray / ArUco), and the `neoscan_ml` diagnostic inference pipeline were preserved with 100% fidelity. No pixel transformations or color distortions were introduced.
 
 ---
 
-## 2. Before vs. After Defect Matrix
+## 2. Accessible Name Audit Table (Step 2 Capture Controls)
 
-| Feature / Defect | Before Fix | After Fix | Clinical & Technical Impact |
-| :--- | :--- | :--- | :--- |
-| **Triage Recommendation** | Stuck on *"Pediatric consultation recommended"* for all inputs, including normal babies and failed quality gates. | Pure deterministic function `compute_triage(...)` in backend and frontend. Normal babies receive *"No Visible Signs Detected — Routine Monitoring"*; jaundiced babies receive consultation; early onset (<24h) escalates to urgent review; failed images show *"Assessment Unavailable (Quality Alert)"*. | Eliminates false clinical panic for healthy neonates while safely catching high-risk neonates with clinical red flags. |
-| **CIE b\* Yellowness Scale** | Hardcoded arbitrary 0–32 bar divided into 3 equal chunks; plotted `modelScore * 100` onto the b\* bar when b\* was missing. | Calibrated 0.0 to 30.0 b\* continuous gradient scale (Yellow $\rightarrow$ Amber $\rightarrow$ Red) with 7 ticks (0, 5, 10, 15, 20, 25, 30+). Shows Forehead, Cheeks, and Combined b\*. Never plots model score on b\* bar. | Matches real neonatal dermatological physiology (mean 14.6, 95th percentile 23.3). |
-| **"Corrected" View** | Backend returned `"corrected_image_base64": None`. UI showed uncorrected raw image without any disclaimer. | Backend generates and returns `prepared.norm` JPEG when background correction is applied. If uncalibrated, displays an amber notice banner: *"No illumination correction applied: Insufficient neutral background"*. Zero CSS filters. | Non-destructive, medically truthful representation of lighting normalization. |
-| **"Diagnostic ROIs" View** | ROI bounding boxes in `routes.py` divided downscaled/rotated box coordinates by unscaled raw dimensions, causing 4x shrinkage and misalignment. | Analyzed frame dimensions (`w_an`, `h_an`) match ROI coordinates 1:1. Diagnostic overlay is drawn directly on `prepared.raw` and returned as `visualizations.diagnostic_overlay_base64`. | Anatomical forehead and cheek ROIs align perfectly with facial landmarks. |
-| **"Thermal Heat Map" View** | Labeled "Thermal Heatmap", which is scientifically impossible on standard CMOS RGB camera phones. Zero backend data. | Relabeled to **"Yellowness Heat Map"** (Cutaneous CIE b\* Chrominance). Backend computes per-pixel float b\* on segmented skin using OpenCV Lab, maps to Yellow $\rightarrow$ Amber $\rightarrow$ Red colormap, and dims non-skin background to 45% grayscale. Includes matching color legend. | Clinically accurate visualization of dermal bilirubin distribution without fabricated thermal claims. |
-
----
-
-## 3. Decision Matrix Verification Evidence
-
-Verified across live HTTP endpoints (`http://127.0.0.1:8000/api/v1/analyze`) and client-side unit tests:
-
-| Input Scenario | Infant Age | Gestation | Feeding | Category | Model Score | Combined b\* | Resulting Headline | Resulting Badge | Color Code |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Healthy Neonate (Leo)** | 72 hrs | Full-term | Breastfeeding | `no_visible_signs` | 0.0060 | 13.3 | No Visible Signs Detected — Routine Monitoring | ROUTINE OBSERVATION | `#1E6F43` |
-| **Early-Onset Red Flag** | 12 hrs | Full-term | Breastfeeding | `no_visible_signs` | 0.0060 | 13.3 | Pediatric Review Advised (Early Postnatal Age) | EARLY ONSET REVIEW | `#8F1D40` |
-| **Mild Jaundice (Maya)** | 48 hrs | Full-term | Breastfeeding | `possible_jaundice_signs` | 0.7812 | 21.4 | Pediatric Consultation Recommended | CLINICAL EVALUATION ADVISED | `#8F1D40` |
-| **Preterm Escalation (Sam)**| 36 hrs | Late-preterm| Formula | `possible_jaundice_signs` | 0.8120 | 22.8 | Immediate Pediatric Evaluation Required | URGENT EVALUATION | `#8F1D40` |
-| **Inconclusive Image** | 60 hrs | Full-term | Breastfeeding | `inconclusive` | 0.4410 | 16.2 | Inconclusive: Retake in Daylight | INCONCLUSIVE — RETAKE PHOTO | `#9E5700` |
-| **Inconclusive + Lethargic** | 48 hrs | Full-term | Lethargic | `inconclusive` | 0.4410 | 16.2 | Clinical Assessment Advised (Risk Factors Present) | CLINICAL REVIEW ADVISED | `#8F1D40` |
-| **Quality Gate Failure** | N/A | N/A | N/A | `ERROR` | None | None | Assessment Unavailable (Quality Alert) | RETAKE PHOTO | `#9E5700` |
-| **Pending / No Image** | N/A | N/A | N/A | `PENDING` | None | None | Awaiting Screening Capture | READY FOR SCREENING | `#725B7E` |
+| UI Element | Selector / Location | Visible Label | Accessible Name (`aria-label`) | Tooltip (`title`) | Touch Area | WCAG 2.1 AA Contrast |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Back Button** | Step 2 Header Left | `"Back"` | `"Back to Patient Profile"` | `"Back to Patient Profile"` | $44 \times 44\text{px}$ | 10.10:1 (AAA) |
+| **Switch Camera Button** | Step 2 Viewport Top-Right | `"Switch Camera"` | Dynamic: `"Switch camera (currently using rear/front camera)"` | Dynamic context tooltip | $44 \times 44\text{px}$ | 12.10:1 (AAA) |
+| **Live Camera Mode Tab** | Mode Switcher Top | `"Live Camera"` | `"Live Camera Capture Mode"` | `"Switch to live device camera"` | $44 \times 44\text{px}$ | 16.99:1 (AAA) |
+| **Upload Image Mode Tab** | Mode Switcher Top | `"Upload Image"` | `"Photo Upload Mode"` | `"Switch to image upload mode"` | $44 \times 44\text{px}$ | 10.10:1 (AAA) |
+| **Continuous Streaming Toggle** | Top Control Bar | `"Continuous: ON / OFF"` | `"Toggle continuous live stream analysis (currently on/off)"` | Contextual toggle guidance | $44 \times 44\text{px}$ | 10.10:1 (AAA) |
+| **Biometric Framing Guide Toggle** | Top Control Bar | `"Framing Guide: ON / OFF"` | `"Toggle infant biometric positioning overlay (currently visible/hidden)"` | Contextual guide info | $44 \times 44\text{px}$ | 10.10:1 (AAA) |
+| **Shutter Capture Button** | Viewport Bottom-Center | `"Capture & Screen Photo"` | `"Capture frame and start clinical jaundice screening"` | `"Capture frame and start clinical jaundice screening"` | $56 \times 56\text{px}$ (min 44px) | 12.10:1 (AAA) |
+| **Camera Offline: Start Camera** | Viewport Fallback Center | `"Start Camera"` | `"Activate device camera for live screening"` | `"Activate camera"` | $44 \times 44\text{px}$ | 12.10:1 (AAA) |
+| **Camera Offline: Upload Photo** | Viewport Fallback Center | `"Upload Photo"` | `"Switch to photo upload mode"` | `"Switch to photo upload"` | $44 \times 44\text{px}$ | 10.10:1 (AAA) |
+| **File Dropzone** | Upload Mode Container | `"Drag & drop infant photo, or click to browse"` | `"Select infant skin photo for jaundice screening"` | `"Select image file (PNG, JPG, WebP)"` | Interactive container | 10.10:1 (AAA) |
+| **Optical Method Dropdown** | Settings / Constancy Card | Accessible `<label>` | `"Select color constancy normalization method"` | Dropdown options list | $44 \text{px}$ height | 16.99:1 (AAA) |
+| **Reference Card Download Link** | Calibration Helper Card | `"Download Printable Target (SVG)"` | `"Download printable NeoScan ArUco color calibration card (SVG)"` | `"Download ArUco color calibration card"` | $44 \text{px}$ height | 10.10:1 (AAA) |
+| **Error Banner Retake Action** | Capture Error Banner | `"Retake Photo"` | `"Retake infant photo and try screening again"` | `"Retake infant photo"` | $44 \times 44\text{px}$ | 12.10:1 (AAA) |
+| **Error Banner Dismiss Action** | Capture Error Banner | `"Dismiss"` | `"Dismiss this error message"` | `"Dismiss error"` | $44 \times 44\text{px}$ | 10.10:1 (AAA) |
 
 ---
 
-## 4. Colorimetric Precision & CIELAB Accuracy Proof
+## 3. Brand Asset Resolution Matrix
 
-Evaluated via `tests/test_bstar_scale.py`:
-- **Neutral Gray (`sRGB = 128, 128, 128`):** OpenCV float $b^* = 0.00$ (CIE Reference $b^* = 0.00$, $\Delta b^* = 0.00$).
-- **Pure White (`sRGB = 255, 255, 255`):** OpenCV float $b^* = 0.00$ (CIE Reference $b^* = 0.00$, $\Delta b^* = 0.00$).
-- **ColorChecker Yellow Patch (`sRGB = 231, 199, 31`):**
-  - CIE D65 Reference $b^* = 66.86$
-  - OpenCV `cvtColor` Float Lab $b^* = 67.02$
-  - Discrepancy $\Delta b^* = 0.16$ (well within required tolerance $\Delta b^* < 0.50$).
-- **Jaundiced Neonatal Skin Patch (`sRGB = 240, 205, 150`):**
-  - CIE D65 Reference $b^* = 27.52$
-  - OpenCV `cvtColor` Float Lab $b^* = 27.41$
-  - Discrepancy $\Delta b^* = 0.11$ (tolerance $< 0.50$).
-
----
-
-## 5. Accessibility & Contrast Verification (WCAG 2.1 AA / AAA)
-
-All colors used for triage recommendations and badge badges pass WCAG requirements on white surfaces:
-- **Routine / Normal (`#1E6F43`):** Contrast ratio **6.16:1** (Passes WCAG AA Normal Text, threshold 4.5:1).
-- **Warning / Inconclusive (`#9E5700`):** Contrast ratio **5.50:1** (Passes WCAG AA Normal Text).
-- **Urgent / Elevated (`#8F1D40`):** Contrast ratio **8.69:1** (Passes WCAG AAA Normal Text, threshold 7:1).
-- **Neutral / Pending (`#725B7E`):** Contrast ratio **5.12:1** (Passes WCAG AA Normal Text).
-- **b\* Continuous Bar:** Uses numeric ticks (0, 5, 10, 15, 20, 25, 30+), labeled text bands, and full `aria-label` / `aria-valuenow` properties for screen reader accessibility and color-blind friendliness.
+| Asset File | Format / Spec | Dimensions | HTTP Route | HTTP Status | Content-Type | Role / Usage |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `frontend/assets/logo.svg` | Scalable Vector | $200 \times 48$ | `/app/assets/logo.svg` | `200 OK` | `image/svg+xml` | Primary horizontal brand mark + wordmark |
+| `frontend/assets/logo-mark.svg` | Scalable Vector | $48 \times 48$ | `/app/assets/logo-mark.svg` | `200 OK` | `image/svg+xml` | Standalone shield & iris logo mark |
+| `frontend/assets/logo-light.svg` | Scalable Vector | $200 \times 48$ | `/app/assets/logo-light.svg` | `200 OK` | `image/svg+xml` | High-contrast mark for dark backgrounds |
+| `frontend/favicon.svg` | Scalable Vector | $48 \times 48$ | `/app/favicon.svg` | `200 OK` | `image/svg+xml` | Modern SVG browser tab favicon |
+| `frontend/favicon.ico` | Multi-size ICO | 16, 32, 48px | `/favicon.ico` | `200 OK` | `image/x-icon` | Root legacy favicon fallback |
+| `frontend/apple-touch-icon.png` | RGBA PNG | $180 \times 180$ | `/apple-touch-icon.png` | `200 OK` | `image/png` | iOS Home Screen bookmark icon |
+| `frontend/icon-192.png` | RGBA PNG | $192 \times 192$ | `/app/icon-192.png` | `200 OK` | `image/png` | PWA manifest Android standard launcher icon |
+| `frontend/icon-512.png` | RGBA PNG | $512 \times 512$ | `/app/icon-512.png` | `200 OK` | `image/png` | PWA manifest high-res splash icon |
+| `frontend/manifest.json` | JSON Spec | - | `/manifest.json` | `200 OK` | `application/manifest+json` | Web App Manifest (Theme: `#4C2365`) |
+| `frontend/index.html` (Splash) | Inline Vector | $56 \times 56$ | `/` | `200 OK` | `text/html` | Pre-hydration splash brand rendering |
+| `frontend/src/App.jsx` (Header) | Vector React Comp | $40 \times 40$ | `/app/app.js` | `200 OK` | `text/javascript` | Global navigation interactive header brand |
 
 ---
 
-## 6. Full Automated Test Suite Logs
+## 4. Test Verification Suite Results
 
+### 4.1. Capture Controls & Asset Characterisation (`test_capture_controls_characterisation.py`)
 ```
+.....Sanity check passed! Heatmap generated successfully.
+[JaundiceClassifier] Successfully loaded trained ML model: Support_Vector_Machine
+...
 ----------------------------------------------------------------------
-Ran 41 tests in 2.475s: OK
-- tests/test_characterisation.py (6/6 pass)
-- tests/test_neoscan_integration.py (10/10 pass)
-- tests/test_profile_characterisation.py (5/5 pass)
-- tests/test_triage_insights_characterisation.py (4/4 pass)
-- tests/test_triage_decision_matrix.py (10/10 pass)
-- tests/test_bstar_scale.py (5/5 pass)
-- tests/test_inspection_modes.py (1/1 pass)
+Ran 8 tests in 2.685s
 
-----------------------------------------------------------------------
-Ran 8 tests in 0.315s: OK (skipped=1)
-- backend/neoscan_ml/tests/test_pipeline.py (8/8 pass)
+OK
+```
+- `test_app_bundle_contains_camera_handlers`: PASS
+- `test_app_jsx_defines_capture_state`: PASS
+- `test_reference_card_asset_exists`: PASS
+- `test_capture_controls_have_accessible_names`: PASS
+- `test_brand_assets_and_logo_files_exist`: PASS
+- `test_index_html_has_brand_meta_and_splash_logo`: PASS
+- `test_app_jsx_renders_neoscan_logo`: PASS
+- `test_fastapi_serves_brand_assets_and_favicons`: PASS
 
-----------------------------------------------------------------------
-Ran 7 tests in 0.045s: OK
-- tests/test_frontend_triage.mjs (7/7 pass)
+### 4.2. Full Backend Test Suite (`python3 -m unittest discover tests`)
+```
+Ran 49 tests in 2.672s
+
+OK (49 passed, 0 failures, 0 errors)
 ```
 
-**Total: 49 passing tests.** Zero regressions detected across patient profiles, camera capture, baseline records, or machine learning pipelines.
+### 4.3. ML Validation Test Suite (`backend/neoscan_ml/tests`)
+```
+s.......
+----------------------------------------------------------------------
+Ran 8 tests in 0.333s
+
+OK (skipped=1)
+```
+
+### 4.4. Frontend Deterministic Triage Suite (`tests/test_frontend_triage.mjs`)
+```
+Running Frontend Triage Unit Tests...
+All 7 Frontend Triage tests passed successfully!
+```
+
+### 4.5. HTTP Endpoint Health Checks
+```
+GET  /favicon.ico              -> 200 OK (image/x-icon)
+HEAD /favicon.ico              -> 200 OK
+GET  /manifest.json            -> 200 OK (application/manifest+json)
+HEAD /manifest.json            -> 200 OK
+GET  /apple-touch-icon.png     -> 200 OK (image/png)
+HEAD /apple-touch-icon.png     -> 200 OK
+GET  /app/favicon.svg          -> 200 OK (image/svg+xml)
+GET  /app/assets/logo.svg      -> 200 OK (image/svg+xml)
+GET  /app/assets/logo-mark.svg -> 200 OK (image/svg+xml)
+GET  /app/app.js               -> 200 OK (text/javascript)
+GET  /                         -> 200 OK (text/html)
+```
+
+---
+
+## 5. Color Palette & WCAG 2.1 Contrast Ratios
+
+All updated text, badge, and icon foregrounds were measured against their respective backgrounds using the relative luminance formula defined in WCAG 2.1:
+
+| Pair Description | Foreground | Background | Contrast Ratio | Compliance Level |
+| :--- | :--- | :--- | :--- | :--- |
+| White text on Deep Plum | `#FFFFFF` | `#4C2365` | **12.10:1** | WCAG AAA ($\ge 7.0:1$) |
+| Deep Plum Black on White | `#2A1138` | `#FFFFFF` | **16.99:1** | WCAG AAA ($\ge 7.0:1$) |
+| Deep Plum on Lavender Pill | `#4C2365` | `#EFE8F5` | **10.10:1** | WCAG AAA ($\ge 7.0:1$) |
+| Lavender on Deep Plum | `#C4A4DA` | `#4C2365` | **5.57:1** | WCAG AA ($\ge 4.5:1$) |
+| Deep Plum Black on Canvas | `#2A1138` | `#F7F3FA` | **15.50:1** | WCAG AAA ($\ge 7.0:1$) |
+| Plum 700 on Canvas | `#725B7E` | `#F7F3FA` | **5.45:1** | WCAG AA ($\ge 4.5:1$) |
+| Plum 600 on White | `#856E91` | `#FFFFFF` | **4.53:1** | WCAG AA ($\ge 4.5:1$) |
+
+---
+
+## 6. Regression Sign-Off
+
+1. **Zero Camera Pipeline Distortion**: No modifications were made to `video` stream initialization, canvas frame capture, image dimensions, or aspect ratios.
+2. **Zero ML Metric Changes**: The `neoscan_ml` feature extraction, CIE Lab $b^*$ skin calibration, and SVM inference remain identical.
+3. **No Hidden Text / Hacks**: No CSS `display:none` or `opacity:0` hacks were used for screen-reader text; standard Tailwind `sr-only` is used strictly where visual labels are paired with icons, while all primary buttons feature persistent visible text.
+4. **Git Branch Discipline**: All changes are committed discretely to `fix/capture-labels-logo`. No modifications to `main`.
