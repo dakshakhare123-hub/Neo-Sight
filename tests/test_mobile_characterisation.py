@@ -160,6 +160,22 @@ class TestMobileTransformationCharacterisation(unittest.TestCase):
         self.assertIn("ambientLightStatus", content)
         self.assertIn("NEOSCAN_API_URL", content)
 
+    def test_offline_storage_and_privacy_controls(self):
+        """Verifies IndexedDB storage, offline queue, privacy veil, and privacy documentation."""
+        privacy_doc = os.path.join(PROJECT_ROOT, "PRIVACY_NOTES.md")
+        self.assertTrue(os.path.exists(privacy_doc), "PRIVACY_NOTES.md must exist")
+
+        storage_js = os.path.join(PROJECT_ROOT, "frontend", "src", "storage.js")
+        self.assertTrue(os.path.exists(storage_js), "frontend/src/storage.js must exist")
+
+        with open(self.app_jsx_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn("NeoScanStorage", content)
+        self.assertIn("offline_queue", content)
+        self.assertIn("isSessionLocked", content)
+        self.assertIn("isBackgroundVeilActive", content)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -105,6 +105,116 @@ const normalizeImageOrientation = (file) => {
   });
 };
 
+// Lightweight, crash-proof IndexedDB storage engine for infant photos & offline sync
+const NeoScanStorage = {
+  dbName: "neoscan_mobile_db",
+  version: 1,
+
+  open: function() {
+    return new Promise((resolve) => {
+      if (typeof window === "undefined" || !window.indexedDB) {
+        resolve(null);
+        return;
+      }
+      const request = window.indexedDB.open(this.dbName, this.version);
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains("images")) {
+          db.createObjectStore("images", { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("offline_queue")) {
+          db.createObjectStore("offline_queue", { keyPath: "id" });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => {
+        console.warn("[NeoScan DB] Could not open IndexedDB:", request.error);
+        resolve(null);
+      };
+    });
+  },
+
+  saveImageBlob: async function(id, dataUrl) {
+    const db = await this.open();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction("images", "readwrite");
+        const store = tx.objectStore("images");
+        store.put({ id, dataUrl, savedAt: new Date().toISOString() });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      } catch (e) {
+        resolve(false);
+      }
+    });
+  },
+
+  getImageBlob: async function(id) {
+    const db = await this.open();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction("images", "readonly");
+        const store = tx.objectStore("images");
+        const req = store.get(id);
+        req.onsuccess = () => resolve(req.result ? req.result.dataUrl : null);
+        req.onerror = () => resolve(null);
+      } catch (e) {
+        resolve(null);
+      }
+    });
+  },
+
+  enqueueOfflineScreening: async function(item) {
+    const db = await this.open();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction("offline_queue", "readwrite");
+        const store = tx.objectStore("offline_queue");
+        store.put(item);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      } catch (e) {
+        resolve(false);
+      }
+    });
+  },
+
+  getOfflineQueue: async function() {
+    const db = await this.open();
+    if (!db) return [];
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction("offline_queue", "readonly");
+        const store = tx.objectStore("offline_queue");
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+      } catch (e) {
+        resolve([]);
+      }
+    });
+  },
+
+  removeQueueItem: async function(id) {
+    const db = await this.open();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction("offline_queue", "readwrite");
+        const store = tx.objectStore("offline_queue");
+        store.delete(id);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      } catch (e) {
+        resolve(false);
+      }
+    });
+  }
+};
+
 // Safe canvas round rectangle helper (prevents TypeError on older WebViews)
 const drawSafeRoundRect = (ctx, x, y, w, h, r) => {
   if (ctx.roundRect) {
@@ -866,12 +976,37 @@ function App() {
     return activePatient.images[0]; // Most recent
   }, [activePatient, activeImageId]);
 
-  // Persist patients to localStorage whenever updated
+  // Persist patients to localStorage and IndexedDB (prevents 5MB quota crash)
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(patients));
     } catch (e) {
-      console.warn("Storage save notice:", e);
+      console.warn("LocalStorage save notice, falling back to IndexedDB:", e);
+      try {
+        const lightweight = patients.map(p => ({
+          ...p,
+          images: (p.images || []).map(img => ({
+            ...img,
+            rawImage: img.rawImage && img.rawImage.length > 500 ? img.id : img.rawImage
+          }))
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweight));
+      } catch (inner) {
+        console.warn("IndexedDB fallback engaged:", inner);
+      }
+    }
+
+    // Always mirror full image blobs into IndexedDB
+    if (patients && Array.isArray(patients)) {
+      patients.forEach(p => {
+        if (p.images) {
+          p.images.forEach(img => {
+            if (img.rawImage && img.rawImage.startsWith("data:")) {
+              NeoScanStorage.saveImageBlob(img.id, img.rawImage);
+            }
+          });
+        }
+      });
     }
   }, [patients]);
 
@@ -940,6 +1075,137 @@ function App() {
     setShowInstallBanner(false);
     sessionStorage.setItem("neoscan_install_dismissed", "true");
   };
+
+  // Offline Sync State & Manager
+  const [isOffline, setIsOffline] = useState(typeof navigator !== "undefined" ? !navigator.onLine : false);
+  const [offlinePendingCount, setOfflinePendingCount] = useState(0);
+
+  const checkPendingQueue = useCallback(async () => {
+    const queue = await NeoScanStorage.getOfflineQueue();
+    setOfflinePendingCount(queue.length);
+  }, []);
+
+  const syncPendingScreenings = useCallback(async () => {
+    const queue = await NeoScanStorage.getOfflineQueue();
+    if (queue.length === 0) return;
+
+    for (const item of queue) {
+      try {
+        let ageHours = null;
+        const patient = patients.find(p => p.id === item.patientId);
+        if (patient) {
+          if (typeof patient.ageHours === "number") {
+            ageHours = patient.ageHours;
+          } else if (typeof patient.ageValue === "number") {
+            const unit = (patient.ageUnit || "hours").toLowerCase();
+            ageHours = unit.startsWith("day") ? patient.ageValue * 24.0 : patient.ageValue;
+          }
+        }
+
+        const response = await fetch(`${API_BASE}/api/v1/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            image_base64: item.targetImage,
+            correction_method: item.method || "auto",
+            include_visualizations: true,
+            age_hours: ageHours,
+            gestation: patient?.gestation,
+            feeding: patient?.feeding,
+            symptoms: patient?.symptoms || []
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          await NeoScanStorage.removeQueueItem(item.id);
+
+          setPatients(prev => prev.map(p => {
+            if (p.id !== item.patientId) return p;
+            const updatedImages = (p.images || []).map(img => {
+              if (img.id === item.id) {
+                return {
+                  ...img,
+                  status: "completed",
+                  currentAnalysis: data,
+                  corrections: {
+                    ...img.corrections,
+                    [item.method || "auto"]: {
+                      method: item.method || "auto",
+                      correctedImage: data.visualizations?.corrected_image_base64,
+                      diagnosticOverlay: data.visualizations?.diagnostic_overlay_base64,
+                      heatmap: data.visualizations?.yellowness_heatmap_base64,
+                      result: data,
+                      timestamp: new Date().toISOString()
+                    }
+                  }
+                };
+              }
+              return img;
+            });
+            return { ...p, images: updatedImages };
+          }));
+        }
+      } catch (err) {
+        console.warn("[NeoScan Sync] Queue item sync paused:", err);
+        break;
+      }
+    }
+    checkPendingQueue();
+  }, [patients, checkPendingQueue]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      syncPendingScreenings();
+    };
+    const handleOffline = () => {
+      setIsOffline(true);
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    checkPendingQueue();
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [syncPendingScreenings, checkPendingQueue]);
+
+  // Mobile Privacy: 15-Minute Inactivity Auto-Lock
+  const [isSessionLocked, setIsSessionLocked] = useState(false);
+  const inactivityTimerRef = useRef(null);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    inactivityTimerRef.current = setTimeout(() => {
+      setIsSessionLocked(true);
+    }, 15 * 60 * 1000); // 15 minutes
+  }, []);
+
+  useEffect(() => {
+    resetInactivityTimer();
+    const events = ["touchstart", "mousedown", "keydown", "scroll"];
+    const handleActivity = () => resetInactivityTimer();
+    events.forEach(e => window.addEventListener(e, handleActivity, { passive: true }));
+    return () => {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      events.forEach(e => window.removeEventListener(e, handleActivity));
+    };
+  }, [resetInactivityTimer]);
+
+  // Mobile Privacy: App Switcher Multitasking Veil
+  const [isBackgroundVeilActive, setIsBackgroundVeilActive] = useState(false);
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsBackgroundVeilActive(document.hidden);
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
 
   // References
   const videoRef = useRef(null);
@@ -1489,6 +1755,54 @@ function App() {
       setCurrentStep(3); // Smoothly transition to results
     } catch (err) {
       console.error("Analysis execution error:", err);
+      const isNetworkIssue = !navigator.onLine || err.message?.includes("fetch") || err.message?.includes("Failed") || err.message?.includes("Network");
+      if (isNetworkIssue) {
+        // Safe offline preservation in IndexedDB
+        const offlineId = `img_${Date.now()}_offline`;
+        const dateStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        await NeoScanStorage.saveImageBlob(offlineId, targetImage);
+        await NeoScanStorage.enqueueOfflineScreening({
+          id: offlineId,
+          patientId: targetPatientId,
+          targetImage,
+          method: effectiveMethod,
+          timestamp: new Date().toISOString()
+        });
+
+        const pendingRecord = {
+          id: offlineId,
+          timestamp: new Date().toISOString(),
+          formattedDate: `Screening (Queued Offline ${dateStr})`,
+          rawImage: targetImage,
+          activeCorrection: effectiveMethod,
+          status: "pending_upload",
+          corrections: {},
+          currentAnalysis: null,
+          tracking: {},
+          metadata: {
+            source: metadataOverride?.source || "camera_capture",
+            offlineQueued: true,
+            capturedAt: new Date().toISOString()
+          }
+        };
+
+        setPatients(prev => prev.map(p => {
+          if (p.id !== targetPatientId) return p;
+          return { ...p, images: [pendingRecord, ...(p.images || []).filter(img => img.id !== offlineId)] };
+        }));
+
+        stopCamera();
+        setActiveImageId(offlineId);
+        setOfflinePendingCount(c => c + 1);
+        setError({
+          code: "OFFLINE_CAPTURE_PRESERVED",
+          message: "Operating Offline: Infant photo saved securely on device.",
+          action: "Clinical analysis is queued and will execute automatically when connection restores."
+        });
+        setCurrentStep(1);
+        return;
+      }
+
       setError({
         code: "SERVER_COMMUNICATION_ERROR",
         message: err.message || "An unexpected error occurred during screening.",
@@ -1783,6 +2097,30 @@ function App() {
             </button>
           </div>
         </aside>
+      )}
+
+      {/* Offline Status & Cloud Sync Banner */}
+      {(isOffline || offlinePendingCount > 0) && (
+        <div className="bg-amber-700 text-white px-4 py-2 text-xs flex items-center justify-between shadow-xs border-b border-amber-600 animate-fadeIn">
+          <div className="flex items-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping shrink-0"></span>
+            <span className="font-medium text-[11px] sm:text-xs">
+              {isOffline ? "Operating Offline: " : "Cloud Sync: "}
+              {offlinePendingCount > 0
+                ? `${offlinePendingCount} screening(s) queued on device. Automatic cloud analysis will run when connected.`
+                : "Captures are preserved safely on device."}
+            </span>
+          </div>
+          {!isOffline && offlinePendingCount > 0 && (
+            <button
+              type="button"
+              onClick={syncPendingScreenings}
+              className="px-3 py-1 rounded-lg bg-white text-amber-900 font-bold text-[10px] hover:bg-amber-50 active:scale-95 transition-all shadow-xs"
+            >
+              Sync Now
+            </button>
+          )}
+        </div>
       )}
 
       {/* Main Container */}
@@ -3482,6 +3820,42 @@ function App() {
           </div>
         </div>
       </footer>
+
+      {/* Mobile Privacy: App Switcher Multitasking Blur Veil */}
+      {isBackgroundVeilActive && (
+        <div className="fixed inset-0 z-50 bg-plum-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center text-white" aria-hidden="true">
+          <NeoScanLogo size={44} showWordmark={true} />
+          <p className="text-xs text-lavender-200 mt-3 font-semibold">Protected Pediatric Health Session</p>
+        </div>
+      )}
+
+      {/* Mobile Privacy: 15-Minute Inactivity Auto-Lock Screen */}
+      {isSessionLocked && (
+        <div className="fixed inset-0 z-50 bg-plum-950/90 backdrop-blur-md flex items-center justify-center p-6 text-center text-white animate-fadeIn">
+          <div className="max-w-sm w-full bg-white text-plum-950 p-8 rounded-3xl shadow-2xl border border-lavender-200/80 space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-plum-100 flex items-center justify-center mx-auto text-plum-900">
+              <Icon name="shield-check" className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-bold">Session Locked</h3>
+              <p className="text-xs text-plum-600 leading-relaxed">
+                NeoScan was locked after 15 minutes of inactivity to protect sensitive neonatal patient records.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsSessionLocked(false);
+                resetInactivityTimer();
+              }}
+              className="w-full py-3.5 px-6 rounded-2xl bg-plum-900 hover:bg-violet-700 text-white font-bold text-sm transition-all shadow-md active:scale-95 min-h-[48px]"
+              style={{ backgroundColor: "#4C2365", color: "#FFFFFF" }}
+            >
+              Resume Clinical Session
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
