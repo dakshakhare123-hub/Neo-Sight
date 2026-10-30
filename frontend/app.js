@@ -406,10 +406,10 @@ const ImageWithFallback = ({
   return /*#__PURE__*/React.createElement("div", {
     className: `relative overflow-hidden ${className}`
   }, isLoading && /*#__PURE__*/React.createElement("div", {
-    className: "absolute inset-0 bg-slate-100 flex items-center justify-center animate-pulse"
+    className: "absolute inset-0 bg-plum-100/40 flex items-center justify-center animate-pulse"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "heart",
-    className: "w-5 h-5 text-teal-400 animate-spin"
+    className: "w-5 h-5 text-violet-600 animate-spin"
   })), /*#__PURE__*/React.createElement("img", {
     src: src,
     alt: alt,
@@ -680,13 +680,13 @@ function App() {
         ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
         ctx.lineWidth = 2.5;
         ctx.setLineDash([8, 8]);
-        ctx.strokeStyle = "rgba(13, 148, 136, 0.5)"; // Serene medical teal
+        ctx.strokeStyle = "rgba(158, 126, 181, 0.75)"; // Soft Violet
         ctx.stroke();
 
         // Forehead Target Hint
         ctx.beginPath();
         ctx.ellipse(centerX, centerY - radiusY * 0.45, radiusX * 0.55, radiusY * 0.22, 0, 0, 2 * Math.PI);
-        ctx.strokeStyle = "rgba(14, 165, 233, 0.45)"; // Soft sky
+        ctx.strokeStyle = "rgba(196, 164, 218, 0.70)"; // Lavender
         ctx.setLineDash([4, 4]);
         ctx.stroke();
         ctx.restore();
@@ -713,26 +713,26 @@ function App() {
         });
         const roiStyles = {
           forehead: {
-            color: "#0ea5e9",
+            color: "#9E7EB5",
             label: "Forehead • Primary Bilirubin Site"
           },
           nose: {
-            color: "#10b981",
+            color: "#C4A4DA",
             label: "Nose Tip"
           },
           sclera: {
-            color: "#d946ef",
+            color: "#7F5D99",
             label: "Sclera • In-Scene Reference"
           },
           chest: {
-            color: "#3b82f6",
+            color: "#5D2F7B",
             label: "Sternum / Chest"
           }
         };
         Object.keys(current).forEach(key => {
           const box = current[key];
           const style = roiStyles[key] || {
-            color: "#0d9488",
+            color: "#7F5D99",
             label: key
           };
           if (!box) return;
@@ -778,7 +778,7 @@ function App() {
           ctx.shadowBlur = 0;
           ctx.font = "600 11px 'Plus Jakarta Sans', sans-serif";
           const textWidth = ctx.measureText(style.label).width;
-          ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
+          ctx.fillStyle = "rgba(42, 17, 56, 0.85)";
           drawSafeRoundRect(ctx, rx, Math.max(0, ry - 20), textWidth + 12, 18, 4);
           ctx.fill();
           ctx.fillStyle = "#ffffff";
@@ -1082,7 +1082,7 @@ function App() {
         category: "PENDING",
         title: "Awaiting Assessment",
         subtitle: "Capture infant skin to evaluate bilirubin levels.",
-        color: "#64748b",
+        color: "#725B7E",
         badge: "READY FOR SCREENING",
         confidence: 0,
         confidenceLevel: "N/A",
@@ -1118,18 +1118,18 @@ function App() {
     } else if (typeof modelScoreVal === "number" && !isNaN(modelScoreVal)) {
       markerPos = Math.min(96, Math.max(4, Math.round(modelScoreVal * 100)));
     }
-    let color = "#059669"; // emerald
+    let color = "#1E6F43"; // Sage-Emerald (WCAG AA 6.16:1)
     let badge = "NO VISIBLE SIGNS";
     let title = "No Visible Jaundice Signs";
     let recommendation = ra.recommendation || ra.triage_recommendation || "Cutaneous yellowness is within expected limits for healthy neonates. Maintain standard feeding and routine pediatric checks.";
     if (cat.includes("POSSIBLE") || cat.includes("JAUNDICE")) {
       const isElevated = typeof bStarVal === "number" && bStarVal >= 22.0;
-      color = isElevated ? "#dc2626" : "#ea580c";
+      color = isElevated ? "#8F1D40" : "#A21D3F"; // Crimson-Plum (WCAG AAA 8.69:1)
       badge = isElevated ? "ELEVATED JAUNDICE SIGNS" : "POSSIBLE JAUNDICE SIGNS";
       title = "Pediatric Consultation Recommended";
       recommendation = ra.recommendation || ra.triage_recommendation || "Cutaneous yellowness exceeds normal thresholds. A healthcare provider evaluation and transcutaneous (TcB) or blood (TSB) bilirubin test are recommended.";
     } else if (cat.includes("INCONCLUSIVE")) {
-      color = "#d97706";
+      color = "#9E5700"; // Amber-Gold (WCAG AA 5.50:1)
       badge = "INCONCLUSIVE (REFERRAL RECOMMENDED)";
       title = "Inconclusive Screening Result";
       recommendation = ra.recommendation || ra.triage_recommendation || "Optical yellowness is borderline or ambient lighting precluded confident analysis. Please repeat in bright indirect daylight or consult a clinician.";
@@ -1153,76 +1153,66 @@ function App() {
     };
   }, [analysisResult]);
   return /*#__PURE__*/React.createElement("div", {
-    className: "min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans"
+    className: "min-h-screen bg-plum-50/60 text-plum-950 flex flex-col font-sans"
   }, /*#__PURE__*/React.createElement("header", {
-    className: "sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs"
+    className: "sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-lavender-300/60 shadow-xs"
   }, /*#__PURE__*/React.createElement("div", {
     className: "max-w-6xl mx-auto px-4 sm:px-6 h-[4.5rem] flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3 cursor-pointer",
     onClick: () => setCurrentStep(1)
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-teal-500/20"
+    className: "w-10 h-10 rounded-2xl bg-gradient-to-tr from-plum-900 to-violet-700 flex items-center justify-center text-white shadow-md shadow-plum-900/20"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "heart",
     className: "w-5 h-5"
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-xl font-bold tracking-tight text-slate-900"
+    className: "text-xl font-bold tracking-tight text-plum-950"
   }, "NeoScan"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200/60"
+    className: "text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-plum-100/70 text-plum-900 border border-lavender-300/80"
   }, "Pediatric")), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-500 font-medium"
+    className: "text-xs text-plum-600 font-medium"
   }, "Lighting-Robust Neonatal Screening"))), /*#__PURE__*/React.createElement("nav", {
-    className: "hidden md:flex items-center space-x-1 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/70"
+    className: "hidden md:flex items-center space-x-1 bg-plum-100/60 p-1.5 rounded-2xl border border-lavender-300/60"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => setCurrentStep(1),
-    className: `flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${currentStep === 1 ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`
+    className: `flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${currentStep === 1 ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"}`
   }, /*#__PURE__*/React.createElement("span", {
-    className: `w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep === 1 ? "bg-teal-600 text-white" : "bg-slate-200 text-slate-600"}`
+    className: `w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep === 1 ? "bg-plum-900 text-white" : "bg-plum-200/80 text-plum-700"}`
   }, "1"), /*#__PURE__*/React.createElement("span", null, "Patient Profile")), /*#__PURE__*/React.createElement(Icon, {
     name: "chevron-right",
-    className: "w-3.5 h-3.5 text-slate-300"
+    className: "w-3.5 h-3.5 text-plum-300"
   }), /*#__PURE__*/React.createElement("button", {
     onClick: () => setCurrentStep(2),
-    className: `flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${currentStep === 2 ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`
+    className: `flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${currentStep === 2 ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"}`
   }, /*#__PURE__*/React.createElement("span", {
-    className: `w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep === 2 ? "bg-teal-600 text-white" : "bg-slate-200 text-slate-600"}`
+    className: `w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep === 2 ? "bg-plum-900 text-white" : "bg-plum-200/80 text-plum-700"}`
   }, "2"), /*#__PURE__*/React.createElement("span", null, "Capture & Guidance")), /*#__PURE__*/React.createElement(Icon, {
     name: "chevron-right",
-    className: "w-3.5 h-3.5 text-slate-300"
+    className: "w-3.5 h-3.5 text-plum-300"
   }), /*#__PURE__*/React.createElement("button", {
     onClick: () => {
       if (analysisResult) setCurrentStep(3);
     },
     disabled: !analysisResult,
-    className: `flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${currentStep === 3 ? "bg-white text-slate-900 shadow-sm" : analysisResult ? "text-slate-500 hover:text-slate-800" : "text-slate-300 cursor-not-allowed"}`
+    className: `flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${currentStep === 3 ? "bg-white text-plum-950 shadow-sm" : analysisResult ? "text-plum-600 hover:text-plum-950" : "text-plum-300 cursor-not-allowed"}`
   }, /*#__PURE__*/React.createElement("span", {
-    className: `w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep === 3 ? "bg-teal-600 text-white" : "bg-slate-200 text-slate-600"}`
-  }, "3"), /*#__PURE__*/React.createElement("span", null, "Triage & Insights"))), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-3"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-100/90 border border-slate-200/80 text-xs text-slate-600"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "hidden sm:inline font-medium"
-  }, "Optical Heuristic Active"), /*#__PURE__*/React.createElement("span", {
-    className: "sm:hidden font-medium"
-  }, "Online")))), /*#__PURE__*/React.createElement("div", {
-    className: "md:hidden flex border-t border-slate-100"
+    className: `w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep === 3 ? "bg-plum-900 text-white" : "bg-plum-200/80 text-plum-700"}`
+  }, "3"), /*#__PURE__*/React.createElement("span", null, "Triage & Insights")))), /*#__PURE__*/React.createElement("div", {
+    className: "md:hidden flex border-t border-lavender-200/80"
   }, /*#__PURE__*/React.createElement("div", {
     onClick: () => setCurrentStep(1),
-    className: `flex-1 text-center py-2 text-xs font-semibold border-b-2 transition-colors ${currentStep === 1 ? "border-teal-600 text-teal-700 bg-teal-50/30" : "border-transparent text-slate-400"}`
+    className: `flex-1 text-center py-2 text-xs font-semibold border-b-2 transition-colors ${currentStep === 1 ? "border-plum-900 text-plum-900 bg-plum-100/40 font-bold" : "border-transparent text-plum-500"}`
   }, "1. Profile"), /*#__PURE__*/React.createElement("div", {
     onClick: () => setCurrentStep(2),
-    className: `flex-1 text-center py-2 text-xs font-semibold border-b-2 transition-colors ${currentStep === 2 ? "border-teal-600 text-teal-700 bg-teal-50/30" : "border-transparent text-slate-400"}`
+    className: `flex-1 text-center py-2 text-xs font-semibold border-b-2 transition-colors ${currentStep === 2 ? "border-plum-900 text-plum-900 bg-plum-100/40 font-bold" : "border-transparent text-plum-500"}`
   }, "2. Capture"), /*#__PURE__*/React.createElement("div", {
     onClick: () => {
       if (analysisResult) setCurrentStep(3);
     },
-    className: `flex-1 text-center py-2 text-xs font-semibold border-b-2 transition-colors ${currentStep === 3 ? "border-teal-600 text-teal-700 bg-teal-50/30" : "border-transparent text-slate-400"}`
+    className: `flex-1 text-center py-2 text-xs font-semibold border-b-2 transition-colors ${currentStep === 3 ? "border-plum-900 text-plum-900 bg-plum-100/40 font-bold" : "border-transparent text-plum-500"}`
   }, "3. Results"))), /*#__PURE__*/React.createElement("main", {
     className: "flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8"
   }, error && /*#__PURE__*/React.createElement("div", {
@@ -1247,9 +1237,9 @@ function App() {
   }, "Quality Gate")), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-amber-900 leading-relaxed font-medium"
   }, typeof error === "object" ? error.message : error), typeof error === "object" && error.action && /*#__PURE__*/React.createElement("div", {
-    className: "mt-2.5 p-3 rounded-xl bg-white/90 border border-amber-200/80 text-xs text-slate-700"
+    className: "mt-2.5 p-3 rounded-xl bg-white/95 border border-amber-200/80 text-xs text-plum-900"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "font-bold text-amber-900 block mb-0.5"
+    className: "font-bold text-amber-950 block mb-0.5"
   }, "Actionable Guidance:"), /*#__PURE__*/React.createElement("span", null, error.action)), /*#__PURE__*/React.createElement("div", {
     className: "mt-3 flex items-center space-x-3 pt-1"
   }, /*#__PURE__*/React.createElement("button", {
@@ -1261,14 +1251,14 @@ function App() {
         startCamera();
       }
     },
-    className: "inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
+    className: "inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-plum-900 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "camera",
     className: "w-3.5 h-3.5"
   }), /*#__PURE__*/React.createElement("span", null, "Retake Photo")), /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => setError(null),
-    className: "text-xs text-amber-800 hover:text-amber-950 underline font-medium"
+    className: "text-xs text-plum-700 hover:text-plum-950 underline font-medium"
   }, "Dismiss")))), /*#__PURE__*/React.createElement("button", {
     onClick: () => setError(null),
     className: "text-amber-500 hover:text-amber-700 p-1.5 rounded-lg hover:bg-amber-100/60 transition-colors shrink-0",
@@ -1281,59 +1271,59 @@ function App() {
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-center max-w-2xl mx-auto space-y-2"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200/60 text-xs font-medium"
+    className: "inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-plum-100/70 text-plum-900 border border-lavender-300/80 text-xs font-medium"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "sparkles",
     className: "w-3.5 h-3.5"
   }), /*#__PURE__*/React.createElement("span", null, "Pediatric Personalization & Records")), /*#__PURE__*/React.createElement("h1", {
-    className: "text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+    className: "text-2xl sm:text-3xl font-extrabold text-plum-950 tracking-tight"
   }, "Infant Screening Profile"), /*#__PURE__*/React.createElement("p", {
-    className: "text-sm text-slate-500 leading-relaxed"
+    className: "text-sm text-plum-600 leading-relaxed"
   }, "Neonatal jaundice follows natural physiological progression. Patient age, gestation, and multi-day image records provide clinical tracking over time.")), /*#__PURE__*/React.createElement("div", {
     className: "max-w-4xl mx-auto"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between mb-3"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-xs font-bold uppercase tracking-wider text-slate-500"
+    className: "text-xs font-bold uppercase tracking-wider text-plum-600"
   }, "Select Patient Record"), /*#__PURE__*/React.createElement("span", {
-    className: "text-xs text-teal-700 font-semibold"
+    className: "text-xs text-plum-900 font-semibold"
   }, "Active: ", activePatient.name)), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-2 sm:grid-cols-4 gap-3"
   }, patients.map(p => /*#__PURE__*/React.createElement("button", {
     key: p.id,
     onClick: () => selectPatientProfile(p),
-    className: `p-3.5 rounded-2xl border text-left transition-all ${activePatientId === p.id ? "bg-white border-teal-500 ring-2 ring-teal-500/20 shadow-sm" : "bg-white/60 border-slate-200 hover:bg-white hover:border-slate-300"}`
+    className: `p-3.5 rounded-2xl border text-left transition-all ${activePatientId === p.id ? "bg-white border-plum-900 ring-2 ring-violet-500/20 shadow-sm" : "bg-white/70 border-lavender-300/60 hover:bg-white hover:border-lavender-400"}`
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-xs font-bold text-slate-900"
+    className: "text-xs font-bold text-plum-950"
   }, p.name), activePatientId === p.id && /*#__PURE__*/React.createElement("span", {
-    className: "w-2 h-2 rounded-full bg-teal-600"
+    className: "w-2 h-2 rounded-full bg-plum-900"
   })), /*#__PURE__*/React.createElement("p", {
-    className: "text-[11px] text-slate-500 mt-0.5"
+    className: "text-[11px] text-plum-600 mt-0.5"
   }, p.ageValue, " ", p.ageUnit, " • ", p.gestation), /*#__PURE__*/React.createElement("div", {
-    className: "mt-2 flex items-center space-x-1 text-[10px] text-slate-400"
+    className: "mt-2 flex items-center space-x-1 text-[10px] text-plum-500"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "image",
     className: "w-3 h-3"
   }), /*#__PURE__*/React.createElement("span", null, p.images ? p.images.length : 0, " screened photos")))))), /*#__PURE__*/React.createElement("div", {
-    className: "max-w-4xl mx-auto bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm space-y-6"
+    className: "max-w-4xl mx-auto bg-white rounded-3xl border border-lavender-300/60 p-6 sm:p-8 shadow-sm space-y-6"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2"
+    className: "flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-lavender-100 gap-2"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
-    className: "text-base font-bold text-slate-900"
+    className: "text-base font-bold text-plum-950"
   }, activePatient.name, "'s Medical Profile"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-500"
+    className: "text-xs text-plum-600"
   }, activePatient.notes || "Standard clinical screening observation.")), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold uppercase"
+    className: "px-3 py-1 rounded-full bg-plum-100/70 text-plum-900 text-xs font-semibold uppercase"
   }, activePatient.gestation), /*#__PURE__*/React.createElement("span", {
-    className: "px-3 py-1 rounded-full bg-teal-50 text-teal-800 text-xs font-semibold"
+    className: "px-3 py-1 rounded-full bg-plum-100/70 text-plum-900 text-xs font-semibold"
   }, activePatient.feeding))), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 sm:grid-cols-3 gap-4"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5"
+    className: "block text-xs font-bold uppercase tracking-wider text-plum-600 mb-1.5"
   }, "Infant Name / Identifier"), /*#__PURE__*/React.createElement("input", {
     type: "text",
     value: activePatient.name,
@@ -1344,9 +1334,9 @@ function App() {
         name: val
       } : p));
     },
-    className: "w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+    className: "w-full px-3.5 py-2.5 rounded-xl bg-plum-50/50 border border-lavender-300/70 text-xs font-semibold text-plum-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5"
+    className: "block text-xs font-bold uppercase tracking-wider text-plum-600 mb-1.5"
   }, "Postnatal Age (", activePatient.ageUnit, ")"), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement("input", {
@@ -1361,25 +1351,25 @@ function App() {
         ageValue: val
       } : p));
     },
-    className: "w-24 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 text-center focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+    className: "w-24 px-3 py-2 rounded-xl bg-plum-50/50 border border-lavender-300/70 text-sm font-bold text-plum-950 text-center focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold"
+    className: "flex bg-plum-100/60 p-0.5 rounded-lg text-xs font-semibold"
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => setPatients(prev => prev.map(p => p.id === activePatientId ? {
       ...p,
       ageUnit: "hours"
     } : p)),
-    className: `px-2 py-1 rounded-md ${activePatient.ageUnit === "hours" ? "bg-white text-teal-700 shadow-xs" : "text-slate-500"}`
+    className: `px-2 py-1 rounded-md ${activePatient.ageUnit === "hours" ? "bg-white text-plum-900 shadow-xs" : "text-plum-600"}`
   }, "Hours"), /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => setPatients(prev => prev.map(p => p.id === activePatientId ? {
       ...p,
       ageUnit: "days"
     } : p)),
-    className: `px-2 py-1 rounded-md ${activePatient.ageUnit === "days" ? "bg-white text-teal-700 shadow-xs" : "text-slate-500"}`
+    className: `px-2 py-1 rounded-md ${activePatient.ageUnit === "days" ? "bg-white text-plum-900 shadow-xs" : "text-plum-600"}`
   }, "Days")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5"
+    className: "block text-xs font-bold uppercase tracking-wider text-plum-600 mb-1.5"
   }, "Gestational Maturity"), /*#__PURE__*/React.createElement("select", {
     value: activePatient.gestation,
     onChange: e => {
@@ -1389,7 +1379,7 @@ function App() {
         gestation: val
       } : p));
     },
-    className: "w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+    className: "w-full px-3 py-2.5 rounded-xl bg-plum-50/50 border border-lavender-300/70 text-xs font-semibold text-plum-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
   }, /*#__PURE__*/React.createElement("option", {
     value: "full-term"
   }, "Full-Term (≥ 37 weeks)"), /*#__PURE__*/React.createElement("option", {
@@ -1397,33 +1387,33 @@ function App() {
   }, "Late Preterm (35 – 36.6 wks)"), /*#__PURE__*/React.createElement("option", {
     value: "preterm"
   }, "Preterm (< 35 weeks)")))), /*#__PURE__*/React.createElement("div", {
-    className: "pt-4 border-t border-slate-100 space-y-3"
+    className: "pt-4 border-t border-lavender-100 space-y-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "clock",
-    className: "w-4 h-4 text-teal-600"
+    className: "w-4 h-4 text-plum-900"
   }), /*#__PURE__*/React.createElement("h4", {
-    className: "text-xs font-bold uppercase tracking-wider text-slate-800"
+    className: "text-xs font-bold uppercase tracking-wider text-plum-950"
   }, "Screening Images & Tracking History (", activePatient.images ? activePatient.images.length : 0, ")")), /*#__PURE__*/React.createElement("span", {
-    className: "text-xs text-slate-500"
+    className: "text-xs text-plum-600"
   }, "Non-destructive dermal records")), !activePatient.images || activePatient.images.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    className: "p-8 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 text-center space-y-3"
+    className: "p-8 rounded-2xl bg-plum-50/50 border-2 border-dashed border-lavender-300/80 text-center space-y-3"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto"
+    className: "w-12 h-12 rounded-2xl bg-plum-100/80 text-plum-900 flex items-center justify-center mx-auto"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "camera",
     className: "w-6 h-6"
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h5", {
-    className: "text-sm font-bold text-slate-800"
+    className: "text-sm font-bold text-plum-950"
   }, "No screening photos recorded yet"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-500 max-w-sm mx-auto mt-0.5"
+    className: "text-xs text-plum-600 max-w-sm mx-auto mt-0.5"
   }, "Capture your first image using the live camera or upload a clear photo of ", activePatient.name, "'s forehead.")), /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => setCurrentStep(2),
-    className: "inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs"
+    className: "inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-bold transition-all shadow-xs"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "camera",
     className: "w-3.5 h-3.5"
@@ -1435,7 +1425,7 @@ function App() {
   }, activePatient.images.map(imgRecord => {
     const isSelected = activeImageRecord && activeImageRecord.id === imgRecord.id;
     const ra = imgRecord.currentAnalysis?.risk_assessment;
-    const riskColor = ra?.color || "#059669";
+    const riskColor = ra?.color || "#1E6F43";
     const riskCategory = ra?.risk_category || "SCREENED";
     return /*#__PURE__*/React.createElement("div", {
       key: imgRecord.id,
@@ -1447,9 +1437,9 @@ function App() {
           performAnalysis(imgRecord.rawImage, "auto", activePatient.id);
         }
       },
-      className: `group bg-slate-50 rounded-2xl border p-3.5 cursor-pointer transition-all ${isSelected ? "border-teal-500 ring-2 ring-teal-500/20 bg-white shadow-sm" : "border-slate-200 hover:border-teal-300 hover:bg-white"}`
+      className: `group bg-plum-50/40 rounded-2xl border p-3.5 cursor-pointer transition-all ${isSelected ? "border-plum-900 ring-2 ring-violet-500/20 bg-white shadow-sm" : "border-lavender-300/60 hover:border-lavender-400 hover:bg-white"}`
     }, /*#__PURE__*/React.createElement("div", {
-      className: "relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 mb-2"
+      className: "relative aspect-[4/3] rounded-xl overflow-hidden bg-plum-100/50 border border-lavender-200 mb-2"
     }, /*#__PURE__*/React.createElement(ImageWithFallback, {
       src: imgRecord.rawImage,
       alt: "Infant screening photo",
@@ -1464,11 +1454,11 @@ function App() {
     }, riskCategory.replace("_", " ")))), /*#__PURE__*/React.createElement("div", {
       className: "flex items-center justify-between text-[11px]"
     }, /*#__PURE__*/React.createElement("span", {
-      className: "font-semibold text-slate-800"
+      className: "font-semibold text-plum-950"
     }, imgRecord.formattedDate), /*#__PURE__*/React.createElement("span", {
-      className: "text-slate-400 capitalize"
+      className: "text-plum-500 capitalize"
     }, imgRecord.activeCorrection || "auto")), imgRecord.tracking && /*#__PURE__*/React.createElement("div", {
-      className: "mt-1 flex items-center space-x-1.5 text-[10px] text-teal-700"
+      className: "mt-1 flex items-center space-x-1.5 text-[10px] text-plum-800"
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "target",
       className: "w-3 h-3"
@@ -1484,41 +1474,41 @@ function App() {
         startCamera();
       }
     },
-    className: "w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold text-sm shadow-md shadow-teal-500/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
+    className: "w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-plum-900 to-violet-700 hover:from-plum-950 hover:to-violet-800 text-white font-bold text-sm shadow-md shadow-plum-900/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "camera",
     className: "w-4 h-4"
   }), /*#__PURE__*/React.createElement("span", null, "Capture New Photo for ", activePatient.name, " →"))))), currentStep === 2 && /*#__PURE__*/React.createElement("div", {
     className: "space-y-6 animate-fadeIn"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs"
+    className: "flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-lavender-300/60 shadow-xs"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => setCurrentStep(1),
-    className: "p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+    className: "p-2 rounded-xl text-plum-400 hover:text-plum-950 hover:bg-plum-100/60 transition-colors"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "chevron-right",
     className: "w-4 h-4 rotate-180"
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-sm font-bold text-slate-900"
+    className: "text-sm font-bold text-plum-950"
   }, activePatient.name), /*#__PURE__*/React.createElement("span", {
-    className: "text-xs text-slate-500"
+    className: "text-xs text-plum-600"
   }, "• ", activePatient.ageValue, " ", activePatient.ageUnit, " old"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 uppercase"
+    className: "text-[10px] font-semibold px-2 py-0.5 rounded-full bg-plum-100/70 text-plum-900 uppercase"
   }, activePatient.gestation)), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-500"
+    className: "text-xs text-plum-600"
   }, "Live anatomical tracking active for forehead and sclera"))), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-1 bg-slate-100 p-1 rounded-2xl self-start sm:self-auto"
+    className: "flex items-center space-x-1 bg-plum-100/60 p-1 rounded-2xl border border-lavender-200/60 self-start sm:self-auto"
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => {
       setCaptureMode("camera");
       startCamera();
     },
-    className: `flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${captureMode === "camera" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`
+    className: `flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${captureMode === "camera" ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"}`
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "camera",
     className: "w-3.5 h-3.5"
@@ -1528,7 +1518,7 @@ function App() {
       setCaptureMode("upload");
       stopCamera();
     },
-    className: `flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${captureMode === "upload" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`
+    className: `flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${captureMode === "upload" ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"}`
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "upload",
     className: "w-3.5 h-3.5"
@@ -1553,7 +1543,7 @@ function App() {
     className: "flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-xs border border-white/10 shadow-sm pointer-events-auto"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "target",
-    className: "w-3.5 h-3.5 text-teal-400"
+    className: "w-3.5 h-3.5 text-lavender-300"
   }), /*#__PURE__*/React.createElement("span", {
     className: "font-semibold"
   }, analysisResult?.tracking?.distance_advice || "Target ~25 cm distance")), /*#__PURE__*/React.createElement("div", {
@@ -1574,7 +1564,7 @@ function App() {
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => setShowBiometricOverlay(!showBiometricOverlay),
-    className: `px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-md transition-all border flex items-center space-x-1.5 ${showBiometricOverlay ? "bg-teal-500/80 text-white border-teal-400/30" : "bg-slate-900/70 text-slate-300 border-white/10"}`
+    className: `px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-md transition-all border flex items-center space-x-1.5 ${showBiometricOverlay ? "bg-violet-700/80 text-white border-lavender-300/40" : "bg-slate-900/70 text-slate-300 border-white/10"}`
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "eye",
     className: "w-3.5 h-3.5"
@@ -1590,9 +1580,9 @@ function App() {
     className: "w-full h-full flex flex-col items-center justify-center p-6 text-center"
   }, /*#__PURE__*/React.createElement("div", {
     onClick: () => fileInputRef.current?.click(),
-    className: "border-2 border-dashed border-slate-700 hover:border-teal-500/80 rounded-3xl p-8 w-full h-full flex flex-col items-center justify-center cursor-pointer transition-colors group bg-slate-800/40"
+    className: "border-2 border-dashed border-slate-700 hover:border-lavender-300/80 rounded-3xl p-8 w-full h-full flex flex-col items-center justify-center cursor-pointer transition-colors group bg-slate-800/40"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-14 h-14 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center group-hover:scale-110 transition-transform"
+    className: "w-14 h-14 rounded-2xl bg-plum-500/20 text-lavender-300 flex items-center justify-center group-hover:scale-110 transition-transform"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "upload",
     className: "w-7 h-7"
@@ -1601,7 +1591,7 @@ function App() {
   }, "Upload Infant Photograph"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-400 mt-1 max-w-xs"
   }, "Select a clear photo of ", activePatient.name, "'s forehead or face under indoor or natural light."), /*#__PURE__*/React.createElement("span", {
-    className: "mt-4 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold transition-colors"
+    className: "mt-4 px-4 py-2 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-semibold transition-colors"
   }, "Browse Local Files"), /*#__PURE__*/React.createElement("input", {
     ref: fileInputRef,
     type: "file",
@@ -1609,11 +1599,11 @@ function App() {
     onChange: handleFileUpload,
     className: "hidden"
   })))), /*#__PURE__*/React.createElement("div", {
-    className: "bg-white rounded-3xl border border-slate-200/80 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4"
+    className: "bg-white rounded-3xl border border-lavender-300/60 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-3 text-xs text-slate-500"
+    className: "flex items-center space-x-3 text-xs text-plum-600"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "w-2.5 h-2.5 rounded-full bg-teal-500"
+    className: "w-2.5 h-2.5 rounded-full bg-plum-900"
   }), /*#__PURE__*/React.createElement("span", null, "Ready to screen ", activePatient.name)), captureMode === "camera" && /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3 w-full sm:w-auto"
   }, /*#__PURE__*/React.createElement("button", {
@@ -1630,7 +1620,7 @@ function App() {
         });
       }
     },
-    className: "flex-1 sm:flex-none py-3 px-6 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold text-sm shadow-md shadow-teal-500/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.98]"
+    className: "flex-1 sm:flex-none py-3 px-6 rounded-2xl bg-gradient-to-r from-plum-900 to-violet-700 hover:from-plum-950 hover:to-violet-800 text-white font-bold text-sm shadow-md shadow-plum-900/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.98]"
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-4 h-4 rounded-full border-2 border-white flex items-center justify-center"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1638,86 +1628,86 @@ function App() {
   })), /*#__PURE__*/React.createElement("span", null, "Freeze Snapshot & Screen"))))), /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs space-y-4"
+    className: "bg-white rounded-3xl border border-lavender-300/60 p-5 shadow-xs space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "shield-check",
-    className: "w-4 h-4 text-teal-600"
+    className: "w-4 h-4 text-plum-900"
   }), /*#__PURE__*/React.createElement("h3", {
-    className: "text-xs font-bold uppercase tracking-wider text-slate-900"
+    className: "text-xs font-bold uppercase tracking-wider text-plum-950"
   }, "Capture Quality Rules")), /*#__PURE__*/React.createElement("ul", {
-    className: "space-y-3 text-xs text-slate-600"
+    className: "space-y-3 text-xs text-plum-700"
   }, /*#__PURE__*/React.createElement("li", {
     className: "flex items-start space-x-2.5"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-4 h-4 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 mt-0.5"
+    className: "w-4 h-4 rounded-full bg-plum-100/80 text-plum-900 flex items-center justify-center shrink-0 mt-0.5"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "check",
     className: "w-2.5 h-2.5"
   })), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("strong", {
-    className: "text-slate-800"
+    className: "text-plum-950"
   }, "Distance:"), " Hold phone 20–30 cm away. Align baby's forehead within the dashed guide oval.")), /*#__PURE__*/React.createElement("li", {
     className: "flex items-start space-x-2.5"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-4 h-4 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 mt-0.5"
+    className: "w-4 h-4 rounded-full bg-plum-100/80 text-plum-900 flex items-center justify-center shrink-0 mt-0.5"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "check",
     className: "w-2.5 h-2.5"
   })), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("strong", {
-    className: "text-slate-800"
+    className: "text-plum-950"
   }, "Indirect Lighting:"), " Soft indoor lighting or window daylight is best. Avoid harsh directional flashlights.")), /*#__PURE__*/React.createElement("li", {
     className: "flex items-start space-x-2.5"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-4 h-4 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 mt-0.5"
+    className: "w-4 h-4 rounded-full bg-plum-100/80 text-plum-900 flex items-center justify-center shrink-0 mt-0.5"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "check",
     className: "w-2.5 h-2.5"
   })), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("strong", {
-    className: "text-slate-800"
+    className: "text-plum-950"
   }, "Clear Landmarks:"), " Ensure forehead and eyes are uncovered by caps or blankets.")))), /*#__PURE__*/React.createElement("div", {
-    className: "bg-gradient-to-br from-teal-50/70 to-slate-50 rounded-3xl border border-teal-200/70 p-5 shadow-xs space-y-3"
+    className: "bg-gradient-to-br from-plum-100/60 to-lavender-50 rounded-3xl border border-lavender-300/80 p-5 shadow-xs space-y-3"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2 text-teal-800"
+    className: "flex items-center space-x-2 text-plum-950"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "qr-code",
-    className: "w-4 h-4 text-teal-600"
+    className: "w-4 h-4 text-plum-900"
   }), /*#__PURE__*/React.createElement("h4", {
     className: "text-xs font-bold uppercase tracking-wider"
   }, "Reference Card (Optional)")), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-600 leading-relaxed"
+    className: "text-xs text-plum-700 leading-relaxed"
   }, "Place an ArUco color card next to the cheek for ground-truth matrix color correction. If not available, NeoScan automatically uses the sclera and Shades-of-Gray constancy."), /*#__PURE__*/React.createElement("a", {
     href: "/api/v1/reference-card",
     target: "_blank",
     rel: "noreferrer",
-    className: "inline-flex items-center space-x-1.5 text-xs font-bold text-teal-700 hover:text-teal-800 hover:underline"
+    className: "inline-flex items-center space-x-1.5 text-xs font-bold text-plum-900 hover:text-violet-700 hover:underline"
   }, /*#__PURE__*/React.createElement("span", null, "Download Printable Card"), /*#__PURE__*/React.createElement(Icon, {
     name: "chevron-right",
     className: "w-3.5 h-3.5"
   }))), /*#__PURE__*/React.createElement("div", {
-    className: "bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden"
+    className: "bg-white rounded-3xl border border-lavender-300/60 shadow-xs overflow-hidden"
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => setAdvancedOpticalOpen(!advancedOpticalOpen),
-    className: "w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
+    className: "w-full p-4 flex items-center justify-between text-left hover:bg-plum-50/60 transition-colors"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2 text-slate-700"
+    className: "flex items-center space-x-2 text-plum-900"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "sliders",
-    className: "w-4 h-4 text-slate-400"
+    className: "w-4 h-4 text-plum-500"
   }), /*#__PURE__*/React.createElement("span", {
     className: "text-xs font-bold"
   }, "Color Constancy Algorithm")), /*#__PURE__*/React.createElement(Icon, {
     name: advancedOpticalOpen ? "chevron-up" : "chevron-down",
-    className: "w-4 h-4 text-slate-400"
+    className: "w-4 h-4 text-plum-500"
   })), advancedOpticalOpen && /*#__PURE__*/React.createElement("div", {
-    className: "p-4 pt-0 border-t border-slate-100 space-y-2"
+    className: "p-4 pt-0 border-t border-lavender-100 space-y-2"
   }, /*#__PURE__*/React.createElement("p", {
-    className: "text-[11px] text-slate-500"
+    className: "text-[11px] text-plum-600"
   }, "Choose the computer vision color constancy method used to remove ambient lighting bias:"), /*#__PURE__*/React.createElement("select", {
     value: correctionMethod,
     onChange: e => handleMethodChange(e.target.value),
-    className: "w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+    className: "w-full py-2 px-3 rounded-xl bg-plum-50/50 border border-lavender-300 text-xs font-semibold text-plum-950 focus:outline-none focus:ring-2 focus:ring-violet-500"
   }, /*#__PURE__*/React.createElement("option", {
     value: "auto"
   }, "Auto-Select (Smart Hierarchy: Card → Sclera → Shades of Gray)"), /*#__PURE__*/React.createElement("option", {
@@ -1737,18 +1727,18 @@ function App() {
   }, "No Correction (Raw Uncalibrated RGB)"))))))), currentStep === 3 && activeImageRecord && /*#__PURE__*/React.createElement("div", {
     className: "space-y-8 animate-fadeIn"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs"
+    className: "flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-3xl border border-lavender-300/60 shadow-xs"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-10 h-10 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-200/60"
+    className: "w-10 h-10 rounded-2xl bg-plum-100/70 text-plum-900 flex items-center justify-center border border-lavender-300/80"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "baby",
     className: "w-5 h-5"
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
-    className: "text-sm font-bold text-slate-900"
+    className: "text-sm font-bold text-plum-950"
   }, activePatient.name, " • Clinical Screening Record"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-500"
+    className: "text-xs text-plum-600"
   }, "Age: ", activePatient.ageValue, " ", activePatient.ageUnit, " • Gestation: ", activePatient.gestation, " • Strategy: ", activeImageRecord.activeCorrection || "auto"))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement("button", {
@@ -1760,14 +1750,14 @@ function App() {
         startCamera();
       }
     },
-    className: "px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-xs font-bold text-slate-700 transition-colors flex items-center space-x-1.5"
+    className: "px-4 py-2 rounded-xl bg-plum-100/60 hover:bg-plum-200/70 text-xs font-bold text-plum-900 transition-colors flex items-center space-x-1.5"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "camera",
     className: "w-3.5 h-3.5"
   }), /*#__PURE__*/React.createElement("span", null, "Rescreen / Retake")), /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => window.print(),
-    className: "px-4 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-xs font-bold text-teal-800 border border-teal-200/60 transition-colors flex items-center space-x-1.5"
+    className: "px-4 py-2 rounded-xl bg-plum-100/70 hover:bg-plum-200/80 text-xs font-bold text-plum-900 border border-lavender-300/80 transition-colors flex items-center space-x-1.5"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "printer",
     className: "w-3.5 h-3.5"
@@ -1792,9 +1782,9 @@ function App() {
     name: riskDetails.category === "POSSIBLE_JAUNDICE_SIGNS" ? "alert-triangle" : riskDetails.category === "INCONCLUSIVE" ? "alert-circle" : "shield-check",
     className: "w-4 h-4"
   }), /*#__PURE__*/React.createElement("span", null, riskDetails.badge)), /*#__PURE__*/React.createElement("h1", {
-    className: "text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"
+    className: "text-2xl sm:text-3xl font-extrabold text-plum-950 tracking-tight"
   }, riskDetails.title), /*#__PURE__*/React.createElement("p", {
-    className: "text-sm sm:text-base text-slate-600 max-w-2xl leading-relaxed"
+    className: "text-sm sm:text-base text-plum-700 max-w-2xl leading-relaxed"
   }, riskDetails.recommendation), riskDetails.reliabilityNote && /*#__PURE__*/React.createElement("div", {
     className: "p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-900 flex items-start space-x-2.5"
   }, /*#__PURE__*/React.createElement(Icon, {
@@ -1803,35 +1793,35 @@ function App() {
   }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
     className: "font-bold block text-amber-950"
   }, "Reliability Caution:"), /*#__PURE__*/React.createElement("span", null, riskDetails.reliabilityNote)))), /*#__PURE__*/React.createElement("div", {
-    className: "bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 p-5 shadow-xs shrink-0 w-full md:w-72 space-y-3"
+    className: "bg-white/95 backdrop-blur-md rounded-2xl border border-lavender-300/70 p-5 shadow-xs shrink-0 w-full md:w-72 space-y-3"
   }, riskDetails.modelScore !== null && riskDetails.modelScore !== undefined && /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between text-xs pb-1 border-b border-slate-100"
+    className: "flex items-center justify-between text-xs pb-1 border-b border-lavender-100"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "font-semibold text-slate-500"
+    className: "font-semibold text-plum-600"
   }, "Model Score:"), /*#__PURE__*/React.createElement("span", {
-    className: "font-bold text-teal-800 font-mono text-sm"
+    className: "font-bold text-plum-950 font-mono text-sm"
   }, riskDetails.modelScore.toFixed(4))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between text-xs"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "font-semibold text-slate-500"
+    className: "font-semibold text-plum-600"
   }, "CIE b* Yellowness:"), /*#__PURE__*/React.createElement("span", {
-    className: "font-bold text-slate-900 font-mono text-sm"
+    className: "font-bold text-plum-950 font-mono text-sm"
   }, riskDetails.bStar !== "N/A" ? riskDetails.bStar : analysisResult?.fused_biomarkers?.fused_lab_b_star?.toFixed(1) || "N/A")), /*#__PURE__*/React.createElement("div", {
     className: "space-y-1.5 relative pt-2"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-full h-3 rounded-full bg-slate-200 overflow-hidden flex"
+    className: "w-full h-3 rounded-full bg-plum-100 overflow-hidden flex"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "h-full bg-emerald-500",
+    className: "h-full bg-clinical-normal",
     style: {
       width: "50%"
     }
   }), /*#__PURE__*/React.createElement("div", {
-    className: "h-full bg-amber-500",
+    className: "h-full bg-clinical-warning",
     style: {
       width: "25%"
     }
   }), /*#__PURE__*/React.createElement("div", {
-    className: "h-full bg-rose-500",
+    className: "h-full bg-clinical-elevated",
     style: {
       width: "25%"
     }
@@ -1842,70 +1832,70 @@ function App() {
       backgroundColor: riskDetails.color
     }
   }), /*#__PURE__*/React.createElement("div", {
-    className: "flex justify-between text-[10px] text-slate-400 font-medium"
+    className: "flex justify-between text-[10px] text-plum-500 font-medium"
   }, /*#__PURE__*/React.createElement("span", null, "Normal (<16)"), /*#__PURE__*/React.createElement("span", null, "Mild (16-22)"), /*#__PURE__*/React.createElement("span", null, "Elevated (>22)"))), /*#__PURE__*/React.createElement("div", {
-    className: "pt-2 border-t border-slate-100 flex items-center justify-between text-xs"
+    className: "pt-2 border-t border-lavender-100 flex items-center justify-between text-xs"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-slate-500"
+    className: "text-plum-600"
   }, "Bilirubin Index (BIx):"), /*#__PURE__*/React.createElement("span", {
-    className: "font-bold text-slate-800 font-mono"
+    className: "font-bold text-plum-950 font-mono"
   }, riskDetails.bix !== "N/A" ? riskDetails.bix : analysisResult?.fused_biomarkers?.fused_bix?.toFixed(3) || "N/A")), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between text-xs"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-slate-500"
+    className: "text-plum-600"
   }, "Reliability / Quality:"), /*#__PURE__*/React.createElement("span", {
-    className: `font-bold font-mono ${riskDetails.reliability === "reduced" ? "text-amber-600" : "text-teal-700"}`
+    className: `font-bold font-mono ${riskDetails.reliability === "reduced" ? "text-amber-600" : "text-plum-900"}`
   }, riskDetails.reliability === "reduced" ? "Reduced" : "Normal", " (", riskDetails.confidence, "%)")))), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200/60"
+    className: "grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-lavender-200/80"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "bg-white/90 rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1"
+    className: "bg-white/95 rounded-2xl p-4 border border-lavender-200/70 shadow-xs space-y-1"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2 text-slate-800 font-bold text-xs"
+    className: "flex items-center space-x-2 text-plum-950 font-bold text-xs"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "droplet",
-    className: "w-4 h-4 text-teal-600"
+    className: "w-4 h-4 text-plum-900"
   }), /*#__PURE__*/React.createElement("span", null, "Feeding & Hydration")), /*#__PURE__*/React.createElement("p", {
-    className: "text-[11px] text-slate-500 leading-relaxed"
+    className: "text-[11px] text-plum-600 leading-relaxed"
   }, "Feed 8–12 times per 24 hours. Frequent feeding stimulates bowel movements, which naturally excretes bilirubin.")), /*#__PURE__*/React.createElement("div", {
-    className: "bg-white/90 rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1"
+    className: "bg-white/95 rounded-2xl p-4 border border-lavender-200/70 shadow-xs space-y-1"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2 text-slate-800 font-bold text-xs"
+    className: "flex items-center space-x-2 text-plum-950 font-bold text-xs"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "sun",
-    className: "w-4 h-4 text-amber-500"
+    className: "w-4 h-4 text-amber-600"
   }), /*#__PURE__*/React.createElement("span", null, "Daylight Observation")), /*#__PURE__*/React.createElement("p", {
-    className: "text-[11px] text-slate-500 leading-relaxed"
+    className: "text-[11px] text-plum-600 leading-relaxed"
   }, "Check skin in indirect natural window light. Blanch skin with gentle finger pressure to observe underlying tone.")), /*#__PURE__*/React.createElement("div", {
-    className: "bg-white/90 rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1"
+    className: "bg-white/95 rounded-2xl p-4 border border-lavender-200/70 shadow-xs space-y-1"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2 text-slate-800 font-bold text-xs"
+    className: "flex items-center space-x-2 text-plum-950 font-bold text-xs"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "heart",
-    className: "w-4 h-4 text-rose-500"
+    className: "w-4 h-4 text-clinical-elevated"
   }), /*#__PURE__*/React.createElement("span", null, "When to Call Doctor")), /*#__PURE__*/React.createElement("p", {
-    className: "text-[11px] text-slate-500 leading-relaxed"
+    className: "text-[11px] text-plum-600 leading-relaxed"
   }, "Seek immediate pediatric review if yellowness spreads to abdomen/legs or baby is difficult to wake.")))), /*#__PURE__*/React.createElement("div", {
-    className: "bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-4"
+    className: "bg-white rounded-3xl border border-lavender-300/60 p-6 shadow-xs space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4"
+    className: "flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-lavender-100 pb-4"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
-    className: "text-sm font-bold text-slate-900"
+    className: "text-sm font-bold text-plum-950"
   }, "Multi-Spectrum Visual Inspection"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-500"
+    className: "text-xs text-plum-600"
   }, "Toggle between raw input, illumination correction, and diagnostic overlays")), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-1 bg-slate-100 p-1 rounded-xl text-xs overflow-x-auto"
+    className: "flex items-center space-x-1 bg-plum-100/60 p-1 rounded-xl text-xs overflow-x-auto border border-lavender-200/60"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => setImageCompareMode("corrected"),
-    className: `px-3 py-1.5 rounded-lg font-semibold transition-all ${imageCompareMode === "corrected" ? "bg-white text-teal-800 shadow-sm" : "text-slate-600 hover:text-slate-900"}`
+    className: `px-3 py-1.5 rounded-lg font-semibold transition-all ${imageCompareMode === "corrected" ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"}`
   }, "Corrected"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setImageCompareMode("raw"),
-    className: `px-3 py-1.5 rounded-lg font-semibold transition-all ${imageCompareMode === "raw" ? "bg-white text-teal-800 shadow-sm" : "text-slate-600 hover:text-slate-900"}`
+    className: `px-3 py-1.5 rounded-lg font-semibold transition-all ${imageCompareMode === "raw" ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"}`
   }, "Original Raw"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setImageCompareMode("diagnostic"),
-    className: `px-3 py-1.5 rounded-lg font-semibold transition-all ${imageCompareMode === "diagnostic" ? "bg-white text-teal-800 shadow-sm" : "text-slate-600 hover:text-slate-900"}`
+    className: `px-3 py-1.5 rounded-lg font-semibold transition-all ${imageCompareMode === "diagnostic" ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"}`
   }, "Diagnostic ROIs"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setImageCompareMode("heatmap"),
-    className: `px-3 py-1.5 rounded-lg font-semibold transition-all ${imageCompareMode === "heatmap" ? "bg-white text-teal-800 shadow-sm" : "text-slate-600 hover:text-slate-900"}`
+    className: `px-3 py-1.5 rounded-lg font-semibold transition-all ${imageCompareMode === "heatmap" ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"}`
   }, "Thermal Heatmap"))), /*#__PURE__*/React.createElement("div", {
     className: "relative aspect-[16/10] sm:aspect-video rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center"
   }, /*#__PURE__*/React.createElement(ImageWithFallback, {
@@ -1915,78 +1905,78 @@ function App() {
   }), /*#__PURE__*/React.createElement("div", {
     className: "absolute top-3 left-3 px-3 py-1 rounded-md bg-slate-900/80 backdrop-blur-md text-white text-[11px] font-semibold border border-white/10"
   }, imageCompareMode === "corrected" && `Illumination Corrected (${activeImageRecord.activeCorrection || "auto"})`, imageCompareMode === "raw" && "Original Uncorrected Capture", imageCompareMode === "diagnostic" && "Anatomical Landmark ROI Contours", imageCompareMode === "heatmap" && "Dermal Bilirubin Thermal Heatmap"))), /*#__PURE__*/React.createElement("div", {
-    className: "bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden"
+    className: "bg-white rounded-3xl border border-lavender-200/80 shadow-xs overflow-hidden"
   }, /*#__PURE__*/React.createElement("div", {
     onClick: () => setClinicalAccordionOpen(!clinicalAccordionOpen),
-    className: "p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition-colors"
+    className: "p-6 flex items-center justify-between cursor-pointer hover:bg-plum-50/50 transition-colors"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center"
+    className: "w-9 h-9 rounded-xl bg-plum-100/70 text-plum-900 flex items-center justify-center"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "activity",
     className: "w-5 h-5"
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
-    className: "text-sm font-bold text-slate-900"
+    className: "text-sm font-bold text-plum-950"
   }, "Clinical Insights & Technical Breakdown"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-500"
+    className: "text-xs text-plum-700"
   }, "Optical color constancy metrics, anatomical ROI yellowness, and ML model telemetry"))), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2 text-xs font-semibold text-teal-700"
+    className: "flex items-center space-x-2 text-xs font-semibold text-plum-900 hover:text-plum-950"
   }, /*#__PURE__*/React.createElement("span", null, clinicalAccordionOpen ? "Hide Breakdown" : "View Breakdown"), /*#__PURE__*/React.createElement(Icon, {
     name: clinicalAccordionOpen ? "chevron-up" : "chevron-down",
     className: "w-4 h-4"
   }))), clinicalAccordionOpen && /*#__PURE__*/React.createElement("div", {
-    className: "p-6 pt-0 border-t border-slate-100 space-y-6"
+    className: "p-6 pt-0 border-t border-lavender-100/80 space-y-6"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2 border-b border-slate-100 pb-3"
+    className: "flex items-center space-x-2 border-b border-lavender-100/80 pb-3"
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => setClinicalTab("optical"),
-    className: `px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${clinicalTab === "optical" ? "bg-teal-50 text-teal-800 border border-teal-200/60 shadow-xs" : "text-slate-500 hover:text-slate-800"}`
+    className: `px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${clinicalTab === "optical" ? "bg-plum-100/80 text-plum-950 border border-lavender-300/80 shadow-xs" : "text-plum-700 hover:text-plum-950"}`
   }, "Optical Normalization"), /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => setClinicalTab("biomarkers"),
-    className: `px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${clinicalTab === "biomarkers" ? "bg-teal-50 text-teal-800 border border-teal-200/60 shadow-xs" : "text-slate-500 hover:text-slate-800"}`
+    className: `px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${clinicalTab === "biomarkers" ? "bg-plum-100/80 text-plum-950 border border-lavender-300/80 shadow-xs" : "text-plum-700 hover:text-plum-950"}`
   }, "Biometric ROIs (b*, Cr/Cb)"), /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => setClinicalTab("model"),
-    className: `px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${clinicalTab === "model" ? "bg-teal-50 text-teal-800 border border-teal-200/60 shadow-xs" : "text-slate-500 hover:text-slate-800"}`
+    className: `px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${clinicalTab === "model" ? "bg-plum-100/80 text-plum-950 border border-lavender-300/80 shadow-xs" : "text-plum-700 hover:text-plum-950"}`
   }, "Model & Quality Gating")), clinicalTab === "optical" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-2 sm:grid-cols-4 gap-4"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "bg-slate-50 p-4 rounded-2xl border border-slate-200/70"
+    className: "bg-plum-50/40 p-4 rounded-2xl border border-lavender-200/70"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] font-bold uppercase text-slate-400"
+    className: "text-[10px] font-bold uppercase text-plum-600"
   }, "Active Method"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs font-bold text-slate-900 mt-1 uppercase"
+    className: "text-xs font-bold text-plum-950 mt-1 uppercase"
   }, analysisResult?.active_correction_method || "auto"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] text-teal-600 mt-1 block"
+    className: "text-[10px] text-plum-800 mt-1 block"
   }, "Illumination compensated")), /*#__PURE__*/React.createElement("div", {
-    className: "bg-slate-50 p-4 rounded-2xl border border-slate-200/70"
+    className: "bg-plum-50/40 p-4 rounded-2xl border border-lavender-200/70"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] font-bold uppercase text-slate-400"
+    className: "text-[10px] font-bold uppercase text-plum-600"
   }, "Ambient CCT"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs font-bold text-slate-900 mt-1 font-mono"
+    className: "text-xs font-bold text-plum-950 mt-1 font-mono"
   }, analysisResult?.lighting_condition?.cct_kelvin || 5500, " K"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] text-slate-500 mt-1 block"
+    className: "text-[10px] text-plum-700 mt-1 block"
   }, analysisResult?.lighting_condition?.category || "Standard Daylight")), /*#__PURE__*/React.createElement("div", {
-    className: "bg-slate-50 p-4 rounded-2xl border border-slate-200/70"
+    className: "bg-plum-50/40 p-4 rounded-2xl border border-lavender-200/70"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] font-bold uppercase text-slate-400"
+    className: "text-[10px] font-bold uppercase text-plum-600"
   }, "Sharpness Index"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs font-bold text-slate-900 mt-1 font-mono"
+    className: "text-xs font-bold text-plum-950 mt-1 font-mono"
   }, analysisResult?.quality_gate?.sharpness_score?.toFixed(1) || "142.0"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] text-emerald-600 mt-1 block"
+    className: "text-[10px] text-clinical-normal font-semibold mt-1 block"
   }, "Passed Quality Gate")), /*#__PURE__*/React.createElement("div", {
-    className: "bg-slate-50 p-4 rounded-2xl border border-slate-200/70"
+    className: "bg-plum-50/40 p-4 rounded-2xl border border-lavender-200/70"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] font-bold uppercase text-slate-400"
+    className: "text-[10px] font-bold uppercase text-plum-600"
   }, "Dermal Coverage"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs font-bold text-slate-900 mt-1 font-mono"
+    className: "text-xs font-bold text-plum-950 mt-1 font-mono"
   }, ((analysisResult?.quality_gate?.valid_pixel_ratio || 0.98) * 100).toFixed(1), "%"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] text-slate-500 mt-1 block"
+    className: "text-[10px] text-plum-700 mt-1 block"
   }, "Specular glare excluded")))), clinicalTab === "biomarkers" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1994,60 +1984,60 @@ function App() {
   }, /*#__PURE__*/React.createElement("table", {
     className: "w-full text-left text-xs"
   }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
-    className: "border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold"
+    className: "border-b border-lavender-200 text-plum-600 uppercase text-[10px] font-bold"
   }, /*#__PURE__*/React.createElement("th", {
     className: "py-2.5 px-3"
   }, "Anatomical Landmark"), /*#__PURE__*/React.createElement("th", {
     className: "py-2.5 px-3"
   }, "Raw b*"), /*#__PURE__*/React.createElement("th", {
-    className: "py-2.5 px-3 font-semibold text-teal-800"
+    className: "py-2.5 px-3 font-semibold text-plum-900"
   }, "Corrected b* (Yellowness)"), /*#__PURE__*/React.createElement("th", {
     className: "py-2.5 px-3"
   }, "Bilirubin Index (BIx)"), /*#__PURE__*/React.createElement("th", {
     className: "py-2.5 px-3"
   }, "Clinical Weight"))), /*#__PURE__*/React.createElement("tbody", {
-    className: "divide-y divide-slate-100 font-mono"
+    className: "divide-y divide-lavender-100 font-mono"
   }, analysisResult?.roi_breakdown && Object.entries(analysisResult.roi_breakdown).map(([k, v]) => /*#__PURE__*/React.createElement("tr", {
     key: k,
-    className: "hover:bg-slate-50"
+    className: "hover:bg-plum-50/50"
   }, /*#__PURE__*/React.createElement("td", {
-    className: "py-3 px-3 font-sans font-bold capitalize text-slate-800"
+    className: "py-3 px-3 font-sans font-bold capitalize text-plum-950"
   }, k), /*#__PURE__*/React.createElement("td", {
-    className: "py-3 px-3 text-slate-500"
+    className: "py-3 px-3 text-plum-700"
   }, v.raw_b_star?.toFixed(2) || "N/A"), /*#__PURE__*/React.createElement("td", {
-    className: "py-3 px-3 font-bold text-teal-700"
+    className: "py-3 px-3 font-bold text-plum-900"
   }, v.corrected_b_star?.toFixed(2) || "N/A"), /*#__PURE__*/React.createElement("td", {
-    className: "py-3 px-3 text-slate-700"
+    className: "py-3 px-3 text-plum-900"
   }, v.corrected_bix?.toFixed(3) || "N/A"), /*#__PURE__*/React.createElement("td", {
-    className: "py-3 px-3 text-slate-600"
+    className: "py-3 px-3 text-plum-700"
   }, ((v.effective_weight || 0.25) * 100).toFixed(0), "%"))))))), clinicalTab === "model" && /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 sm:grid-cols-3 gap-4"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "p-4 rounded-2xl bg-slate-50 border border-slate-200/70"
+    className: "p-4 rounded-2xl bg-plum-50/40 border border-lavender-200/70"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] font-bold uppercase text-slate-400"
+    className: "text-[10px] font-bold uppercase text-plum-600"
   }, "Methodology / Engine"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs font-bold text-slate-900 mt-1"
+    className: "text-xs font-bold text-plum-950 mt-1"
   }, analysisResult?.model_version ? `neoscan_ml (${analysisResult.model_version})` : "Optical Screening"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] text-slate-500 mt-1 block"
+    className: "text-[10px] text-plum-700 mt-1 block"
   }, riskDetails.methodology)), /*#__PURE__*/React.createElement("div", {
-    className: "p-4 rounded-2xl bg-slate-50 border border-slate-200/70"
+    className: "p-4 rounded-2xl bg-plum-50/40 border border-lavender-200/70"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] font-bold uppercase text-slate-400"
+    className: "text-[10px] font-bold uppercase text-plum-600"
   }, "Quality Gating"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs font-bold text-slate-900 mt-1"
+    className: "text-xs font-bold text-plum-950 mt-1"
   }, "Quality & Face Gate"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] text-slate-500 mt-1 block"
+    className: "text-[10px] text-plum-700 mt-1 block"
   }, "Sharpness: ", analysisResult?.quality_gate?.sharpness_score?.toFixed(1) || "Passed", " • Dermal Coverage: ", ((analysisResult?.quality_gate?.valid_pixel_ratio || 0.98) * 100).toFixed(0), "%")), /*#__PURE__*/React.createElement("div", {
-    className: "p-4 rounded-2xl bg-slate-50 border border-slate-200/70"
+    className: "p-4 rounded-2xl bg-plum-50/40 border border-lavender-200/70"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] font-bold uppercase text-slate-400"
+    className: "text-[10px] font-bold uppercase text-plum-600"
   }, "Screening Score & Thresholds"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs font-bold text-teal-700 mt-1 font-mono"
+    className: "text-xs font-bold text-plum-900 mt-1 font-mono"
   }, riskDetails.modelScore !== null && riskDetails.modelScore !== undefined ? `Score: ${riskDetails.modelScore.toFixed(4)} (Cutoff 0.50)` : "b* < 16.0 (Normal)"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] text-emerald-600 mt-1 block"
+    className: "text-[10px] text-clinical-normal font-semibold mt-1 block"
   }, "Reliability: ", riskDetails.reliability || "normal"))), /*#__PURE__*/React.createElement("div", {
     className: "p-4 rounded-2xl bg-amber-50/60 border border-amber-200/70 text-xs text-amber-900 space-y-1"
   }, /*#__PURE__*/React.createElement("p", {
@@ -2058,13 +2048,13 @@ function App() {
   }), /*#__PURE__*/React.createElement("span", null, "Clinical Screening Disclosures & Limitations")), /*#__PURE__*/React.createElement("p", {
     className: "text-[11px] text-amber-800 leading-relaxed"
   }, analysisResult?.disclaimer || "NeoScan is an AI-assisted screening companion designed to support parents and pediatric care teams. It is not an invasive diagnostic device and does not replace confirmed laboratory serum bilirubin (TSB) or clinical transcutaneous bilirubin (TcB) testing. Always seek medical guidance from a licensed pediatrician."))))), /*#__PURE__*/React.createElement("div", {
-    className: "bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs space-y-3"
+    className: "bg-white rounded-3xl border border-lavender-200/80 p-5 shadow-xs space-y-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "text-xs font-bold uppercase tracking-wider text-slate-700"
+    className: "text-xs font-bold uppercase tracking-wider text-plum-950"
   }, activePatient.name, "'s Longitudinal Screenings (", activePatient.images ? activePatient.images.length : 0, ")"), /*#__PURE__*/React.createElement("span", {
-    className: "text-xs text-slate-400"
+    className: "text-xs text-plum-600"
   }, "Click any frame to view")), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3 overflow-x-auto pb-2"
   }, activePatient.images && activePatient.images.map(img => {
@@ -2072,55 +2062,55 @@ function App() {
     return /*#__PURE__*/React.createElement("div", {
       key: img.id,
       onClick: () => setActiveImageId(img.id),
-      className: `w-28 shrink-0 rounded-2xl border p-2 cursor-pointer transition-all ${activeImageRecord && activeImageRecord.id === img.id ? "border-teal-500 ring-2 ring-teal-500/20 bg-teal-50/20" : "border-slate-200 bg-slate-50 hover:border-slate-300"}`
+      className: `w-28 shrink-0 rounded-2xl border p-2 cursor-pointer transition-all ${activeImageRecord && activeImageRecord.id === img.id ? "border-plum-900 ring-2 ring-plum-900/20 bg-plum-50/50" : "border-lavender-200/80 bg-plum-50/30 hover:border-violet-300"}`
     }, /*#__PURE__*/React.createElement("div", {
-      className: "aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 mb-1.5"
+      className: "aspect-[4/3] rounded-xl overflow-hidden bg-plum-100/40 mb-1.5"
     }, /*#__PURE__*/React.createElement(ImageWithFallback, {
       src: img.rawImage,
       alt: "Historical thumbnail",
       className: "w-full h-full"
     })), /*#__PURE__*/React.createElement("div", {
-      className: "text-[10px] font-bold text-slate-800 truncate"
+      className: "text-[10px] font-bold text-plum-950 truncate"
     }, img.formattedDate), /*#__PURE__*/React.createElement("div", {
-      className: "flex items-center justify-between text-[9px] text-slate-400 capitalize mt-0.5"
+      className: "flex items-center justify-between text-[9px] text-plum-600 capitalize mt-0.5"
     }, /*#__PURE__*/React.createElement("span", null, img.activeCorrection || "auto"), isV2Scan ? /*#__PURE__*/React.createElement("span", {
-      className: "text-[8px] font-medium text-teal-700 bg-teal-50 px-1 rounded"
+      className: "text-[8px] font-medium text-plum-900 bg-plum-100/80 px-1 rounded"
     }, "v2.0") : /*#__PURE__*/React.createElement("span", {
-      className: "text-[8px] font-medium text-slate-500 bg-slate-200/60 px-1 rounded"
+      className: "text-[8px] font-medium text-plum-600 bg-plum-100/40 px-1 rounded"
     }, "Legacy")));
   }))))), loading && /*#__PURE__*/React.createElement("div", {
-    className: "fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+    className: "fixed inset-0 z-50 bg-plum-950/70 backdrop-blur-sm flex items-center justify-center p-4"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border border-slate-100 space-y-6"
+    className: "bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border border-lavender-200/80 space-y-6"
   }, /*#__PURE__*/React.createElement("div", {
     className: "relative w-20 h-20 mx-auto flex items-center justify-center"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "absolute inset-0 rounded-full bg-teal-500/20 animate-pulse-ring"
+    className: "absolute inset-0 rounded-full bg-violet-500/20 animate-pulse-ring"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "w-14 h-14 rounded-2xl bg-gradient-to-tr from-teal-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-teal-500/30 animate-heartbeat"
+    className: "w-14 h-14 rounded-2xl bg-gradient-to-tr from-plum-900 to-violet-700 flex items-center justify-center text-white shadow-lg shadow-plum-900/30 animate-heartbeat"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "heart",
     className: "w-7 h-7"
   }))), /*#__PURE__*/React.createElement("div", {
     className: "space-y-2"
   }, /*#__PURE__*/React.createElement("h3", {
-    className: "text-base font-bold text-slate-900"
+    className: "text-base font-bold text-plum-950"
   }, "Evaluating Infant Skin"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-500 leading-relaxed transition-all"
+    className: "text-xs text-plum-700 leading-relaxed transition-all"
   }, loadingMessage)), /*#__PURE__*/React.createElement("div", {
-    className: "w-full bg-slate-100 rounded-full h-1.5 overflow-hidden"
+    className: "w-full bg-plum-100/60 rounded-full h-1.5 overflow-hidden"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "bg-teal-600 h-full rounded-full w-2/3 animate-[spin_2s_linear_infinite]"
+    className: "bg-plum-900 h-full rounded-full w-2/3 animate-[spin_2s_linear_infinite]"
   })))), /*#__PURE__*/React.createElement("footer", {
-    className: "mt-auto border-t border-slate-200/80 bg-white py-6"
+    className: "mt-auto border-t border-lavender-200/80 bg-white py-6"
   }, /*#__PURE__*/React.createElement("div", {
     className: "max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left"
   }, /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-500 max-w-3xl leading-relaxed"
+    className: "text-xs text-plum-700 max-w-3xl leading-relaxed"
   }, /*#__PURE__*/React.createElement("strong", {
-    className: "text-slate-700"
+    className: "text-plum-950"
   }, "Clinical Screening Disclaimer:"), " NeoScan is an AI-assisted screening companion designed to support parents and pediatric care teams. It is not an invasive diagnostic device and does not replace confirmed laboratory serum bilirubin (TSB) or clinical transcutaneous bilirubin (TcB) testing. Always seek medical guidance from a licensed pediatrician."), /*#__PURE__*/React.createElement("div", {
-    className: "text-[11px] font-semibold text-slate-400 shrink-0"
+    className: "text-[11px] font-semibold text-plum-600 shrink-0"
   }, "NeoScan v2.0 • neoscan_ml Engine"))));
 }
 

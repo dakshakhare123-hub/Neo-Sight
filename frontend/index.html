@@ -5,6 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>NeoScan — Intelligent Neonatal Bilirubin Screening</title>
   
+  <!-- Tailwind CSS Configuration & Design Tokens -->
+  <script>
+    window.tailwind = window.tailwind || {};
+    window.tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            plum: {
+              50: '#F7F3FA',
+              100: '#EFE8F5',
+              200: '#E2D5EC',
+              300: '#D4C2E3',
+              400: '#C4A4DA', // Lavender
+              500: '#9E7EB5', // Soft Violet
+              600: '#856E91',
+              700: '#725B7E',
+              800: '#5D2F7B',
+              900: '#4C2365', // Deep Plum
+              950: '#2A1138', // Deep Plum Black
+            },
+            violet: {
+              50: '#F7F4FA',
+              100: '#EFE9F5',
+              200: '#DFCDEB',
+              300: '#C4A4DA', // Lavender
+              400: '#B08FC9',
+              500: '#9E7EB5', // Soft Violet
+              600: '#8E6CA7',
+              700: '#7F5D99', // Violet
+              800: '#674780',
+              900: '#4C2365', // Deep Plum
+            },
+            lavender: {
+              50: '#FAF7FC',
+              100: '#F4EDF8',
+              200: '#E8DDF0',
+              300: '#C4A4DA', // Lavender
+              400: '#B591CF',
+              500: '#9E7EB5', // Soft Violet
+              600: '#86649E',
+              700: '#7F5D99', // Violet
+            },
+            clinical: {
+              danger: '#8F1D40',     // Crimson-Plum (Danger / Elevated Jaundice)
+              dangerBg: '#FDF2F4',
+              dangerBorder: '#F5C2CD',
+              warning: '#9E5700',    // Amber-Gold (Warning / Inconclusive)
+              warningBg: '#FEF9F0',
+              warningBorder: '#F5DEC2',
+              success: '#1E6F43',    // Sage-Emerald (Success / Routine Observation)
+              successBg: '#F0F8F3',
+              successBorder: '#C2E2CF',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
   <!-- Tailwind CSS (Local first, CDN fallback) -->
   <script src="/app/vendor/tailwind.min.js" onerror="this.onerror=null;this.src='https://cdn.tailwindcss.com';"></script>
   
@@ -18,9 +77,24 @@
   <script src="/app/vendor/react-dom.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/react-dom@18/umd/react-dom.production.min.js';"></script>
 
   <style>
+    :root {
+      --color-deep-plum: #4C2365;
+      --color-violet: #7F5D99;
+      --color-soft-violet: #9E7EB5;
+      --color-lavender: #C4A4DA;
+      --color-plum-black: #2A1138;
+      --color-page-bg: #F7F3FA;
+      --color-surface: #FFFFFF;
+      --color-surface-subtle: #EFE8F5;
+      --color-border-subtle: #E8DEEF;
+      --color-border-medium: #D4C2E3;
+      --color-text-primary: #2A1138;
+      --color-text-secondary: #5E4968;
+      --color-text-muted: #725B7E;
+    }
     body {
-      background-color: #f8fafc;
-      color: #0f172a;
+      background-color: #F7F3FA;
+      color: #2A1138;
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
@@ -30,14 +104,14 @@
       height: 6px;
     }
     .custom-scroll::-webkit-scrollbar-track {
-      background: #f1f5f9;
+      background: #F7F3FA;
     }
     .custom-scroll::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
+      background: #C4A4DA;
       border-radius: 9999px;
     }
     .custom-scroll::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
+      background: #9E7EB5;
     }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(4px); }
@@ -63,14 +137,14 @@
     }
   </style>
 </head>
-<body class="antialiased selection:bg-teal-500 selection:text-white bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+<body class="antialiased selection:bg-plum-900 selection:text-white bg-plum-50 text-plum-950 min-h-screen flex flex-col">
   <div id="root" class="flex-1 flex flex-col">
     <!-- Initial Loading State (Replaced immediately when React mounts) -->
-    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f8fafc; color: #64748b; font-family: sans-serif;">
+    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #F7F3FA; color: #5E4968; font-family: sans-serif;">
       <div style="text-align: center;">
-        <div style="width: 52px; height: 52px; border: 3px solid #ccfbf1; border-top-color: #0d9488; border-radius: 50%; margin: 0 auto 16px; animation: spin 1s linear infinite;"></div>
-        <div style="font-size: 17px; font-weight: 600; color: #0f172a; letter-spacing: -0.01em;">NeoScan Pediatric Screening</div>
-        <div style="font-size: 13px; color: #64748b; margin-top: 6px;">Initializing medical vision & calibration engine...</div>
+        <div style="width: 52px; height: 52px; border: 3px solid #EFE8F5; border-top-color: #4C2365; border-radius: 50%; margin: 0 auto 16px; animation: spin 1s linear infinite;"></div>
+        <div style="font-size: 17px; font-weight: 600; color: #2A1138; letter-spacing: -0.01em;">NeoScan Pediatric Screening</div>
+        <div style="font-size: 13px; color: #725B7E; margin-top: 6px;">Initializing medical vision & calibration engine...</div>
       </div>
     </div>
   </div>

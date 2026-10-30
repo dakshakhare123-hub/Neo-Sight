@@ -289,8 +289,8 @@ const ImageWithFallback = ({ src, alt, className = "", fallbackText = "Image una
   return (
     <div className={`relative overflow-hidden ${className}`}>
       {isLoading && (
-        <div className="absolute inset-0 bg-slate-100 flex items-center justify-center animate-pulse">
-          <Icon name="heart" className="w-5 h-5 text-teal-400 animate-spin" />
+        <div className="absolute inset-0 bg-plum-100/40 flex items-center justify-center animate-pulse">
+          <Icon name="heart" className="w-5 h-5 text-violet-600 animate-spin" />
         </div>
       )}
       <img
@@ -575,13 +575,13 @@ function App() {
         ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
         ctx.lineWidth = 2.5;
         ctx.setLineDash([8, 8]);
-        ctx.strokeStyle = "rgba(13, 148, 136, 0.5)"; // Serene medical teal
+        ctx.strokeStyle = "rgba(158, 126, 181, 0.75)"; // Soft Violet
         ctx.stroke();
 
         // Forehead Target Hint
         ctx.beginPath();
         ctx.ellipse(centerX, centerY - radiusY * 0.45, radiusX * 0.55, radiusY * 0.22, 0, 0, 2 * Math.PI);
-        ctx.strokeStyle = "rgba(14, 165, 233, 0.45)"; // Soft sky
+        ctx.strokeStyle = "rgba(196, 164, 218, 0.70)"; // Lavender
         ctx.setLineDash([4, 4]);
         ctx.stroke();
         ctx.restore();
@@ -607,15 +607,15 @@ function App() {
         });
 
         const roiStyles = {
-          forehead: { color: "#0ea5e9", label: "Forehead • Primary Bilirubin Site" },
-          nose: { color: "#10b981", label: "Nose Tip" },
-          sclera: { color: "#d946ef", label: "Sclera • In-Scene Reference" },
-          chest: { color: "#3b82f6", label: "Sternum / Chest" }
+          forehead: { color: "#9E7EB5", label: "Forehead • Primary Bilirubin Site" },
+          nose: { color: "#C4A4DA", label: "Nose Tip" },
+          sclera: { color: "#7F5D99", label: "Sclera • In-Scene Reference" },
+          chest: { color: "#5D2F7B", label: "Sternum / Chest" }
         };
 
         Object.keys(current).forEach(key => {
           const box = current[key];
-          const style = roiStyles[key] || { color: "#0d9488", label: key };
+          const style = roiStyles[key] || { color: "#7F5D99", label: key };
           if (!box) return;
 
           const rx = box.x * width;
@@ -666,7 +666,7 @@ function App() {
           ctx.shadowBlur = 0;
           ctx.font = "600 11px 'Plus Jakarta Sans', sans-serif";
           const textWidth = ctx.measureText(style.label).width;
-          ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
+          ctx.fillStyle = "rgba(42, 17, 56, 0.85)";
           drawSafeRoundRect(ctx, rx, Math.max(0, ry - 20), textWidth + 12, 18, 4);
           ctx.fill();
 
@@ -989,7 +989,7 @@ function App() {
         category: "PENDING",
         title: "Awaiting Assessment",
         subtitle: "Capture infant skin to evaluate bilirubin levels.",
-        color: "#64748b",
+        color: "#725B7E",
         badge: "READY FOR SCREENING",
         confidence: 0,
         confidenceLevel: "N/A",
@@ -1027,19 +1027,19 @@ function App() {
       markerPos = Math.min(96, Math.max(4, Math.round(modelScoreVal * 100)));
     }
 
-    let color = "#059669"; // emerald
+    let color = "#1E6F43"; // Sage-Emerald (WCAG AA 6.16:1)
     let badge = "NO VISIBLE SIGNS";
     let title = "No Visible Jaundice Signs";
     let recommendation = ra.recommendation || ra.triage_recommendation || "Cutaneous yellowness is within expected limits for healthy neonates. Maintain standard feeding and routine pediatric checks.";
 
     if (cat.includes("POSSIBLE") || cat.includes("JAUNDICE")) {
       const isElevated = typeof bStarVal === "number" && bStarVal >= 22.0;
-      color = isElevated ? "#dc2626" : "#ea580c";
+      color = isElevated ? "#8F1D40" : "#A21D3F"; // Crimson-Plum (WCAG AAA 8.69:1)
       badge = isElevated ? "ELEVATED JAUNDICE SIGNS" : "POSSIBLE JAUNDICE SIGNS";
       title = "Pediatric Consultation Recommended";
       recommendation = ra.recommendation || ra.triage_recommendation || "Cutaneous yellowness exceeds normal thresholds. A healthcare provider evaluation and transcutaneous (TcB) or blood (TSB) bilirubin test are recommended.";
     } else if (cat.includes("INCONCLUSIVE")) {
-      color = "#d97706";
+      color = "#9E5700"; // Amber-Gold (WCAG AA 5.50:1)
       badge = "INCONCLUSIVE (REFERRAL RECOMMENDED)";
       title = "Inconclusive Screening Result";
       recommendation = ra.recommendation || ra.triage_recommendation || "Optical yellowness is borderline or ambient lighting precluded confident analysis. Please repeat in bright indirect daylight or consult a clinician.";
@@ -1065,59 +1065,59 @@ function App() {
   }, [analysisResult]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
+    <div className="min-h-screen bg-plum-50/60 text-plum-950 flex flex-col font-sans">
       {/* 1. Global Navigation & Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-lavender-300/60 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[4.5rem] flex items-center justify-between">
           {/* Logo & Product Identity */}
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setCurrentStep(1)}>
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-teal-500/20">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-plum-900 to-violet-700 flex items-center justify-center text-white shadow-md shadow-plum-900/20">
               <Icon name="heart" className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-xl font-bold tracking-tight text-slate-900">NeoScan</span>
-                <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200/60">
+                <span className="text-xl font-bold tracking-tight text-plum-950">NeoScan</span>
+                <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-plum-100/70 text-plum-900 border border-lavender-300/80">
                   Pediatric
                 </span>
               </div>
-              <p className="text-xs text-slate-500 font-medium">Lighting-Robust Neonatal Screening</p>
+              <p className="text-xs text-plum-600 font-medium">Lighting-Robust Neonatal Screening</p>
             </div>
           </div>
 
           {/* Stepped Wizard Navigation Pills */}
-          <nav className="hidden md:flex items-center space-x-1 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/70">
+          <nav className="hidden md:flex items-center space-x-1 bg-plum-100/60 p-1.5 rounded-2xl border border-lavender-300/60">
             <button
               onClick={() => setCurrentStep(1)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                 currentStep === 1
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-white text-plum-950 shadow-sm"
+                  : "text-plum-600 hover:text-plum-950"
               }`}
             >
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                currentStep === 1 ? "bg-teal-600 text-white" : "bg-slate-200 text-slate-600"
+                currentStep === 1 ? "bg-plum-900 text-white" : "bg-plum-200/80 text-plum-700"
               }`}>1</span>
               <span>Patient Profile</span>
             </button>
 
-            <Icon name="chevron-right" className="w-3.5 h-3.5 text-slate-300" />
+            <Icon name="chevron-right" className="w-3.5 h-3.5 text-plum-300" />
 
             <button
               onClick={() => setCurrentStep(2)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                 currentStep === 2
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-white text-plum-950 shadow-sm"
+                  : "text-plum-600 hover:text-plum-950"
               }`}
             >
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                currentStep === 2 ? "bg-teal-600 text-white" : "bg-slate-200 text-slate-600"
+                currentStep === 2 ? "bg-plum-900 text-white" : "bg-plum-200/80 text-plum-700"
               }`}>2</span>
               <span>Capture & Guidance</span>
             </button>
 
-            <Icon name="chevron-right" className="w-3.5 h-3.5 text-slate-300" />
+            <Icon name="chevron-right" className="w-3.5 h-3.5 text-plum-300" />
 
             <button
               onClick={() => {
@@ -1126,35 +1126,26 @@ function App() {
               disabled={!analysisResult}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                 currentStep === 3
-                  ? "bg-white text-slate-900 shadow-sm"
+                  ? "bg-white text-plum-950 shadow-sm"
                   : analysisResult
-                  ? "text-slate-500 hover:text-slate-800"
-                  : "text-slate-300 cursor-not-allowed"
+                  ? "text-plum-600 hover:text-plum-950"
+                  : "text-plum-300 cursor-not-allowed"
               }`}
             >
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                currentStep === 3 ? "bg-teal-600 text-white" : "bg-slate-200 text-slate-600"
+                currentStep === 3 ? "bg-plum-900 text-white" : "bg-plum-200/80 text-plum-700"
               }`}>3</span>
               <span>Triage & Insights</span>
             </button>
           </nav>
-
-          {/* Quick Engine Status Pill */}
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-100/90 border border-slate-200/80 text-xs text-slate-600">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="hidden sm:inline font-medium">Optical Heuristic Active</span>
-              <span className="sm:hidden font-medium">Online</span>
-            </div>
-          </div>
         </div>
 
         {/* Mobile Step Progress Bar */}
-        <div className="md:hidden flex border-t border-slate-100">
+        <div className="md:hidden flex border-t border-lavender-200/80">
           <div
             onClick={() => setCurrentStep(1)}
             className={`flex-1 text-center py-2 text-xs font-semibold border-b-2 transition-colors ${
-              currentStep === 1 ? "border-teal-600 text-teal-700 bg-teal-50/30" : "border-transparent text-slate-400"
+              currentStep === 1 ? "border-plum-900 text-plum-900 bg-plum-100/40 font-bold" : "border-transparent text-plum-500"
             }`}
           >
             1. Profile
@@ -1162,7 +1153,7 @@ function App() {
           <div
             onClick={() => setCurrentStep(2)}
             className={`flex-1 text-center py-2 text-xs font-semibold border-b-2 transition-colors ${
-              currentStep === 2 ? "border-teal-600 text-teal-700 bg-teal-50/30" : "border-transparent text-slate-400"
+              currentStep === 2 ? "border-plum-900 text-plum-900 bg-plum-100/40 font-bold" : "border-transparent text-plum-500"
             }`}
           >
             2. Capture
@@ -1170,7 +1161,7 @@ function App() {
           <div
             onClick={() => { if (analysisResult) setCurrentStep(3); }}
             className={`flex-1 text-center py-2 text-xs font-semibold border-b-2 transition-colors ${
-              currentStep === 3 ? "border-teal-600 text-teal-700 bg-teal-50/30" : "border-transparent text-slate-400"
+              currentStep === 3 ? "border-plum-900 text-plum-900 bg-plum-100/40 font-bold" : "border-transparent text-plum-500"
             }`}
           >
             3. Results
@@ -1203,8 +1194,8 @@ function App() {
                     {typeof error === "object" ? error.message : error}
                   </p>
                   {typeof error === "object" && error.action && (
-                    <div className="mt-2.5 p-3 rounded-xl bg-white/90 border border-amber-200/80 text-xs text-slate-700">
-                      <span className="font-bold text-amber-900 block mb-0.5">Actionable Guidance:</span>
+                    <div className="mt-2.5 p-3 rounded-xl bg-white/95 border border-amber-200/80 text-xs text-plum-900">
+                      <span className="font-bold text-amber-950 block mb-0.5">Actionable Guidance:</span>
                       <span>{error.action}</span>
                     </div>
                   )}
@@ -1218,7 +1209,7 @@ function App() {
                           startCamera();
                         }
                       }}
-                      className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-plum-900 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
                     >
                       <Icon name="camera" className="w-3.5 h-3.5" />
                       <span>Retake Photo</span>
@@ -1226,7 +1217,7 @@ function App() {
                     <button
                       type="button"
                       onClick={() => setError(null)}
-                      className="text-xs text-amber-800 hover:text-amber-950 underline font-medium"
+                      className="text-xs text-plum-700 hover:text-plum-950 underline font-medium"
                     >
                       Dismiss
                     </button>
@@ -1251,14 +1242,14 @@ function App() {
           <div className="space-y-8 animate-fadeIn">
             {/* Header Greeting */}
             <div className="text-center max-w-2xl mx-auto space-y-2">
-              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200/60 text-xs font-medium">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-plum-100/70 text-plum-900 border border-lavender-300/80 text-xs font-medium">
                 <Icon name="sparkles" className="w-3.5 h-3.5" />
                 <span>Pediatric Personalization & Records</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-plum-950 tracking-tight">
                 Infant Screening Profile
               </h1>
-              <p className="text-sm text-slate-500 leading-relaxed">
+              <p className="text-sm text-plum-600 leading-relaxed">
                 Neonatal jaundice follows natural physiological progression. Patient age, gestation, and multi-day image records provide clinical tracking over time.
               </p>
             </div>
@@ -1266,10 +1257,10 @@ function App() {
             {/* Patient Switcher / Tabs */}
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                <span className="text-xs font-bold uppercase tracking-wider text-plum-600">
                   Select Patient Record
                 </span>
-                <span className="text-xs text-teal-700 font-semibold">
+                <span className="text-xs text-plum-900 font-semibold">
                   Active: {activePatient.name}
                 </span>
               </div>
@@ -1281,20 +1272,20 @@ function App() {
                     onClick={() => selectPatientProfile(p)}
                     className={`p-3.5 rounded-2xl border text-left transition-all ${
                       activePatientId === p.id
-                        ? "bg-white border-teal-500 ring-2 ring-teal-500/20 shadow-sm"
-                        : "bg-white/60 border-slate-200 hover:bg-white hover:border-slate-300"
+                        ? "bg-white border-plum-900 ring-2 ring-violet-500/20 shadow-sm"
+                        : "bg-white/70 border-lavender-300/60 hover:bg-white hover:border-lavender-400"
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">{p.name}</span>
+                      <span className="text-xs font-bold text-plum-950">{p.name}</span>
                       {activePatientId === p.id && (
-                        <span className="w-2 h-2 rounded-full bg-teal-600"></span>
+                        <span className="w-2 h-2 rounded-full bg-plum-900"></span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-plum-600 mt-0.5">
                       {p.ageValue} {p.ageUnit} • {p.gestation}
                     </p>
-                    <div className="mt-2 flex items-center space-x-1 text-[10px] text-slate-400">
+                    <div className="mt-2 flex items-center space-x-1 text-[10px] text-plum-500">
                       <Icon name="image" className="w-3 h-3" />
                       <span>{p.images ? p.images.length : 0} screened photos</span>
                     </div>
@@ -1304,17 +1295,17 @@ function App() {
             </div>
 
             {/* Profile Detail & Edit Card */}
-            <div className="max-w-4xl mx-auto bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
+            <div className="max-w-4xl mx-auto bg-white rounded-3xl border border-lavender-300/60 p-6 sm:p-8 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-lavender-100 gap-2">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">{activePatient.name}'s Medical Profile</h3>
-                  <p className="text-xs text-slate-500">{activePatient.notes || "Standard clinical screening observation."}</p>
+                  <h3 className="text-base font-bold text-plum-950">{activePatient.name}'s Medical Profile</h3>
+                  <p className="text-xs text-plum-600">{activePatient.notes || "Standard clinical screening observation."}</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold uppercase">
+                  <span className="px-3 py-1 rounded-full bg-plum-100/70 text-plum-900 text-xs font-semibold uppercase">
                     {activePatient.gestation}
                   </span>
-                  <span className="px-3 py-1 rounded-full bg-teal-50 text-teal-800 text-xs font-semibold">
+                  <span className="px-3 py-1 rounded-full bg-plum-100/70 text-plum-900 text-xs font-semibold">
                     {activePatient.feeding}
                   </span>
                 </div>
@@ -1324,7 +1315,7 @@ function App() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* Name */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-plum-600 mb-1.5">
                     Infant Name / Identifier
                   </label>
                   <input
@@ -1334,13 +1325,13 @@ function App() {
                       const val = e.target.value;
                       setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, name: val } : p));
                     }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-plum-50/50 border border-lavender-300/70 text-xs font-semibold text-plum-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
                 </div>
 
                 {/* Age */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-plum-600 mb-1.5">
                     Postnatal Age ({activePatient.ageUnit})
                   </label>
                   <div className="flex items-center space-x-2">
@@ -1353,20 +1344,20 @@ function App() {
                         const val = parseInt(e.target.value) || 1;
                         setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, ageValue: val } : p));
                       }}
-                      className="w-24 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800 text-center focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-24 px-3 py-2 rounded-xl bg-plum-50/50 border border-lavender-300/70 text-sm font-bold text-plum-950 text-center focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                     />
-                    <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+                    <div className="flex bg-plum-100/60 p-0.5 rounded-lg text-xs font-semibold">
                       <button
                         type="button"
                         onClick={() => setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, ageUnit: "hours" } : p))}
-                        className={`px-2 py-1 rounded-md ${activePatient.ageUnit === "hours" ? "bg-white text-teal-700 shadow-xs" : "text-slate-500"}`}
+                        className={`px-2 py-1 rounded-md ${activePatient.ageUnit === "hours" ? "bg-white text-plum-900 shadow-xs" : "text-plum-600"}`}
                       >
                         Hours
                       </button>
                       <button
                         type="button"
                         onClick={() => setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, ageUnit: "days" } : p))}
-                        className={`px-2 py-1 rounded-md ${activePatient.ageUnit === "days" ? "bg-white text-teal-700 shadow-xs" : "text-slate-500"}`}
+                        className={`px-2 py-1 rounded-md ${activePatient.ageUnit === "days" ? "bg-white text-plum-900 shadow-xs" : "text-plum-600"}`}
                       >
                         Days
                       </button>
@@ -1376,7 +1367,7 @@ function App() {
 
                 {/* Gestation */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-plum-600 mb-1.5">
                     Gestational Maturity
                   </label>
                   <select
@@ -1385,7 +1376,7 @@ function App() {
                       const val = e.target.value;
                       setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, gestation: val } : p));
                     }}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-3 py-2.5 rounded-xl bg-plum-50/50 border border-lavender-300/70 text-xs font-semibold text-plum-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                   >
                     <option value="full-term">Full-Term (≥ 37 weeks)</option>
                     <option value="late-preterm">Late Preterm (35 – 36.6 wks)</option>
@@ -1395,33 +1386,33 @@ function App() {
               </div>
 
               {/* Patient Image History & Tracking Gallery */}
-              <div className="pt-4 border-t border-slate-100 space-y-3">
+              <div className="pt-4 border-t border-lavender-100 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Icon name="clock" className="w-4 h-4 text-teal-600" />
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                    <Icon name="clock" className="w-4 h-4 text-plum-900" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-plum-950">
                       Screening Images & Tracking History ({activePatient.images ? activePatient.images.length : 0})
                     </h4>
                   </div>
-                  <span className="text-xs text-slate-500">Non-destructive dermal records</span>
+                  <span className="text-xs text-plum-600">Non-destructive dermal records</span>
                 </div>
 
                 {/* Empty State */}
                 {(!activePatient.images || activePatient.images.length === 0) ? (
-                  <div className="p-8 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 text-center space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto">
+                  <div className="p-8 rounded-2xl bg-plum-50/50 border-2 border-dashed border-lavender-300/80 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-plum-100/80 text-plum-900 flex items-center justify-center mx-auto">
                       <Icon name="camera" className="w-6 h-6" />
                     </div>
                     <div>
-                      <h5 className="text-sm font-bold text-slate-800">No screening photos recorded yet</h5>
-                      <p className="text-xs text-slate-500 max-w-sm mx-auto mt-0.5">
+                      <h5 className="text-sm font-bold text-plum-950">No screening photos recorded yet</h5>
+                      <p className="text-xs text-plum-600 max-w-sm mx-auto mt-0.5">
                         Capture your first image using the live camera or upload a clear photo of {activePatient.name}'s forehead.
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setCurrentStep(2)}
-                      className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs"
+                      className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-bold transition-all shadow-xs"
                     >
                       <Icon name="camera" className="w-3.5 h-3.5" />
                       <span>Take First Screening Photo</span>
@@ -1433,7 +1424,7 @@ function App() {
                     {activePatient.images.map((imgRecord) => {
                       const isSelected = activeImageRecord && activeImageRecord.id === imgRecord.id;
                       const ra = imgRecord.currentAnalysis?.risk_assessment;
-                      const riskColor = ra?.color || "#059669";
+                      const riskColor = ra?.color || "#1E6F43";
                       const riskCategory = ra?.risk_category || "SCREENED";
 
                       return (
@@ -1447,13 +1438,13 @@ function App() {
                               performAnalysis(imgRecord.rawImage, "auto", activePatient.id);
                             }
                           }}
-                          className={`group bg-slate-50 rounded-2xl border p-3.5 cursor-pointer transition-all ${
+                          className={`group bg-plum-50/40 rounded-2xl border p-3.5 cursor-pointer transition-all ${
                             isSelected
-                              ? "border-teal-500 ring-2 ring-teal-500/20 bg-white shadow-sm"
-                              : "border-slate-200 hover:border-teal-300 hover:bg-white"
+                              ? "border-plum-900 ring-2 ring-violet-500/20 bg-white shadow-sm"
+                              : "border-lavender-300/60 hover:border-lavender-400 hover:bg-white"
                           }`}
                         >
-                          <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 mb-2">
+                          <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-plum-100/50 border border-lavender-200 mb-2">
                             <ImageWithFallback
                               src={imgRecord.rawImage}
                               alt="Infant screening photo"
@@ -1470,12 +1461,12 @@ function App() {
                           </div>
 
                           <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-semibold text-slate-800">{imgRecord.formattedDate}</span>
-                            <span className="text-slate-400 capitalize">{imgRecord.activeCorrection || "auto"}</span>
+                            <span className="font-semibold text-plum-950">{imgRecord.formattedDate}</span>
+                            <span className="text-plum-500 capitalize">{imgRecord.activeCorrection || "auto"}</span>
                           </div>
 
                           {imgRecord.tracking && (
-                            <div className="mt-1 flex items-center space-x-1.5 text-[10px] text-teal-700">
+                            <div className="mt-1 flex items-center space-x-1.5 text-[10px] text-plum-800">
                               <Icon name="target" className="w-3 h-3" />
                               <span>Distance: {imgRecord.tracking.estimated_distance_cm || 25} cm</span>
                             </div>
@@ -1498,7 +1489,7 @@ function App() {
                       startCamera();
                     }
                   }}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold text-sm shadow-md shadow-teal-500/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-plum-900 to-violet-700 hover:from-plum-950 hover:to-violet-800 text-white font-bold text-sm shadow-md shadow-plum-900/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
                 >
                   <Icon name="camera" className="w-4 h-4" />
                   <span>Capture New Photo for {activePatient.name} →</span>
@@ -1514,28 +1505,28 @@ function App() {
         {currentStep === 2 && (
           <div className="space-y-6 animate-fadeIn">
             {/* Top Bar with Patient Pill & Mode Selector */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-lavender-300/60 shadow-xs">
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => setCurrentStep(1)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                  className="p-2 rounded-xl text-plum-400 hover:text-plum-950 hover:bg-plum-100/60 transition-colors"
                 >
                   <Icon name="chevron-right" className="w-4 h-4 rotate-180" />
                 </button>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-bold text-slate-900">{activePatient.name}</span>
-                    <span className="text-xs text-slate-500">• {activePatient.ageValue} {activePatient.ageUnit} old</span>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 uppercase">
+                    <span className="text-sm font-bold text-plum-950">{activePatient.name}</span>
+                    <span className="text-xs text-plum-600">• {activePatient.ageValue} {activePatient.ageUnit} old</span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-plum-100/70 text-plum-900 uppercase">
                       {activePatient.gestation}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500">Live anatomical tracking active for forehead and sclera</p>
+                  <p className="text-xs text-plum-600">Live anatomical tracking active for forehead and sclera</p>
                 </div>
               </div>
 
               {/* Mode Switch: Live Camera vs Upload */}
-              <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-2xl self-start sm:self-auto">
+              <div className="flex items-center space-x-1 bg-plum-100/60 p-1 rounded-2xl border border-lavender-200/60 self-start sm:self-auto">
                 <button
                   type="button"
                   onClick={() => {
@@ -1544,8 +1535,8 @@ function App() {
                   }}
                   className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                     captureMode === "camera"
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500 hover:text-slate-800"
+                      ? "bg-white text-plum-950 shadow-sm"
+                      : "text-plum-600 hover:text-plum-950"
                   }`}
                 >
                   <Icon name="camera" className="w-3.5 h-3.5" />
@@ -1560,8 +1551,8 @@ function App() {
                   }}
                   className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                     captureMode === "upload"
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500 hover:text-slate-800"
+                      ? "bg-white text-plum-950 shadow-sm"
+                      : "text-plum-600 hover:text-plum-950"
                   }`}
                 >
                   <Icon name="upload" className="w-3.5 h-3.5" />
@@ -1595,7 +1586,7 @@ function App() {
                       <div className="absolute top-4 inset-x-4 flex items-center justify-between z-20 pointer-events-none">
                         {/* Distance Badge */}
                         <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-xs border border-white/10 shadow-sm pointer-events-auto">
-                          <Icon name="target" className="w-3.5 h-3.5 text-teal-400" />
+                          <Icon name="target" className="w-3.5 h-3.5 text-lavender-300" />
                           <span className="font-semibold">
                             {analysisResult?.tracking?.distance_advice || "Target ~25 cm distance"}
                           </span>
@@ -1632,7 +1623,7 @@ function App() {
                             onClick={() => setShowBiometricOverlay(!showBiometricOverlay)}
                             className={`px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-md transition-all border flex items-center space-x-1.5 ${
                               showBiometricOverlay
-                                ? "bg-teal-500/80 text-white border-teal-400/30"
+                                ? "bg-violet-700/80 text-white border-lavender-300/40"
                                 : "bg-slate-900/70 text-slate-300 border-white/10"
                             }`}
                           >
@@ -1658,16 +1649,16 @@ function App() {
                     <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
                       <div
                         onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-slate-700 hover:border-teal-500/80 rounded-3xl p-8 w-full h-full flex flex-col items-center justify-center cursor-pointer transition-colors group bg-slate-800/40"
+                        className="border-2 border-dashed border-slate-700 hover:border-lavender-300/80 rounded-3xl p-8 w-full h-full flex flex-col items-center justify-center cursor-pointer transition-colors group bg-slate-800/40"
                       >
-                        <div className="w-14 h-14 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <div className="w-14 h-14 rounded-2xl bg-plum-500/20 text-lavender-300 flex items-center justify-center group-hover:scale-110 transition-transform">
                           <Icon name="upload" className="w-7 h-7" />
                         </div>
                         <h4 className="text-sm font-bold text-white mt-4">Upload Infant Photograph</h4>
                         <p className="text-xs text-slate-400 mt-1 max-w-xs">
                           Select a clear photo of {activePatient.name}'s forehead or face under indoor or natural light.
                         </p>
-                        <span className="mt-4 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold transition-colors">
+                        <span className="mt-4 px-4 py-2 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-semibold transition-colors">
                           Browse Local Files
                         </span>
                         <input
@@ -1683,9 +1674,9 @@ function App() {
                 </div>
 
                 {/* Shutter / Capture Actions Bar */}
-                <div className="bg-white rounded-3xl border border-slate-200/80 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="flex items-center space-x-3 text-xs text-slate-500">
-                    <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+                <div className="bg-white rounded-3xl border border-lavender-300/60 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center space-x-3 text-xs text-plum-600">
+                    <span className="w-2.5 h-2.5 rounded-full bg-plum-900"></span>
                     <span>Ready to screen {activePatient.name}</span>
                   </div>
 
@@ -1705,7 +1696,7 @@ function App() {
                             });
                           }
                         }}
-                        className="flex-1 sm:flex-none py-3 px-6 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold text-sm shadow-md shadow-teal-500/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.98]"
+                        className="flex-1 sm:flex-none py-3 px-6 rounded-2xl bg-gradient-to-r from-plum-900 to-violet-700 hover:from-plum-950 hover:to-violet-800 text-white font-bold text-sm shadow-md shadow-plum-900/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.98]"
                       >
                         <div className="w-4 h-4 rounded-full border-2 border-white flex items-center justify-center">
                           <div className="w-2 h-2 rounded-full bg-white"></div>
@@ -1719,56 +1710,56 @@ function App() {
 
               {/* Side Guidance & Clinical Rules Panel */}
               <div className="space-y-4">
-                <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs space-y-4">
+                <div className="bg-white rounded-3xl border border-lavender-300/60 p-5 shadow-xs space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Icon name="shield-check" className="w-4 h-4 text-teal-600" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                    <Icon name="shield-check" className="w-4 h-4 text-plum-900" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-plum-950">
                       Capture Quality Rules
                     </h3>
                   </div>
 
-                  <ul className="space-y-3 text-xs text-slate-600">
+                  <ul className="space-y-3 text-xs text-plum-700">
                     <li className="flex items-start space-x-2.5">
-                      <div className="w-4 h-4 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="w-4 h-4 rounded-full bg-plum-100/80 text-plum-900 flex items-center justify-center shrink-0 mt-0.5">
                         <Icon name="check" className="w-2.5 h-2.5" />
                       </div>
                       <span>
-                        <strong className="text-slate-800">Distance:</strong> Hold phone 20–30 cm away. Align baby's forehead within the dashed guide oval.
+                        <strong className="text-plum-950">Distance:</strong> Hold phone 20–30 cm away. Align baby's forehead within the dashed guide oval.
                       </span>
                     </li>
                     <li className="flex items-start space-x-2.5">
-                      <div className="w-4 h-4 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="w-4 h-4 rounded-full bg-plum-100/80 text-plum-900 flex items-center justify-center shrink-0 mt-0.5">
                         <Icon name="check" className="w-2.5 h-2.5" />
                       </div>
                       <span>
-                        <strong className="text-slate-800">Indirect Lighting:</strong> Soft indoor lighting or window daylight is best. Avoid harsh directional flashlights.
+                        <strong className="text-plum-950">Indirect Lighting:</strong> Soft indoor lighting or window daylight is best. Avoid harsh directional flashlights.
                       </span>
                     </li>
                     <li className="flex items-start space-x-2.5">
-                      <div className="w-4 h-4 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="w-4 h-4 rounded-full bg-plum-100/80 text-plum-900 flex items-center justify-center shrink-0 mt-0.5">
                         <Icon name="check" className="w-2.5 h-2.5" />
                       </div>
                       <span>
-                        <strong className="text-slate-800">Clear Landmarks:</strong> Ensure forehead and eyes are uncovered by caps or blankets.
+                        <strong className="text-plum-950">Clear Landmarks:</strong> Ensure forehead and eyes are uncovered by caps or blankets.
                       </span>
                     </li>
                   </ul>
                 </div>
 
                 {/* ArUco Calibration Card Prompt */}
-                <div className="bg-gradient-to-br from-teal-50/70 to-slate-50 rounded-3xl border border-teal-200/70 p-5 shadow-xs space-y-3">
-                  <div className="flex items-center space-x-2 text-teal-800">
-                    <Icon name="qr-code" className="w-4 h-4 text-teal-600" />
+                <div className="bg-gradient-to-br from-plum-100/60 to-lavender-50 rounded-3xl border border-lavender-300/80 p-5 shadow-xs space-y-3">
+                  <div className="flex items-center space-x-2 text-plum-950">
+                    <Icon name="qr-code" className="w-4 h-4 text-plum-900" />
                     <h4 className="text-xs font-bold uppercase tracking-wider">Reference Card (Optional)</h4>
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
+                  <p className="text-xs text-plum-700 leading-relaxed">
                     Place an ArUco color card next to the cheek for ground-truth matrix color correction. If not available, NeoScan automatically uses the sclera and Shades-of-Gray constancy.
                   </p>
                   <a
                     href="/api/v1/reference-card"
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center space-x-1.5 text-xs font-bold text-teal-700 hover:text-teal-800 hover:underline"
+                    className="inline-flex items-center space-x-1.5 text-xs font-bold text-plum-900 hover:text-violet-700 hover:underline"
                   >
                     <span>Download Printable Card</span>
                     <Icon name="chevron-right" className="w-3.5 h-3.5" />
@@ -1776,31 +1767,31 @@ function App() {
                 </div>
 
                 {/* Illumination Algorithm Selector */}
-                <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+                <div className="bg-white rounded-3xl border border-lavender-300/60 shadow-xs overflow-hidden">
                   <button
                     type="button"
                     onClick={() => setAdvancedOpticalOpen(!advancedOpticalOpen)}
-                    className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
+                    className="w-full p-4 flex items-center justify-between text-left hover:bg-plum-50/60 transition-colors"
                   >
-                    <div className="flex items-center space-x-2 text-slate-700">
-                      <Icon name="sliders" className="w-4 h-4 text-slate-400" />
+                    <div className="flex items-center space-x-2 text-plum-900">
+                      <Icon name="sliders" className="w-4 h-4 text-plum-500" />
                       <span className="text-xs font-bold">Color Constancy Algorithm</span>
                     </div>
                     <Icon
                       name={advancedOpticalOpen ? "chevron-up" : "chevron-down"}
-                      className="w-4 h-4 text-slate-400"
+                      className="w-4 h-4 text-plum-500"
                     />
                   </button>
 
                   {advancedOpticalOpen && (
-                    <div className="p-4 pt-0 border-t border-slate-100 space-y-2">
-                      <p className="text-[11px] text-slate-500">
+                    <div className="p-4 pt-0 border-t border-lavender-100 space-y-2">
+                      <p className="text-[11px] text-plum-600">
                         Choose the computer vision color constancy method used to remove ambient lighting bias:
                       </p>
                       <select
                         value={correctionMethod}
                         onChange={(e) => handleMethodChange(e.target.value)}
-                        className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        className="w-full py-2 px-3 rounded-xl bg-plum-50/50 border border-lavender-300 text-xs font-semibold text-plum-950 focus:outline-none focus:ring-2 focus:ring-violet-500"
                       >
                         <option value="auto">Auto-Select (Smart Hierarchy: Card → Sclera → Shades of Gray)</option>
                         <option value="card_ccm">ArUco Physical Card CCM (Gold Standard)</option>
@@ -1825,14 +1816,14 @@ function App() {
         {currentStep === 3 && activeImageRecord && (
           <div className="space-y-8 animate-fadeIn">
             {/* Action Bar Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-3xl border border-lavender-300/60 shadow-xs">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-200/60">
+                <div className="w-10 h-10 rounded-2xl bg-plum-100/70 text-plum-900 flex items-center justify-center border border-lavender-300/80">
                   <Icon name="baby" className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">{activePatient.name} • Clinical Screening Record</h3>
-                  <p className="text-xs text-slate-500">
+                  <h3 className="text-sm font-bold text-plum-950">{activePatient.name} • Clinical Screening Record</h3>
+                  <p className="text-xs text-plum-600">
                     Age: {activePatient.ageValue} {activePatient.ageUnit} • Gestation: {activePatient.gestation} • Strategy: {activeImageRecord.activeCorrection || "auto"}
                   </p>
                 </div>
@@ -1848,7 +1839,7 @@ function App() {
                       startCamera();
                     }
                   }}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-xs font-bold text-slate-700 transition-colors flex items-center space-x-1.5"
+                  className="px-4 py-2 rounded-xl bg-plum-100/60 hover:bg-plum-200/70 text-xs font-bold text-plum-900 transition-colors flex items-center space-x-1.5"
                 >
                   <Icon name="camera" className="w-3.5 h-3.5" />
                   <span>Rescreen / Retake</span>
@@ -1857,7 +1848,7 @@ function App() {
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-4 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-xs font-bold text-teal-800 border border-teal-200/60 transition-colors flex items-center space-x-1.5"
+                  className="px-4 py-2 rounded-xl bg-plum-100/70 hover:bg-plum-200/80 text-xs font-bold text-plum-900 border border-lavender-300/80 transition-colors flex items-center space-x-1.5"
                 >
                   <Icon name="printer" className="w-3.5 h-3.5" />
                   <span>Export Report</span>
@@ -1887,11 +1878,11 @@ function App() {
                     <span>{riskDetails.badge}</span>
                   </div>
 
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-plum-950 tracking-tight">
                     {riskDetails.title}
                   </h1>
 
-                  <p className="text-sm sm:text-base text-slate-600 max-w-2xl leading-relaxed">
+                  <p className="text-sm sm:text-base text-plum-700 max-w-2xl leading-relaxed">
                     {riskDetails.recommendation}
                   </p>
 
@@ -1907,29 +1898,29 @@ function App() {
                 </div>
 
                 {/* Calibrated Risk Gauge Mini Visualizer */}
-                <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 p-5 shadow-xs shrink-0 w-full md:w-72 space-y-3">
+                <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-lavender-300/70 p-5 shadow-xs shrink-0 w-full md:w-72 space-y-3">
                   {riskDetails.modelScore !== null && riskDetails.modelScore !== undefined && (
-                    <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-100">
-                      <span className="font-semibold text-slate-500">Model Score:</span>
-                      <span className="font-bold text-teal-800 font-mono text-sm">
+                    <div className="flex items-center justify-between text-xs pb-1 border-b border-lavender-100">
+                      <span className="font-semibold text-plum-600">Model Score:</span>
+                      <span className="font-bold text-plum-950 font-mono text-sm">
                         {riskDetails.modelScore.toFixed(4)}
                       </span>
                     </div>
                   )}
 
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-500">CIE b* Yellowness:</span>
-                    <span className="font-bold text-slate-900 font-mono text-sm">
+                    <span className="font-semibold text-plum-600">CIE b* Yellowness:</span>
+                    <span className="font-bold text-plum-950 font-mono text-sm">
                       {riskDetails.bStar !== "N/A" ? riskDetails.bStar : (analysisResult?.fused_biomarkers?.fused_lab_b_star?.toFixed(1) || "N/A")}
                     </span>
                   </div>
 
                   {/* Dynamic Risk Bar with Indicator Marker */}
                   <div className="space-y-1.5 relative pt-2">
-                    <div className="w-full h-3 rounded-full bg-slate-200 overflow-hidden flex">
-                      <div className="h-full bg-emerald-500" style={{ width: "50%" }}></div>
-                      <div className="h-full bg-amber-500" style={{ width: "25%" }}></div>
-                      <div className="h-full bg-rose-500" style={{ width: "25%" }}></div>
+                    <div className="w-full h-3 rounded-full bg-plum-100 overflow-hidden flex">
+                      <div className="h-full bg-clinical-normal" style={{ width: "50%" }}></div>
+                      <div className="h-full bg-clinical-warning" style={{ width: "25%" }}></div>
+                      <div className="h-full bg-clinical-elevated" style={{ width: "25%" }}></div>
                     </div>
                     {/* Glowing Marker Pin */}
                     <div
@@ -1940,23 +1931,23 @@ function App() {
                       }}
                     ></div>
 
-                    <div className="flex justify-between text-[10px] text-slate-400 font-medium">
+                    <div className="flex justify-between text-[10px] text-plum-500 font-medium">
                       <span>Normal (&lt;16)</span>
                       <span>Mild (16-22)</span>
                       <span>Elevated (&gt;22)</span>
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-slate-500">Bilirubin Index (BIx):</span>
-                    <span className="font-bold text-slate-800 font-mono">
+                  <div className="pt-2 border-t border-lavender-100 flex items-center justify-between text-xs">
+                    <span className="text-plum-600">Bilirubin Index (BIx):</span>
+                    <span className="font-bold text-plum-950 font-mono">
                       {riskDetails.bix !== "N/A" ? riskDetails.bix : (analysisResult?.fused_biomarkers?.fused_bix?.toFixed(3) || "N/A")}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500">Reliability / Quality:</span>
-                    <span className={`font-bold font-mono ${riskDetails.reliability === "reduced" ? "text-amber-600" : "text-teal-700"}`}>
+                    <span className="text-plum-600">Reliability / Quality:</span>
+                    <span className={`font-bold font-mono ${riskDetails.reliability === "reduced" ? "text-amber-600" : "text-plum-900"}`}>
                       {riskDetails.reliability === "reduced" ? "Reduced" : "Normal"} ({riskDetails.confidence}%)
                     </span>
                   </div>
@@ -1964,33 +1955,33 @@ function App() {
               </div>
 
               {/* Actionable Parent Care Checklist */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200/60">
-                <div className="bg-white/90 rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1">
-                  <div className="flex items-center space-x-2 text-slate-800 font-bold text-xs">
-                    <Icon name="droplet" className="w-4 h-4 text-teal-600" />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-lavender-200/80">
+                <div className="bg-white/95 rounded-2xl p-4 border border-lavender-200/70 shadow-xs space-y-1">
+                  <div className="flex items-center space-x-2 text-plum-950 font-bold text-xs">
+                    <Icon name="droplet" className="w-4 h-4 text-plum-900" />
                     <span>Feeding & Hydration</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                  <p className="text-[11px] text-plum-600 leading-relaxed">
                     Feed 8–12 times per 24 hours. Frequent feeding stimulates bowel movements, which naturally excretes bilirubin.
                   </p>
                 </div>
 
-                <div className="bg-white/90 rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1">
-                  <div className="flex items-center space-x-2 text-slate-800 font-bold text-xs">
-                    <Icon name="sun" className="w-4 h-4 text-amber-500" />
+                <div className="bg-white/95 rounded-2xl p-4 border border-lavender-200/70 shadow-xs space-y-1">
+                  <div className="flex items-center space-x-2 text-plum-950 font-bold text-xs">
+                    <Icon name="sun" className="w-4 h-4 text-amber-600" />
                     <span>Daylight Observation</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                  <p className="text-[11px] text-plum-600 leading-relaxed">
                     Check skin in indirect natural window light. Blanch skin with gentle finger pressure to observe underlying tone.
                   </p>
                 </div>
 
-                <div className="bg-white/90 rounded-2xl p-4 border border-slate-100 shadow-xs space-y-1">
-                  <div className="flex items-center space-x-2 text-slate-800 font-bold text-xs">
-                    <Icon name="heart" className="w-4 h-4 text-rose-500" />
+                <div className="bg-white/95 rounded-2xl p-4 border border-lavender-200/70 shadow-xs space-y-1">
+                  <div className="flex items-center space-x-2 text-plum-950 font-bold text-xs">
+                    <Icon name="heart" className="w-4 h-4 text-clinical-elevated" />
                     <span>When to Call Doctor</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                  <p className="text-[11px] text-plum-600 leading-relaxed">
                     Seek immediate pediatric review if yellowness spreads to abdomen/legs or baby is difficult to wake.
                   </p>
                 </div>
@@ -1998,18 +1989,18 @@ function App() {
             </div>
 
             {/* Non-Destructive Multi-Spectrum Viewport & Switcher */}
-            <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div className="bg-white rounded-3xl border border-lavender-300/60 p-6 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-lavender-100 pb-4">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Multi-Spectrum Visual Inspection</h3>
-                  <p className="text-xs text-slate-500">Toggle between raw input, illumination correction, and diagnostic overlays</p>
+                  <h3 className="text-sm font-bold text-plum-950">Multi-Spectrum Visual Inspection</h3>
+                  <p className="text-xs text-plum-600">Toggle between raw input, illumination correction, and diagnostic overlays</p>
                 </div>
 
-                <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl text-xs overflow-x-auto">
+                <div className="flex items-center space-x-1 bg-plum-100/60 p-1 rounded-xl text-xs overflow-x-auto border border-lavender-200/60">
                   <button
                     onClick={() => setImageCompareMode("corrected")}
                     className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                      imageCompareMode === "corrected" ? "bg-white text-teal-800 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                      imageCompareMode === "corrected" ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"
                     }`}
                   >
                     Corrected
@@ -2017,7 +2008,7 @@ function App() {
                   <button
                     onClick={() => setImageCompareMode("raw")}
                     className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                      imageCompareMode === "raw" ? "bg-white text-teal-800 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                      imageCompareMode === "raw" ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"
                     }`}
                   >
                     Original Raw
@@ -2025,7 +2016,7 @@ function App() {
                   <button
                     onClick={() => setImageCompareMode("diagnostic")}
                     className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                      imageCompareMode === "diagnostic" ? "bg-white text-teal-800 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                      imageCompareMode === "diagnostic" ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"
                     }`}
                   >
                     Diagnostic ROIs
@@ -2033,7 +2024,7 @@ function App() {
                   <button
                     onClick={() => setImageCompareMode("heatmap")}
                     className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                      imageCompareMode === "heatmap" ? "bg-white text-teal-800 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                      imageCompareMode === "heatmap" ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"
                     }`}
                   >
                     Thermal Heatmap
@@ -2059,24 +2050,24 @@ function App() {
             </div>
 
             {/* Expandable Clinical Insights & Deep Dive Accordion */}
-            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div className="bg-white rounded-3xl border border-lavender-200/80 shadow-xs overflow-hidden">
               <div
                 onClick={() => setClinicalAccordionOpen(!clinicalAccordionOpen)}
-                className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition-colors"
+                className="p-6 flex items-center justify-between cursor-pointer hover:bg-plum-50/50 transition-colors"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-xl bg-plum-100/70 text-plum-900 flex items-center justify-center">
                     <Icon name="activity" className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">Clinical Insights & Technical Breakdown</h3>
-                    <p className="text-xs text-slate-500">
+                    <h3 className="text-sm font-bold text-plum-950">Clinical Insights & Technical Breakdown</h3>
+                    <p className="text-xs text-plum-700">
                       Optical color constancy metrics, anatomical ROI yellowness, and ML model telemetry
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2 text-xs font-semibold text-teal-700">
+                <div className="flex items-center space-x-2 text-xs font-semibold text-plum-900 hover:text-plum-950">
                   <span>{clinicalAccordionOpen ? "Hide Breakdown" : "View Breakdown"}</span>
                   <Icon
                     name={clinicalAccordionOpen ? "chevron-up" : "chevron-down"}
@@ -2086,16 +2077,16 @@ function App() {
               </div>
 
               {clinicalAccordionOpen && (
-                <div className="p-6 pt-0 border-t border-slate-100 space-y-6">
+                <div className="p-6 pt-0 border-t border-lavender-100/80 space-y-6">
                   {/* Sub-Tabs */}
-                  <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
+                  <div className="flex items-center space-x-2 border-b border-lavender-100/80 pb-3">
                     <button
                       type="button"
                       onClick={() => setClinicalTab("optical")}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                         clinicalTab === "optical"
-                          ? "bg-teal-50 text-teal-800 border border-teal-200/60 shadow-xs"
-                          : "text-slate-500 hover:text-slate-800"
+                          ? "bg-plum-100/80 text-plum-950 border border-lavender-300/80 shadow-xs"
+                          : "text-plum-700 hover:text-plum-950"
                       }`}
                     >
                       Optical Normalization
@@ -2105,8 +2096,8 @@ function App() {
                       onClick={() => setClinicalTab("biomarkers")}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                         clinicalTab === "biomarkers"
-                          ? "bg-teal-50 text-teal-800 border border-teal-200/60 shadow-xs"
-                          : "text-slate-500 hover:text-slate-800"
+                          ? "bg-plum-100/80 text-plum-950 border border-lavender-300/80 shadow-xs"
+                          : "text-plum-700 hover:text-plum-950"
                       }`}
                     >
                       Biometric ROIs (b*, Cr/Cb)
@@ -2116,8 +2107,8 @@ function App() {
                       onClick={() => setClinicalTab("model")}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                         clinicalTab === "model"
-                          ? "bg-teal-50 text-teal-800 border border-teal-200/60 shadow-xs"
-                          : "text-slate-500 hover:text-slate-800"
+                          ? "bg-plum-100/80 text-plum-950 border border-lavender-300/80 shadow-xs"
+                          : "text-plum-700 hover:text-plum-950"
                       }`}
                     >
                       Model & Quality Gating
@@ -2128,38 +2119,38 @@ function App() {
                   {clinicalTab === "optical" && (
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
-                          <span className="text-[10px] font-bold uppercase text-slate-400">Active Method</span>
-                          <p className="text-xs font-bold text-slate-900 mt-1 uppercase">
+                        <div className="bg-plum-50/40 p-4 rounded-2xl border border-lavender-200/70">
+                          <span className="text-[10px] font-bold uppercase text-plum-600">Active Method</span>
+                          <p className="text-xs font-bold text-plum-950 mt-1 uppercase">
                             {analysisResult?.active_correction_method || "auto"}
                           </p>
-                          <span className="text-[10px] text-teal-600 mt-1 block">Illumination compensated</span>
+                          <span className="text-[10px] text-plum-800 mt-1 block">Illumination compensated</span>
                         </div>
 
-                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
-                          <span className="text-[10px] font-bold uppercase text-slate-400">Ambient CCT</span>
-                          <p className="text-xs font-bold text-slate-900 mt-1 font-mono">
+                        <div className="bg-plum-50/40 p-4 rounded-2xl border border-lavender-200/70">
+                          <span className="text-[10px] font-bold uppercase text-plum-600">Ambient CCT</span>
+                          <p className="text-xs font-bold text-plum-950 mt-1 font-mono">
                             {analysisResult?.lighting_condition?.cct_kelvin || 5500} K
                           </p>
-                          <span className="text-[10px] text-slate-500 mt-1 block">
+                          <span className="text-[10px] text-plum-700 mt-1 block">
                             {analysisResult?.lighting_condition?.category || "Standard Daylight"}
                           </span>
                         </div>
 
-                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
-                          <span className="text-[10px] font-bold uppercase text-slate-400">Sharpness Index</span>
-                          <p className="text-xs font-bold text-slate-900 mt-1 font-mono">
+                        <div className="bg-plum-50/40 p-4 rounded-2xl border border-lavender-200/70">
+                          <span className="text-[10px] font-bold uppercase text-plum-600">Sharpness Index</span>
+                          <p className="text-xs font-bold text-plum-950 mt-1 font-mono">
                             {analysisResult?.quality_gate?.sharpness_score?.toFixed(1) || "142.0"}
                           </p>
-                          <span className="text-[10px] text-emerald-600 mt-1 block">Passed Quality Gate</span>
+                          <span className="text-[10px] text-clinical-normal font-semibold mt-1 block">Passed Quality Gate</span>
                         </div>
 
-                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
-                          <span className="text-[10px] font-bold uppercase text-slate-400">Dermal Coverage</span>
-                          <p className="text-xs font-bold text-slate-900 mt-1 font-mono">
+                        <div className="bg-plum-50/40 p-4 rounded-2xl border border-lavender-200/70">
+                          <span className="text-[10px] font-bold uppercase text-plum-600">Dermal Coverage</span>
+                          <p className="text-xs font-bold text-plum-950 mt-1 font-mono">
                             {((analysisResult?.quality_gate?.valid_pixel_ratio || 0.98) * 100).toFixed(1)}%
                           </p>
-                          <span className="text-[10px] text-slate-500 mt-1 block">Specular glare excluded</span>
+                          <span className="text-[10px] text-plum-700 mt-1 block">Specular glare excluded</span>
                         </div>
                       </div>
                     </div>
@@ -2171,30 +2162,30 @@ function App() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs">
                           <thead>
-                            <tr className="border-b border-slate-200 text-slate-400 uppercase text-[10px] font-bold">
+                            <tr className="border-b border-lavender-200 text-plum-600 uppercase text-[10px] font-bold">
                               <th className="py-2.5 px-3">Anatomical Landmark</th>
                               <th className="py-2.5 px-3">Raw b*</th>
-                              <th className="py-2.5 px-3 font-semibold text-teal-800">Corrected b* (Yellowness)</th>
+                              <th className="py-2.5 px-3 font-semibold text-plum-900">Corrected b* (Yellowness)</th>
                               <th className="py-2.5 px-3">Bilirubin Index (BIx)</th>
                               <th className="py-2.5 px-3">Clinical Weight</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100 font-mono">
+                          <tbody className="divide-y divide-lavender-100 font-mono">
                             {analysisResult?.roi_breakdown && Object.entries(analysisResult.roi_breakdown).map(([k, v]) => (
-                              <tr key={k} className="hover:bg-slate-50">
-                                <td className="py-3 px-3 font-sans font-bold capitalize text-slate-800">
+                              <tr key={k} className="hover:bg-plum-50/50">
+                                <td className="py-3 px-3 font-sans font-bold capitalize text-plum-950">
                                   {k}
                                 </td>
-                                <td className="py-3 px-3 text-slate-500">
+                                <td className="py-3 px-3 text-plum-700">
                                   {v.raw_b_star?.toFixed(2) || "N/A"}
                                 </td>
-                                <td className="py-3 px-3 font-bold text-teal-700">
+                                <td className="py-3 px-3 font-bold text-plum-900">
                                   {v.corrected_b_star?.toFixed(2) || "N/A"}
                                 </td>
-                                <td className="py-3 px-3 text-slate-700">
+                                <td className="py-3 px-3 text-plum-900">
                                   {v.corrected_bix?.toFixed(3) || "N/A"}
                                 </td>
-                                <td className="py-3 px-3 text-slate-600">
+                                <td className="py-3 px-3 text-plum-700">
                                   {((v.effective_weight || 0.25) * 100).toFixed(0)}%
                                 </td>
                               </tr>
@@ -2209,32 +2200,32 @@ function App() {
                   {clinicalTab === "model" && (
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70">
-                          <span className="text-[10px] font-bold uppercase text-slate-400">Methodology / Engine</span>
-                          <p className="text-xs font-bold text-slate-900 mt-1">
+                        <div className="p-4 rounded-2xl bg-plum-50/40 border border-lavender-200/70">
+                          <span className="text-[10px] font-bold uppercase text-plum-600">Methodology / Engine</span>
+                          <p className="text-xs font-bold text-plum-950 mt-1">
                             {analysisResult?.model_version ? `neoscan_ml (${analysisResult.model_version})` : "Optical Screening"}
                           </p>
-                          <span className="text-[10px] text-slate-500 mt-1 block">
+                          <span className="text-[10px] text-plum-700 mt-1 block">
                             {riskDetails.methodology}
                           </span>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70">
-                          <span className="text-[10px] font-bold uppercase text-slate-400">Quality Gating</span>
-                          <p className="text-xs font-bold text-slate-900 mt-1">Quality &amp; Face Gate</p>
-                          <span className="text-[10px] text-slate-500 mt-1 block">
+                        <div className="p-4 rounded-2xl bg-plum-50/40 border border-lavender-200/70">
+                          <span className="text-[10px] font-bold uppercase text-plum-600">Quality Gating</span>
+                          <p className="text-xs font-bold text-plum-950 mt-1">Quality &amp; Face Gate</p>
+                          <span className="text-[10px] text-plum-700 mt-1 block">
                             Sharpness: {analysisResult?.quality_gate?.sharpness_score?.toFixed(1) || "Passed"} • Dermal Coverage: {((analysisResult?.quality_gate?.valid_pixel_ratio || 0.98) * 100).toFixed(0)}%
                           </span>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70">
-                          <span className="text-[10px] font-bold uppercase text-slate-400">Screening Score &amp; Thresholds</span>
-                          <p className="text-xs font-bold text-teal-700 mt-1 font-mono">
+                        <div className="p-4 rounded-2xl bg-plum-50/40 border border-lavender-200/70">
+                          <span className="text-[10px] font-bold uppercase text-plum-600">Screening Score &amp; Thresholds</span>
+                          <p className="text-xs font-bold text-plum-900 mt-1 font-mono">
                             {riskDetails.modelScore !== null && riskDetails.modelScore !== undefined
                               ? `Score: ${riskDetails.modelScore.toFixed(4)} (Cutoff 0.50)`
                               : "b* < 16.0 (Normal)"}
                           </p>
-                          <span className="text-[10px] text-emerald-600 mt-1 block">
+                          <span className="text-[10px] text-clinical-normal font-semibold mt-1 block">
                             Reliability: {riskDetails.reliability || "normal"}
                           </span>
                         </div>
@@ -2258,12 +2249,12 @@ function App() {
             </div>
 
             {/* Patient Screening History Timeline Strip */}
-            <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs space-y-3">
+            <div className="bg-white rounded-3xl border border-lavender-200/80 p-5 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                <span className="text-xs font-bold uppercase tracking-wider text-plum-950">
                   {activePatient.name}'s Longitudinal Screenings ({activePatient.images ? activePatient.images.length : 0})
                 </span>
-                <span className="text-xs text-slate-400">Click any frame to view</span>
+                <span className="text-xs text-plum-600">Click any frame to view</span>
               </div>
 
               <div className="flex items-center space-x-3 overflow-x-auto pb-2">
@@ -2280,20 +2271,20 @@ function App() {
                       onClick={() => setActiveImageId(img.id)}
                       className={`w-28 shrink-0 rounded-2xl border p-2 cursor-pointer transition-all ${
                         activeImageRecord && activeImageRecord.id === img.id
-                          ? "border-teal-500 ring-2 ring-teal-500/20 bg-teal-50/20"
-                          : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                          ? "border-plum-900 ring-2 ring-plum-900/20 bg-plum-50/50"
+                          : "border-lavender-200/80 bg-plum-50/30 hover:border-violet-300"
                       }`}
                     >
-                      <div className="aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 mb-1.5">
+                      <div className="aspect-[4/3] rounded-xl overflow-hidden bg-plum-100/40 mb-1.5">
                         <ImageWithFallback src={img.rawImage} alt="Historical thumbnail" className="w-full h-full" />
                       </div>
-                      <div className="text-[10px] font-bold text-slate-800 truncate">{img.formattedDate}</div>
-                      <div className="flex items-center justify-between text-[9px] text-slate-400 capitalize mt-0.5">
+                      <div className="text-[10px] font-bold text-plum-950 truncate">{img.formattedDate}</div>
+                      <div className="flex items-center justify-between text-[9px] text-plum-600 capitalize mt-0.5">
                         <span>{img.activeCorrection || "auto"}</span>
                         {isV2Scan ? (
-                          <span className="text-[8px] font-medium text-teal-700 bg-teal-50 px-1 rounded">v2.0</span>
+                          <span className="text-[8px] font-medium text-plum-900 bg-plum-100/80 px-1 rounded">v2.0</span>
                         ) : (
-                          <span className="text-[8px] font-medium text-slate-500 bg-slate-200/60 px-1 rounded">Legacy</span>
+                          <span className="text-[8px] font-medium text-plum-600 bg-plum-100/40 px-1 rounded">Legacy</span>
                         )}
                       </div>
                     </div>
@@ -2307,36 +2298,36 @@ function App() {
 
       {/* Calming Heartbeat Loading Modal */}
       {loading && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border border-slate-100 space-y-6">
+        <div className="fixed inset-0 z-50 bg-plum-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border border-lavender-200/80 space-y-6">
             <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-teal-500/20 animate-pulse-ring"></div>
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-teal-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-teal-500/30 animate-heartbeat">
+              <div className="absolute inset-0 rounded-full bg-violet-500/20 animate-pulse-ring"></div>
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-plum-900 to-violet-700 flex items-center justify-center text-white shadow-lg shadow-plum-900/30 animate-heartbeat">
                 <Icon name="heart" className="w-7 h-7" />
               </div>
             </div>
 
             <div className="space-y-2">
-              <h3 className="text-base font-bold text-slate-900">Evaluating Infant Skin</h3>
-              <p className="text-xs text-slate-500 leading-relaxed transition-all">
+              <h3 className="text-base font-bold text-plum-950">Evaluating Infant Skin</h3>
+              <p className="text-xs text-plum-700 leading-relaxed transition-all">
                 {loadingMessage}
               </p>
             </div>
 
-            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-              <div className="bg-teal-600 h-full rounded-full w-2/3 animate-[spin_2s_linear_infinite]"></div>
+            <div className="w-full bg-plum-100/60 rounded-full h-1.5 overflow-hidden">
+              <div className="bg-plum-900 h-full rounded-full w-2/3 animate-[spin_2s_linear_infinite]"></div>
             </div>
           </div>
         </div>
       )}
 
       {/* Professional Medical Disclaimer Footer */}
-      <footer className="mt-auto border-t border-slate-200/80 bg-white py-6">
+      <footer className="mt-auto border-t border-lavender-200/80 bg-white py-6">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-          <p className="text-xs text-slate-500 max-w-3xl leading-relaxed">
-            <strong className="text-slate-700">Clinical Screening Disclaimer:</strong> NeoScan is an AI-assisted screening companion designed to support parents and pediatric care teams. It is not an invasive diagnostic device and does not replace confirmed laboratory serum bilirubin (TSB) or clinical transcutaneous bilirubin (TcB) testing. Always seek medical guidance from a licensed pediatrician.
+          <p className="text-xs text-plum-700 max-w-3xl leading-relaxed">
+            <strong className="text-plum-950">Clinical Screening Disclaimer:</strong> NeoScan is an AI-assisted screening companion designed to support parents and pediatric care teams. It is not an invasive diagnostic device and does not replace confirmed laboratory serum bilirubin (TSB) or clinical transcutaneous bilirubin (TcB) testing. Always seek medical guidance from a licensed pediatrician.
           </p>
-          <div className="text-[11px] font-semibold text-slate-400 shrink-0">
+          <div className="text-[11px] font-semibold text-plum-600 shrink-0">
             NeoScan v2.0 • neoscan_ml Engine
           </div>
         </div>
