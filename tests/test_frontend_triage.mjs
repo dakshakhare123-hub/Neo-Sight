@@ -29,7 +29,8 @@ console.log("Running Frontend Triage Unit Tests...");
   assert.strictEqual(res.level, "normal");
   assert.strictEqual(res.badge, "ROUTINE OBSERVATION");
   assert.strictEqual(res.color, "#1E6F43");
-  assert(res.headline.includes("No Visible Signs Detected"));
+  assert.strictEqual(res.headline, "No visible signs detected. Continue routine monitoring");
+  assert.strictEqual(res.recommendation, "No visible signs detected. Continue routine monitoring");
 }
 
 // 4. Normal image BUT early onset (<24h) -> Escalated to URGENT
@@ -44,14 +45,15 @@ console.log("Running Frontend Triage Unit Tests...");
   assert(res.reasons.some(r => r.includes("< 24 hours")));
 }
 
-// 5. Possible jaundice signs -> Pediatric Consultation
+// 5. Possible jaundice signs -> Paediatric Consultation
 {
   const res = computeTriage({
     analysisResult: { category: "possible_jaundice_signs", model_score: 0.78, features: { fh_b: 22.4 } },
     patient: { ageHours: 72, gestation: "full-term", feeding: "breastfeeding" }
   });
   assert.strictEqual(res.level, "elevated");
-  assert.strictEqual(res.headline, "Pediatric Consultation Recommended");
+  assert.strictEqual(res.headline, "Paediatric consultation recommended");
+  assert.strictEqual(res.recommendation, "Paediatric consultation recommended");
   assert.strictEqual(res.color, "#8F1D40");
 }
 
@@ -75,6 +77,27 @@ console.log("Running Frontend Triage Unit Tests...");
   assert.strictEqual(res.level, "warning");
   assert.strictEqual(res.badge, "INCONCLUSIVE — RETAKE PHOTO");
   assert.strictEqual(res.color, "#9E5700");
+  assert.strictEqual(res.headline, "Inconclusive: retake the photo in even daylight; seek clinical assessment if you are concerned");
+  assert.strictEqual(res.recommendation, "Inconclusive: retake the photo in even daylight; seek clinical assessment if you are concerned");
 }
 
-console.log("All 7 Frontend Triage tests passed successfully!");
+// 8. Regression test: Moderate b* (16.5) on normal infant must NOT trigger paediatric consultation
+{
+  const resNormalMod = computeTriage({
+    analysisResult: { category: "no_visible_signs", model_score: 0.016, features: { fh_b: 16.5 } },
+    patient: { ageHours: 72, gestation: "full-term", feeding: "breastfeeding" }
+  });
+  assert.strictEqual(resNormalMod.level, "normal");
+  assert.strictEqual(resNormalMod.headline, "No visible signs detected. Continue routine monitoring");
+  assert(!resNormalMod.headline.toLowerCase().includes("paediatric consultation"));
+
+  const resJaundMod = computeTriage({
+    analysisResult: { category: "possible_jaundice_signs", model_score: 0.72, features: { fh_b: 16.5 } },
+    patient: { ageHours: 72, gestation: "full-term", feeding: "breastfeeding" }
+  });
+  assert.strictEqual(resJaundMod.level, "elevated");
+  assert.strictEqual(resJaundMod.headline, "Paediatric consultation recommended");
+  assert.notStrictEqual(resNormalMod.headline, resJaundMod.headline);
+}
+
+console.log("All 8 Frontend Triage tests passed successfully!");

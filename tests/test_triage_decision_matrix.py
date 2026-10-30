@@ -56,13 +56,14 @@ class TestTriageDecisionMatrix(unittest.TestCase):
             feeding="breastfeeding"
         )
         self.assertEqual(res.level, "normal")
-        self.assertEqual(res.headline, "No Visible Signs Detected — Routine Monitoring")
+        self.assertEqual(res.headline, "No visible signs detected. Continue routine monitoring")
+        self.assertEqual(res.recommendation, "No visible signs detected. Continue routine monitoring")
         self.assertEqual(res.badge, "ROUTINE OBSERVATION")
         self.assertIn("#1E6F43", res.color)
-        self.assertFalse(res.headline.startswith("Pediatric Consultation"))
+        self.assertFalse(res.headline.lower().startswith("paediatric consultation"))
 
     def test_jaundiced_image_produces_pediatric_consultation(self):
-        """Rule 2: possible_jaundice_signs must produce pediatric consultation."""
+        """Rule 2: possible_jaundice_signs must produce paediatric consultation."""
         res = compute_triage(
             category="possible_jaundice_signs",
             model_score=0.885,
@@ -73,7 +74,8 @@ class TestTriageDecisionMatrix(unittest.TestCase):
             feeding="breastfeeding"
         )
         self.assertEqual(res.level, "elevated")
-        self.assertEqual(res.headline, "Pediatric Consultation Recommended")
+        self.assertEqual(res.headline, "Paediatric consultation recommended")
+        self.assertEqual(res.recommendation, "Paediatric consultation recommended")
         self.assertEqual(res.badge, "CLINICAL EVALUATION ADVISED")
         self.assertIn("#8F1D40", res.color)
 
@@ -89,9 +91,43 @@ class TestTriageDecisionMatrix(unittest.TestCase):
             feeding="breastfeeding"
         )
         self.assertEqual(res.level, "warning")
-        self.assertEqual(res.headline, "Inconclusive: Retake in Daylight")
+        self.assertEqual(res.headline, "Inconclusive: retake the photo in even daylight; seek clinical assessment if you are concerned")
+        self.assertEqual(res.recommendation, "Inconclusive: retake the photo in even daylight; seek clinical assessment if you are concerned")
         self.assertEqual(res.badge, "INCONCLUSIVE — RETAKE PHOTO")
         self.assertIn("#9E5700", res.color)
+
+    def test_moderate_b_star_normal_vs_jaundiced_produce_distinct_recommendations(self):
+        """Regression test for bug: Moderate b* (14-20) alone must NOT force paediatric consultation for normal infant."""
+        # 1. Normal infant with moderate b* (e.g. 16.5)
+        res_normal_mod = compute_triage(
+            category="no_visible_signs",
+            model_score=0.016,
+            reliability="normal",
+            b_star=16.5,
+            age_hours=72,
+            gestation="full-term",
+            feeding="breastfeeding"
+        )
+        self.assertEqual(res_normal_mod.level, "normal")
+        self.assertEqual(res_normal_mod.headline, "No visible signs detected. Continue routine monitoring")
+        self.assertNotIn("paediatric consultation recommended", res_normal_mod.headline.lower())
+
+        # 2. Jaundiced infant with moderate b* (e.g. 16.5)
+        res_jaund_mod = compute_triage(
+            category="possible_jaundice_signs",
+            model_score=0.72,
+            reliability="normal",
+            b_star=16.5,
+            age_hours=72,
+            gestation="full-term",
+            feeding="breastfeeding"
+        )
+        self.assertEqual(res_jaund_mod.level, "elevated")
+        self.assertEqual(res_jaund_mod.headline, "Paediatric consultation recommended")
+
+        # Must differ definitively:
+        self.assertNotEqual(res_normal_mod.headline, res_jaund_mod.headline)
+        self.assertNotEqual(res_normal_mod.level, res_jaund_mod.level)
 
     def test_normal_and_jaundiced_inputs_produce_distinct_recommendations(self):
         """Requirement: Must fail if two clearly different inputs always give the same recommendation."""
