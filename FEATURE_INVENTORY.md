@@ -1,47 +1,82 @@
-# NeoScan Feature Inventory (`FEATURE_INVENTORY.md`)
+# Feature Inventory: Patient Profile Page
 
-**Date:** October 30, 2026  
-**Application:** NeoScan — Intelligent Neonatal Bilirubin Screening  
-**Verification Method:** Static code analysis, test execution, and live runtime verification on `http://127.0.0.1:8000`  
+**Page / View:** NeoScan Step 1 (`currentStep === 1`: "Patient Profile & Image Tracking History")  
+**Branch:** `feat/profile-redesign`  
+**Date:** 2026-10-30  
 
----
-
-## 1. User-Facing Screens & Stepped Wizard Routes
-
-| Step / Route | Component / Container | User-Facing Features | Interactive Elements |
-| :--- | :--- | :--- | :--- |
-| **Top Global Header** | `<header>` lines 1070–1165 in `App.jsx` | Brand Logo (`NeoScan Pediatric`), Stepped Navigation Pills (`1. Patient Profile`, `2. Capture & Guidance`, `3. Triage & Insights`), Mobile Step Progress Bar | Step navigation clicks (`setCurrentStep(1\|2\|3)`) |
-| **Step 1: Patient Profile** | Step 1 container lines 1225–1440 | Infant demographic switcher, active patient summary card, preloaded clinical demo patient catalog | Patient switcher tabs, "New Infant Record" button, "Edit Profile" button, 4 demo sample load buttons |
-| **Step 2: Capture & Guidance** | Step 2 container lines 1445–1780 | Camera live viewfinder, 60 FPS face guidance HUD canvas, camera controls, manual photo upload drag/drop zone, illumination strategy selector accordion | "Live Camera" vs "Photo Upload" tabs, "Capture Photo" shutter, "Switch Camera" (user/environment), "Stop Camera", "Color Constancy Algorithm" dropdown |
-| **Step 3: Triage & Insights** | Step 3 container lines 1785–2280 | Hero Triage Card, Calibrated Risk Gauge, Parent Care Checklist, Multi-Spectrum Viewport, Technical Insights Deep Dive Accordion, Longitudinal History Timeline Strip | "Rescreen / Retake" button, "Export Report" print button, Viewport mode tabs ("Corrected", "Raw", "Diagnostic ROIs", "Thermal Heatmap"), Technical Sub-tabs ("Optical", "Biometric ROIs", "Model & Quality"), Timeline frame clicks |
+This inventory catalogs every visual element, data field, interactive control, conditional state, and action currently present on the Patient Profile page. Every item listed here must be preserved in the redesign.
 
 ---
 
-## 2. Interactive Modals & Notification Banners
-
-| Modal / Banner | Trigger Condition | Visual Content | Actions |
-| :--- | :--- | :--- | :--- |
-| **Quality Gate Error Banner** | `error !== null` (lines 1184–1222) | Warning icon, error title, message, actionable guidance box | "Retake Photo" (clears error, switches to step 2, activates camera), "Dismiss" button |
-| **Add / Edit Infant Modal** | `modalOpen === true` (lines 1250–1330) | Infant name, age value & unit, gestation weeks, birth weight, notes | "Cancel" button, "Save Record" button |
-| **Heartbeat Loading Modal** | `loading === true` (lines 2282–2315) | Pulsing heartbeat icon, animated pulse ring, rotating progress bar, multi-stage status text | Background backdrop overlay (non-interactive, self-dismisses on response) |
-| **Medical Disclaimer Footer** | Always present (lines 2318–2329) | Clinical screening disclaimer text, version badge | Informational text |
-
----
-
-## 3. Backend API Endpoints (`backend/app/api/routes.py`)
-
-| Endpoint | Method | Input | Output Contract | Verification Status |
-| :--- | :--- | :--- | :--- | :--- |
-| `/api/v1/health` | `GET` | None | `{status: "online", screening_method: "neoscan_ml", neoscan_enabled: true, ml_model_loaded: true, ...}` | Verified (HTTP 200) |
-| `/api/v1/demo-samples` | `GET` | None | `{"samples": [4 clinical demo cases with base64 data URLs]}` | Verified (HTTP 200) |
-| `/api/v1/analyze` | `POST` | `{"image_base64": "..."}` | `{category, model_score, reliability, risk_assessment, tracking, visualizations, ...}` | Verified (HTTP 200 / 413 / 422 / 503) |
-| `/api/v1/analyze/file` | `POST` | Multipart `file` | Equivalent to `/analyze` | Verified (HTTP 200) |
+## 1. Global Navigation & Wizard Header
+| ID | Element / Control | Type | Data Binding / Behavior | Present in Redesign |
+| :--- | :--- | :--- | :--- | :---: |
+| `NAV-01` | Step 1 Pill ("1. Patient Profile") | Tab button | Active step indicator; clicking sets `currentStep(1)` | Yes |
+| `NAV-02` | Step 2 Pill ("2. Capture") | Tab button | Clicking sets `currentStep(2)` | Yes |
+| `NAV-03` | Step 3 Pill ("3. Triage & Insights") | Tab button | Clicking sets `currentStep(3)` | Yes |
+| `NAV-04` | Brand Logo & Title | Header branding | Displays NeoScan icon and version badge | Yes |
 
 ---
 
-## 4. Optical & Machine Learning Engine
+## 2. Profile Summary & Identity Elements
+| ID | Element / Control | Type | Data Binding / Behavior | Present in Redesign |
+| :--- | :--- | :--- | :--- | :---: |
+| `ID-01` | Greeting Category Pill | Badge | Displays `<Icon name="sparkles" /> Pediatric Personalization & Records` | Yes |
+| `ID-02` | Page Title | Heading (h1) | "Infant Screening Profile" | Yes |
+| `ID-03` | Context Description | Paragraph | Explains physiological progression of neonatal jaundice and tracking over time | Yes |
+| `ID-04` | Active Patient Name | Text display | Displays `{activePatient.name}` in header and active indicators | Yes |
+| `ID-05` | Active Patient ID | Metadata | Primary patient key (e.g. `patient-leo`, `patient-maya`) | Yes |
+| `ID-06` | Postnatal Age Display | Chip / text | Shows `{p.ageValue} {p.ageUnit}` | Yes |
+| `ID-07` | Gestation Display | Chip / badge | Shows `{p.gestation}` (full-term, late-preterm, preterm) | Yes |
+| `ID-08` | Feeding Method Display | Chip / badge | Shows `{p.feeding}` (breastfeeding, combination, etc.) | Yes |
+| `ID-09` | Clinical Notes Display | Text / subtitle | Shows `{activePatient.notes}` or fallback | Yes |
+| `ID-10` | Screened Photos Counter | Counter pill | Shows count of images in `{p.images.length}` | Yes |
 
-- **Quality & Face Gate:** OpenCV Haar cascades + YCrCb/HSV skin mask check. Rejects non-faces, blur, extreme exposure.
-- **Color Normalization:** Shades-of-Gray background normalization + optional ArUco Card CCM and Sclera WB.
-- **Classification Engine:** `HistGradientBoostingClassifier` trained on NJN dataset (`models/model.joblib`), evaluating forehead and cheek ROIs with zero infant leakage.
-- **Outputs:** Three honest clinical categories (`no_visible_signs`, `possible_jaundice_signs`, `inconclusive`), raw model score, reliability indicator, diagnostic visualizer overlay.
+---
+
+## 3. Patient Switcher / Selection Strip
+| ID | Element / Control | Type | Data Binding / Behavior | Present in Redesign |
+| :--- | :--- | :--- | :--- | :---: |
+| `SW-01` | Patient Switcher Container | Grid / list | Displays all patients in `patients` state | Yes |
+| `SW-02` | Patient Tab: Baby Leo | Card button | `onClick={() => selectPatientProfile(p)}`; activates Leo | Yes |
+| `SW-03` | Patient Tab: Baby Maya | Card button | `onClick={() => selectPatientProfile(p)}`; activates Maya | Yes |
+| `SW-04` | Patient Tab: Baby Sam | Card button | `onClick={() => selectPatientProfile(p)}`; activates Sam | Yes |
+| `SW-05` | Patient Tab: Baby Noah | Card button | `onClick={() => selectPatientProfile(p)}`; activates Noah | Yes |
+| `SW-06` | Active Indicator Dot | Visual dot | Renders plum dot on currently selected patient card | Yes |
+
+---
+
+## 4. Demographic & Clinical Parameter Inputs (Live Editing)
+| ID | Element / Control | Type | Data Binding / Behavior | Present in Redesign |
+| :--- | :--- | :--- | :--- | :---: |
+| `ED-01` | Infant Name Input | Text input | Controlled input updating `activePatient.name` in `patients` | Yes |
+| `ED-02` | Postnatal Age Input | Number input | Controlled input (`min=1`, `max=360`) updating `activePatient.ageValue` | Yes |
+| `ED-03` | Hours Toggle Button | Segmented button | `onClick={() => set ageUnit to 'hours'}`; highlights when active | Yes |
+| `ED-04` | Days Toggle Button | Segmented button | `onClick={() => set ageUnit to 'days'}`; highlights when active | Yes |
+| `ED-05` | Gestational Maturity Dropdown | Select dropdown | Options: `full-term`, `late-preterm`, `preterm`; updates `gestation` | Yes |
+
+---
+
+## 5. Patient Image History & Tracking Gallery
+| ID | Element / Control | Type | Data Binding / Behavior | Present in Redesign |
+| :--- | :--- | :--- | :--- | :---: |
+| `IM-01` | Gallery Section Header | Title + count | Displays `Screening Images & Tracking History ({count})` with clock icon | Yes |
+| `IM-02` | Non-destructive Label | Badge | "Non-destructive dermal records" label | Yes |
+| `IM-03` | Empty State Box | Container | Renders when `!activePatient.images || activePatient.images.length === 0` | Yes |
+| `IM-04` | Empty State Camera Icon | Icon | Lucide camera icon in tinted circular container | Yes |
+| `IM-05` | Empty State Message | Headings & copy | "No screening photos recorded yet" with actionable description | Yes |
+| `IM-06` | "Take First Screening Photo" | Action button | `onClick={() => setCurrentStep(2)}`; navigates to camera capture | Yes |
+| `IM-07` | Image Card Item | Card | Renders for each record in `activePatient.images` | Yes |
+| `IM-08` | Photo Preview | Image | `ImageWithFallback` with `src={imgRecord.rawImage}`; aspect 4/3; unfiltered | Yes |
+| `IM-09` | Risk Category Badge | Overlaid pill | Displays e.g. `NO VISIBLE SIGNS` / `SCREENED` with dynamic risk color | Yes |
+| `IM-10` | Date & Timestamp | Text | Displays `{imgRecord.formattedDate}` | Yes |
+| `IM-11` | Active Correction Badge | Text | Displays `{imgRecord.activeCorrection || 'auto'}` | Yes |
+| `IM-12` | Tracking Distance Badge | Icon + text | Displays `<Icon name="target" /> Distance: {distance} cm` if present | Yes |
+| `IM-13` | Image Click Handler | Interactive | `onClick`: selects image ID; navigates to Step 3 or triggers analysis | Yes |
+
+---
+
+## 6. Primary Action
+| ID | Element / Control | Type | Data Binding / Behavior | Present in Redesign |
+| :--- | :--- | :--- | :--- | :---: |
+| `ACT-01`| "Capture New Photo for {name} →" | Button (gradient) | Clears errors, sets `currentStep(2)`, starts camera if in camera mode | Yes |

@@ -1,53 +1,42 @@
-# Pre-Retheme Baseline Report (`BASELINE.md`)
+# Baseline Safety Net: Patient Profile Redesign
 
-**Date:** October 30, 2026  
-**Branch:** `feat/purple-theme`  
-**Engineer:** Senior Front-End Engineer & UI Designer  
-**Runtime:** Node v20.18.0 (`.tools/node-v20.18.0-darwin-arm64/bin/node`), Python 3.13.15  
-**Web Server:** FastAPI / Uvicorn running on `http://127.0.0.1:8000`  
+**Branch:** `feat/profile-redesign`  
+**Date:** 2026-10-30  
+**Engineer / Designer:** Senior Product Designer & Front-End Engineer  
 
 ---
 
-## 1. Automated Test Execution Baseline
+## 1. Pre-Redesign Test Suite Execution
 
-| Test Suite | Command | Result | Pass Rate | Notes |
+All baseline tests were run prior to modifying any profile markup, styles, or components:
+
+| Suite | Command | Result | Duration | Notes |
 | :--- | :--- | :---: | :---: | :--- |
-| **Non-Analysis Characterisation** | `python3 -m unittest discover -s tests -p "test_characterisation.py"` | **PASS** | 6 / 6 | Frontend assets, health check, demo samples catalog, quality gate, color transforms, and patient schema. |
-| **NeoScan ML Integration Suite** | `python3 -m unittest discover -s tests -p "test_neoscan_integration.py"` | **PASS** | 10 / 10 | Oversized payload, tiny images, blur gate, non-face rejection, missing model 503, valid inference, multipart upload, concurrency. |
-| **Module Pipeline Unit Tests** | `python3 -m unittest discover -s neoscan_ml/tests` | **PASS** | 7 / 7 (1 skipped) | Blank, dark, noise, tiny, yellow wall rejection. Real face test skipped (optional `scikit-image` not installed). |
+| **Profile Characterisation** | `PYTHONPATH=. python3 tests/test_profile_characterisation.py` | **PASS (5/5)** | 0.013s | Verifies patient record schema, selection logic, editing immutability, image tracking, and demo seeding. |
+| **System Characterisation** | `PYTHONPATH=. python3 tests/test_characterisation.py` | **PASS (6/6)** | 0.353s | Verifies bundle integrity, health endpoint, demo samples delivery, quality gating, color spaces. |
+| **NeoScan ML Integration** | `PYTHONPATH=. python3 tests/test_neoscan_integration.py` | **PASS (10/10)** | 1.532s | Verifies API contracts, error gating (non-face, blur, tiny), and real ML prediction outcomes. |
+| **ML Pipeline Unit Tests** | `PYTHONPATH=neoscan_ml:backend python3 neoscan_ml/tests/test_pipeline.py` | **PASS (8/8)** | 0.322s | 1 skipped (requires optional media), all active unit tests pass. |
+| **Frontend Bundle Build** | `.tools/node-v20.18.0-darwin-arm64/bin/node frontend/build.cjs` | **PASS** | 0.48s | 106,086 bytes compiled with zero Babel or syntax errors. |
 
 ---
 
-## 2. Frontend Build Baseline
+## 2. Pre-Redesign Profile Structure & Component Audit
 
-```bash
-$ .tools/node-v20.18.0-darwin-arm64/bin/node frontend/build.cjs
-[NeoScan Build] Compiled App.jsx -> app.js (106188 bytes) successfully!
-```
-- **Syntax / Compilation:** 100% clean, 0 syntax errors, 0 runtime warnings.
-- **Bundle Size:** 106,188 bytes (`frontend/app.js`).
+Step 1 in `frontend/src/App.jsx` (lines 1241–1498):
+- **Greeting Banner:** Centered pill `Pediatric Personalization & Records`, `h1` `Infant Screening Profile`, descriptive paragraph.
+- **Patient Switcher:** 4-card horizontal grid (Baby Leo, Baby Maya, Baby Sam, Baby Noah) with active indicator dots.
+- **Profile Detail & Edit Card:** Single wide container (`max-w-4xl`) containing:
+  - Header: `{activePatient.name}'s Medical Profile`, clinical notes, gestation and feeding chips.
+  - Form Fields: Infant name text input, age number input + Hours/Days buttons, gestational maturity dropdown.
+  - Image History Section:
+    - Empty state: dashed box with camera icon and "Take First Screening Photo" CTA.
+    - Populated grid: 1 to 3 column cards showing raw photo, risk category badge, date, active correction method, and tracking distance.
+    - Click handler: triggers `setActiveImageId`, runs analysis if unanalyzed, or navigates to Step 3.
+  - Bottom CTA: Full-width button "Capture New Photo for {activePatient.name} →" switching to Step 2.
 
 ---
 
-## 3. UI Chrome & Element Inventory Baseline
-
-- **Current Styling Framework:** Tailwind CSS via standalone bundle `frontend/vendor/tailwind.min.js`.
-- **Existing Dominant Color Families:**
-  * `slate-*`: 246 occurrences (backgrounds, borders, text neutrals).
-  * `teal-*`: 105 occurrences (primary buttons, active tabs, brand accents).
-  * `amber-*`: 31 occurrences (quality gate notifications, warning cards).
-  * `emerald-*`: 7 occurrences (low-risk badges, status pulse).
-  * `cyan-*`: 6 occurrences (loading modal gradient).
-  * `rose-*`: 2 occurrences (high-risk emergency notice).
-- **Target Badge for Removal (Task 2):**
-  * Location: `frontend/src/App.jsx` lines 1144–1149:
-    ```jsx
-    <div className="flex items-center space-x-3">
-      <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-100/90 border border-slate-200/80 text-xs text-slate-600">
-        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span className="hidden sm:inline font-medium">Optical Heuristic Active</span>
-        <span className="sm:hidden font-medium">Online</span>
-      </div>
-    </div>
-    ```
-  * Dependency Audit: Confirmed 0 functional dependencies. Removing this element leaves no orphaned state, broken props, or layout shifts.
+## 3. Preserved Non-Negotiables
+- **Patient Images & Dermal Data:** Zero color filters, CSS tints, or compression applied to baby photos or camera streams.
+- **Color Palette:** Restricted exclusively to existing design tokens: Deep Plum (`#4C2365`), Violet (`#7F5D99`), Soft Violet (`#9E7EB5`), Lavender (`#C4A4DA`), and derived neutrals/status colors.
+- **Business Logic & Routes:** No modification to state managers, localStorage persistence, API endpoints, or navigation flow.
