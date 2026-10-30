@@ -1,42 +1,40 @@
-# Baseline Safety Net: Patient Profile Redesign
+# Baseline Safety Net: Triage and Insights Fixes
 
-**Branch:** `feat/profile-redesign`  
+**Branch:** `fix/triage-insights`  
 **Date:** 2026-10-30  
-**Engineer / Designer:** Senior Product Designer & Front-End Engineer  
+**Scope:** Three clinical bug fixes on Step 3 (Triage and Insights):
+1. Triage Recommendation stuck on "Pediatric Consultation Recommended".
+2. Inaccurate CIE b* yellowness scale.
+3. Broken Multi-Spectrum Visual Inspection modes.
 
 ---
 
-## 1. Pre-Redesign Test Suite Execution
+## 1. Baseline Test Execution Results
 
-All baseline tests were run prior to modifying any profile markup, styles, or components:
+All pre-existing test suites passed before any code modifications:
 
 | Suite | Command | Result | Duration | Notes |
 | :--- | :--- | :---: | :---: | :--- |
-| **Profile Characterisation** | `PYTHONPATH=. python3 tests/test_profile_characterisation.py` | **PASS (5/5)** | 0.013s | Verifies patient record schema, selection logic, editing immutability, image tracking, and demo seeding. |
-| **System Characterisation** | `PYTHONPATH=. python3 tests/test_characterisation.py` | **PASS (6/6)** | 0.353s | Verifies bundle integrity, health endpoint, demo samples delivery, quality gating, color spaces. |
-| **NeoScan ML Integration** | `PYTHONPATH=. python3 tests/test_neoscan_integration.py` | **PASS (10/10)** | 1.532s | Verifies API contracts, error gating (non-face, blur, tiny), and real ML prediction outcomes. |
-| **ML Pipeline Unit Tests** | `PYTHONPATH=neoscan_ml:backend python3 neoscan_ml/tests/test_pipeline.py` | **PASS (8/8)** | 0.322s | 1 skipped (requires optional media), all active unit tests pass. |
-| **Frontend Bundle Build** | `.tools/node-v20.18.0-darwin-arm64/bin/node frontend/build.cjs` | **PASS** | 0.48s | 106,086 bytes compiled with zero Babel or syntax errors. |
+| **Triage Characterisation** | `PYTHONPATH=. python3 tests/test_triage_insights_characterisation.py` | **PASS (4/4)** | 0.635s | Verifies health endpoint, demo samples delivery, healthy sample schema, and typed error handling. |
+| **Profile Characterisation** | `PYTHONPATH=. python3 tests/test_profile_characterisation.py` | **PASS (5/5)** | 0.021s | Verifies patient records, demographic editing, and selection logic. |
+| **System Characterisation** | `PYTHONPATH=. python3 tests/test_characterisation.py` | **PASS (6/6)** | 0.474s | Verifies bundle integrity, color space transformers, and quality gate. |
+| **NeoScan ML Integration** | `PYTHONPATH=. python3 tests/test_neoscan_integration.py` | **PASS (10/10)** | 3.715s | Verifies 422 error gating (tiny, blur, non-face) and real ML prediction outcomes. |
+| **ML Pipeline Unit Tests** | `PYTHONPATH=neoscan_ml:backend python3 neoscan_ml/tests/test_pipeline.py` | **PASS (8/8)** | 0.540s | 1 skipped, all active tests pass. |
+| **Frontend Build Compilation** | `.tools/node-v20.18.0-darwin-arm64/bin/node frontend/build.cjs` | **PASS** | 0.48s | 121,196 bytes compiled cleanly with zero Babel errors. |
 
 ---
 
-## 2. Pre-Redesign Profile Structure & Component Audit
+## 2. Pre-Fix Defect Baseline
 
-Step 1 in `frontend/src/App.jsx` (lines 1241–1498):
-- **Greeting Banner:** Centered pill `Pediatric Personalization & Records`, `h1` `Infant Screening Profile`, descriptive paragraph.
-- **Patient Switcher:** 4-card horizontal grid (Baby Leo, Baby Maya, Baby Sam, Baby Noah) with active indicator dots.
-- **Profile Detail & Edit Card:** Single wide container (`max-w-4xl`) containing:
-  - Header: `{activePatient.name}'s Medical Profile`, clinical notes, gestation and feeding chips.
-  - Form Fields: Infant name text input, age number input + Hours/Days buttons, gestational maturity dropdown.
-  - Image History Section:
-    - Empty state: dashed box with camera icon and "Take First Screening Photo" CTA.
-    - Populated grid: 1 to 3 column cards showing raw photo, risk category badge, date, active correction method, and tracking distance.
-    - Click handler: triggers `setActiveImageId`, runs analysis if unanalyzed, or navigates to Step 3.
-  - Bottom CTA: Full-width button "Capture New Photo for {activePatient.name} →" switching to Step 2.
-
----
-
-## 3. Preserved Non-Negotiables
-- **Patient Images & Dermal Data:** Zero color filters, CSS tints, or compression applied to baby photos or camera streams.
-- **Color Palette:** Restricted exclusively to existing design tokens: Deep Plum (`#4C2365`), Violet (`#7F5D99`), Soft Violet (`#9E7EB5`), Lavender (`#C4A4DA`), and derived neutrals/status colors.
-- **Business Logic & Routes:** No modification to state managers, localStorage persistence, API endpoints, or navigation flow.
+1. **Defect 1 (Triage Recommendation Stuck):**
+   - In `frontend/src/App.jsx`, `riskDetails` sets `title = "Pediatric Consultation Recommended"` and `recommendation = ...` whenever `cat.includes("POSSIBLE") || cat.includes("JAUNDICE")`.
+   - When an image fails analysis or returns a 422 error, `performAnalysis` fails to clear or update `currentAnalysis`, causing stale results from previous scans to persist.
+   - Clinical red flags already present in patient demographic state (`activePatient.ageValue`, `activePatient.gestation`, `activePatient.feeding`) are completely ignored and not factored into the triage recommendation.
+2. **Defect 2 (b* Yellowness Scale Inaccurate):**
+   - The b* bar hardcodes an arbitrary 0-32 range with linear ticks (50% at 16, 75% at 22) that does not match empirical neonatal skin b* distribution (which spans 0 to ~30 with median ~14).
+   - If `bStarVal` is missing, the code silently falls back to plotting `modelScore` (0.0 to 1.0) on a 0-32 scale, causing complete numeric confusion.
+   - The bar uses purple/plum theme styling instead of the clinically established and required Yellow $\rightarrow$ Orange $\rightarrow$ Red severity gradient with text labels.
+3. **Defect 3 (Multi-Spectrum Modes Broken):**
+   - `imageCompareMode === "corrected"`: `routes.py` hardcodes `"corrected_image_base64": None`, so "Corrected" mode ALWAYS falls back to `rawImage` (zero illumination correction visible).
+   - `imageCompareMode === "heatmap"`: `routes.py` does not provide `yellowness_heatmap_base64`, so "Thermal Heatmap" falls back to `rawImage`. Furthermore, calling it "Thermal" is medically fabricated as ordinary RGB cameras collect no thermal infrared data.
+   - `imageCompareMode === "diagnostic"`: Haar cascade detection operates on downscaled (max 1024px) and rotated ($k \times 90^\circ$) frames, but coordinates in `tracking_rois` divide by original raw image dimensions, resulting in misaligned ROI rectangles.

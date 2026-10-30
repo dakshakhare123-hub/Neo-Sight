@@ -1,82 +1,79 @@
-# Feature Inventory: Patient Profile Page
+# Feature Inventory: Triage and Insights Page
 
-**Page / View:** NeoScan Step 1 (`currentStep === 1`: "Patient Profile & Image Tracking History")  
-**Branch:** `feat/profile-redesign`  
+**Target View:** NeoScan Step 3 (`currentStep === 3`: "Clinical Triage & Real-Time Insights")  
+**Branch:** `fix/triage-insights`  
 **Date:** 2026-10-30  
 
-This inventory catalogs every visual element, data field, interactive control, conditional state, and action currently present on the Patient Profile page. Every item listed here must be preserved in the redesign.
+This inventory catalogs every visual element, data field, interactive control, chart, telemetry card, and state on the Triage and Insights page. Every feature listed here must remain fully functional and uncompromised.
 
 ---
 
-## 1. Global Navigation & Wizard Header
-| ID | Element / Control | Type | Data Binding / Behavior | Present in Redesign |
+## 1. Top Bar & Patient Context
+| ID | Element / Control | Type | Data Binding / Behavior | Status |
 | :--- | :--- | :--- | :--- | :---: |
-| `NAV-01` | Step 1 Pill ("1. Patient Profile") | Tab button | Active step indicator; clicking sets `currentStep(1)` | Yes |
-| `NAV-02` | Step 2 Pill ("2. Capture") | Tab button | Clicking sets `currentStep(2)` | Yes |
-| `NAV-03` | Step 3 Pill ("3. Triage & Insights") | Tab button | Clicking sets `currentStep(3)` | Yes |
-| `NAV-04` | Brand Logo & Title | Header branding | Displays NeoScan icon and version badge | Yes |
+| `TRI-NAV-01` | Step 3 Header Pill | Navigation tab | Highlights active step "3. Triage & Insights" | Preserved |
+| `TRI-NAV-02` | Return to Step 1 / 2 | Buttons | Header wizard pills allow navigating back to Profile or Capture | Preserved |
+| `TRI-CTX-01` | Active Patient Context | Text / metadata | Displays active patient name, age, and gestation | Preserved |
+| `TRI-CTX-02` | Active Image Date | Timestamp | Shows formatted timestamp of active screening frame | Preserved |
 
 ---
 
-## 2. Profile Summary & Identity Elements
-| ID | Element / Control | Type | Data Binding / Behavior | Present in Redesign |
+## 2. Hero Triage Assessment Card
+| ID | Element / Control | Type | Data Binding / Behavior | Status |
 | :--- | :--- | :--- | :--- | :---: |
-| `ID-01` | Greeting Category Pill | Badge | Displays `<Icon name="sparkles" /> Pediatric Personalization & Records` | Yes |
-| `ID-02` | Page Title | Heading (h1) | "Infant Screening Profile" | Yes |
-| `ID-03` | Context Description | Paragraph | Explains physiological progression of neonatal jaundice and tracking over time | Yes |
-| `ID-04` | Active Patient Name | Text display | Displays `{activePatient.name}` in header and active indicators | Yes |
-| `ID-05` | Active Patient ID | Metadata | Primary patient key (e.g. `patient-leo`, `patient-maya`) | Yes |
-| `ID-06` | Postnatal Age Display | Chip / text | Shows `{p.ageValue} {p.ageUnit}` | Yes |
-| `ID-07` | Gestation Display | Chip / badge | Shows `{p.gestation}` (full-term, late-preterm, preterm) | Yes |
-| `ID-08` | Feeding Method Display | Chip / badge | Shows `{p.feeding}` (breastfeeding, combination, etc.) | Yes |
-| `ID-09` | Clinical Notes Display | Text / subtitle | Shows `{activePatient.notes}` or fallback | Yes |
-| `ID-10` | Screened Photos Counter | Counter pill | Shows count of images in `{p.images.length}` | Yes |
+| `TRI-HERO-01` | Hero Card Container | Surface panel | Dynamic background tint and border keyed to triage status | Preserved |
+| `TRI-HERO-02` | Risk Category Badge | Pill badge | Multi-modal badge: SVG icon + category text (`NO VISIBLE SIGNS`, `POSSIBLE JAUNDICE SIGNS`, `INCONCLUSIVE`) | **To Fix (deterministic)** |
+| `TRI-HERO-03` | Headline Title | Heading (h1) | Primary clinical assessment headline | **To Fix (deterministic)** |
+| `TRI-HERO-04` | Recommendation Copy | Paragraph | Detailed clinical triage guidance and next steps | **To Fix (deterministic)** |
+| `TRI-HERO-05` | Reliability Alert Banner | Warning box | Appears when `reliabilityNote` exists (e.g. reduced lighting confidence) | Preserved |
+| `TRI-HERO-06` | Model Score Display | Metric line | Monospace model score (e.g. `0.0820`) with cutoff note | Preserved |
+| `TRI-HERO-07` | CIE b* Yellowness Line | Metric line | Formatted b* dermal yellowness value with 1 decimal place | **To Fix (accurate CIE Lab)** |
+| `TRI-HERO-08` | b* Yellowness Scale Bar | Visual gauge | Horizontal gradient bar with marker indicating level | **To Fix (yellow->orange->red)** |
+| `TRI-HERO-09` | Bilirubin Index (BIx) | Metric line | Optical bilirubin index value (`fh_yi`) | Preserved |
+| `TRI-HERO-10` | Reliability & Confidence | Metric line | Shows "Normal" or "Reduced" with confidence percentage | Preserved |
+| `TRI-CARE-01` | Feeding & Hydration Card | Care tip | Guidance: 8–12 feeds per 24 hours to stimulate bilirubin excretion | Preserved |
+| `TRI-CARE-02` | Daylight Observation Card | Care tip | Guidance: check skin in indirect natural window light | Preserved |
+| `TRI-CARE-03` | When to Call Doctor Card | Care tip | Emergency signs: jaundice spreading to abdomen/legs, lethargy | Preserved |
 
 ---
 
-## 3. Patient Switcher / Selection Strip
-| ID | Element / Control | Type | Data Binding / Behavior | Present in Redesign |
+## 3. Multi-Spectrum Visual Inspection Viewport
+| ID | Element / Control | Type | Data Binding / Behavior | Status |
 | :--- | :--- | :--- | :--- | :---: |
-| `SW-01` | Patient Switcher Container | Grid / list | Displays all patients in `patients` state | Yes |
-| `SW-02` | Patient Tab: Baby Leo | Card button | `onClick={() => selectPatientProfile(p)}`; activates Leo | Yes |
-| `SW-03` | Patient Tab: Baby Maya | Card button | `onClick={() => selectPatientProfile(p)}`; activates Maya | Yes |
-| `SW-04` | Patient Tab: Baby Sam | Card button | `onClick={() => selectPatientProfile(p)}`; activates Sam | Yes |
-| `SW-05` | Patient Tab: Baby Noah | Card button | `onClick={() => selectPatientProfile(p)}`; activates Noah | Yes |
-| `SW-06` | Active Indicator Dot | Visual dot | Renders plum dot on currently selected patient card | Yes |
+| `TRI-SPEC-01` | Viewport Section Header | Title & subtext | "Multi-Spectrum Visual Inspection" description | Preserved |
+| `TRI-MODE-01` | "Corrected" Mode Tab | Button | Switches to illumination-normalized view | **To Fix (real corrected image)** |
+| `TRI-MODE-02` | "Original Raw" Mode Tab | Button | Switches to uncorrected original input photo | **To Fix (true original, orientation)** |
+| `TRI-MODE-03` | "Diagnostic ROIs" Mode Tab | Button | Switches to aligned anatomical landmark contours | **To Fix (true-aligned ROIs)** |
+| `TRI-MODE-04` | "Thermal Heatmap" Mode Tab | Button | Switches to dermal yellowness heatmap | **To Fix (relabel to Yellowness Heatmap & real b* map)** |
+| `TRI-FRAME-01` | Visual Viewport Frame | Display frame | Aspect ratio 16:10 / video container displaying selected mode | Preserved |
+| `TRI-PILL-01` | Viewport Floating Badge | Metadata pill | Overlaid indicator confirming active inspection mode | Preserved |
 
 ---
 
-## 4. Demographic & Clinical Parameter Inputs (Live Editing)
-| ID | Element / Control | Type | Data Binding / Behavior | Present in Redesign |
+## 4. Clinical Insights & Technical Breakdown Accordion
+| ID | Element / Control | Type | Data Binding / Behavior | Status |
 | :--- | :--- | :--- | :--- | :---: |
-| `ED-01` | Infant Name Input | Text input | Controlled input updating `activePatient.name` in `patients` | Yes |
-| `ED-02` | Postnatal Age Input | Number input | Controlled input (`min=1`, `max=360`) updating `activePatient.ageValue` | Yes |
-| `ED-03` | Hours Toggle Button | Segmented button | `onClick={() => set ageUnit to 'hours'}`; highlights when active | Yes |
-| `ED-04` | Days Toggle Button | Segmented button | `onClick={() => set ageUnit to 'days'}`; highlights when active | Yes |
-| `ED-05` | Gestational Maturity Dropdown | Select dropdown | Options: `full-term`, `late-preterm`, `preterm`; updates `gestation` | Yes |
+| `TRI-ACC-01` | Accordion Toggle Bar | Interactive header | Clicking expands / collapses clinical telemetry breakdown | Preserved |
+| `TRI-TAB-01` | Sub-tab: Optical Normalization | Tab button | Displays active method, ambient CCT, sharpness, dermal coverage | Preserved |
+| `TRI-TAB-02` | Sub-tab: Biometric ROIs | Tab button | Displays landmark table (forehead, cheeks) with raw & corrected b* | Preserved |
+| `TRI-TAB-03` | Sub-tab: Model & Gating | Tab button | Displays model version, quality gates, screening score, disclaimer | Preserved |
+| `TRI-DISC-01` | Screening Disclosures Box | Alert callout | Persistent AAP screening limitation disclaimer | Preserved |
 
 ---
 
-## 5. Patient Image History & Tracking Gallery
-| ID | Element / Control | Type | Data Binding / Behavior | Present in Redesign |
+## 5. Longitudinal History Timeline Strip
+| ID | Element / Control | Type | Data Binding / Behavior | Status |
 | :--- | :--- | :--- | :--- | :---: |
-| `IM-01` | Gallery Section Header | Title + count | Displays `Screening Images & Tracking History ({count})` with clock icon | Yes |
-| `IM-02` | Non-destructive Label | Badge | "Non-destructive dermal records" label | Yes |
-| `IM-03` | Empty State Box | Container | Renders when `!activePatient.images || activePatient.images.length === 0` | Yes |
-| `IM-04` | Empty State Camera Icon | Icon | Lucide camera icon in tinted circular container | Yes |
-| `IM-05` | Empty State Message | Headings & copy | "No screening photos recorded yet" with actionable description | Yes |
-| `IM-06` | "Take First Screening Photo" | Action button | `onClick={() => setCurrentStep(2)}`; navigates to camera capture | Yes |
-| `IM-07` | Image Card Item | Card | Renders for each record in `activePatient.images` | Yes |
-| `IM-08` | Photo Preview | Image | `ImageWithFallback` with `src={imgRecord.rawImage}`; aspect 4/3; unfiltered | Yes |
-| `IM-09` | Risk Category Badge | Overlaid pill | Displays e.g. `NO VISIBLE SIGNS` / `SCREENED` with dynamic risk color | Yes |
-| `IM-10` | Date & Timestamp | Text | Displays `{imgRecord.formattedDate}` | Yes |
-| `IM-11` | Active Correction Badge | Text | Displays `{imgRecord.activeCorrection || 'auto'}` | Yes |
-| `IM-12` | Tracking Distance Badge | Icon + text | Displays `<Icon name="target" /> Distance: {distance} cm` if present | Yes |
-| `IM-13` | Image Click Handler | Interactive | `onClick`: selects image ID; navigates to Step 3 or triggers analysis | Yes |
+| `TRI-HIST-01` | Longitudinal Strip Header | Title & count | Displays `{activePatient.name}'s Longitudinal Screenings ({count})` | Preserved |
+| `TRI-HIST-02` | Historical Thumbnail Cards | Interactive cards | Clicking any frame sets `activeImageId` and inspects its result | Preserved |
+| `TRI-HIST-03` | Active Frame Ring | Visual indicator | Highlights currently displayed frame in timeline | Preserved |
+| `TRI-HIST-04` | Scan Version Badge | Pill badge | Labeled `v2.0` (neoscan_ml) or `Legacy` | Preserved |
 
 ---
 
-## 6. Primary Action
-| ID | Element / Control | Type | Data Binding / Behavior | Present in Redesign |
+## 6. Global Modals, Banners & Footers
+| ID | Element / Control | Type | Data Binding / Behavior | Status |
 | :--- | :--- | :--- | :--- | :---: |
-| `ACT-01`| "Capture New Photo for {name} →" | Button (gradient) | Clears errors, sets `currentStep(2)`, starts camera if in camera mode | Yes |
+| `TRI-ERR-01` | Error Notification Banner | Dismissible banner | Appears on 422/503 errors with error code, message, hint, and Retake | Preserved |
+| `TRI-LOAD-01` | Calming Heartbeat Modal | Overlay modal | Displays rotating progress message and pulsing heart during analysis | Preserved |
+| `TRI-FOOT-01` | Medical Disclaimer Footer | Global footer | AAP legal screening aid disclaimer across all views | Preserved |
