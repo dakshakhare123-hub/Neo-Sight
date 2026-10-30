@@ -637,6 +637,89 @@ function computeTriage({ analysisResult = null, patient = null, error = null } =
   };
 }
 
+// NeoScan Clinical Brand Mark & Identity Component
+function NeoScanLogo({ size = 40, showWordmark = true, subtitle = "Lighting-Robust Neonatal Screening", onClick = null, className = "" }) {
+  const content = (
+    <div className={`flex items-center space-x-3 ${className}`}>
+      <div 
+        className="rounded-2xl flex items-center justify-center shadow-md shadow-plum-900/20 overflow-hidden shrink-0"
+        style={{ width: size, height: size }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 48 48"
+          width={size}
+          height={size}
+          fill="none"
+          role="img"
+          aria-label="NeoScan Shield Brand Mark"
+        >
+          <defs>
+            <linearGradient id="shieldGradApp" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#4C2365"/>
+              <stop offset="50%" stopColor="#6B3A8B"/>
+              <stop offset="100%" stopColor="#7F5D99"/>
+            </linearGradient>
+            <linearGradient id="irisGradApp" x1="14" y1="14" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#C4A4DA"/>
+              <stop offset="100%" stopColor="#9E7EB5"/>
+            </linearGradient>
+            <radialGradient id="amberCoreApp" cx="24" cy="24" r="6" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#FDE047"/>
+              <stop offset="60%" stopColor="#F59E0B"/>
+              <stop offset="100%" stopColor="#D97706"/>
+            </radialGradient>
+          </defs>
+          <rect x="4" y="4" width="40" height="40" rx="14" fill="url(#shieldGradApp)"/>
+          <rect x="4.5" y="4.5" width="39" height="39" rx="13.5" stroke="#C4A4DA" strokeOpacity="0.3" strokeWidth="1"/>
+          <circle cx="24" cy="24" r="12" stroke="url(#irisGradApp)" strokeWidth="2.5" strokeDasharray="14 4" strokeLinecap="round"/>
+          <line x1="24" y1="7" x2="24" y2="10" stroke="#C4A4DA" strokeWidth="2" strokeLinecap="round"/>
+          <line x1="24" y1="38" x2="24" y2="41" stroke="#C4A4DA" strokeWidth="2" strokeLinecap="round"/>
+          <line x1="7" y1="24" x2="10" y2="24" stroke="#C4A4DA" strokeWidth="2" strokeLinecap="round"/>
+          <line x1="38" y1="24" x2="41" y2="24" stroke="#C4A4DA" strokeWidth="2" strokeLinecap="round"/>
+          <circle cx="24" cy="24" r="5.5" fill="url(#amberCoreApp)"/>
+          <path d="M21.5 24.5C21.5 22.8 24 21.2 24 21.2C24 21.2 26.5 22.8 26.5 24.5Z" fill="#FFFFFF" fillOpacity="0.95"/>
+        </svg>
+      </div>
+      {showWordmark && (
+        <div>
+          <div className="flex items-center space-x-2">
+            <span className="text-xl font-bold tracking-tight text-plum-950">NeoScan</span>
+            <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-plum-100/70 text-plum-900 border border-lavender-300/80">
+              Pediatric
+            </span>
+          </div>
+          {subtitle && (
+            <p className="text-xs text-plum-600 font-medium">{subtitle}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  if (onClick) {
+    return (
+      <div
+        role="link"
+        tabIndex={0}
+        aria-label="NeoScan Pediatric Screening home (go to Patient Profile)"
+        className="cursor-pointer rounded-xl p-1 -m-1 focus:outline-none focus:ring-2 focus:ring-plum-700 focus:ring-offset-2 transition-transform active:scale-[0.99]"
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick();
+          }
+        }}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return content;
+}
+
 function App() {
   // Navigation & Wizard State (Step 1: Profile & Records, Step 2: Capture & Guidance, Step 3: Triage & Insights)
   const [currentStep, setCurrentStep] = useState(1);
@@ -1340,20 +1423,7 @@ function App() {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-lavender-300/60 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[4.5rem] flex items-center justify-between">
           {/* Logo & Product Identity */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setCurrentStep(1)}>
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-plum-900 to-violet-700 flex items-center justify-center text-white shadow-md shadow-plum-900/20">
-              <Icon name="heart" className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xl font-bold tracking-tight text-plum-950">NeoScan</span>
-                <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-plum-100/70 text-plum-900 border border-lavender-300/80">
-                  Pediatric
-                </span>
-              </div>
-              <p className="text-xs text-plum-600 font-medium">Lighting-Robust Neonatal Screening</p>
-            </div>
-          </div>
+          <NeoScanLogo onClick={() => setCurrentStep(1)} />
 
           {/* Stepped Wizard Navigation Pills */}
           <nav className="hidden md:flex items-center space-x-1 bg-plum-100/60 p-1.5 rounded-2xl border border-lavender-300/60">
@@ -3054,8 +3124,9 @@ function App() {
           <p className="text-xs text-plum-700 max-w-3xl leading-relaxed">
             <strong className="text-plum-950">Clinical Screening Disclaimer:</strong> NeoScan is an AI-assisted screening companion designed to support parents and pediatric care teams. It is not an invasive diagnostic device and does not replace confirmed laboratory serum bilirubin (TSB) or clinical transcutaneous bilirubin (TcB) testing. Always seek medical guidance from a licensed pediatrician.
           </p>
-          <div className="text-[11px] font-semibold text-plum-600 shrink-0">
-            NeoScan v2.0 • neoscan_ml Engine
+          <div className="text-[11px] font-semibold text-plum-600 shrink-0 flex items-center space-x-2">
+            <NeoScanLogo size={18} showWordmark={false} />
+            <span>NeoScan v2.0 • neoscan_ml Engine</span>
           </div>
         </div>
       </footer>

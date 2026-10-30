@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>NeoScan — Intelligent Neonatal Bilirubin Screening</title>
   
+  <!-- Brand Favicons & PWA Manifest -->
+  <link rel="icon" type="image/svg+xml" href="/app/favicon.svg" />
+  <link rel="alternate icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/app/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#4C2365" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="description" content="NeoScan: Lighting-robust neonatal jaundice screening companion using smartphone optics and clinical color calibration." />
+  
   <!-- Tailwind CSS Configuration & Design Tokens -->
   <script>
     window.tailwind = window.tailwind || {};
@@ -140,11 +150,41 @@
 <body class="antialiased selection:bg-plum-900 selection:text-white bg-plum-50 text-plum-950 min-h-screen flex flex-col">
   <div id="root" class="flex-1 flex flex-col">
     <!-- Initial Loading State (Replaced immediately when React mounts) -->
-    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #F7F3FA; color: #5E4968; font-family: sans-serif;">
-      <div style="text-align: center;">
-        <div style="width: 52px; height: 52px; border: 3px solid #EFE8F5; border-top-color: #4C2365; border-radius: 50%; margin: 0 auto 16px; animation: spin 1s linear infinite;"></div>
-        <div style="font-size: 17px; font-weight: 600; color: #2A1138; letter-spacing: -0.01em;">NeoScan Pediatric Screening</div>
-        <div style="font-size: 13px; color: #725B7E; margin-top: 6px;">Initializing medical vision & calibration engine...</div>
+    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #F7F3FA; color: #5E4968; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <div style="text-align: center; max-width: 320px; padding: 24px;">
+        <div style="margin: 0 auto 14px; display: inline-flex; align-items: center; justify-content: center; filter: drop-shadow(0 4px 6px rgba(76, 35, 101, 0.15));">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="56" height="56" fill="none" role="img" aria-label="NeoScan Logo Mark">
+            <defs>
+              <linearGradient id="shieldGradSplash" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#4C2365"/>
+                <stop offset="50%" stop-color="#6B3A8B"/>
+                <stop offset="100%" stop-color="#7F5D99"/>
+              </linearGradient>
+              <linearGradient id="irisGradSplash" x1="14" y1="14" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#C4A4DA"/>
+                <stop offset="100%" stop-color="#9E7EB5"/>
+              </linearGradient>
+              <radialGradient id="amberCoreSplash" cx="24" cy="24" r="6" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#FDE047"/>
+                <stop offset="60%" stop-color="#F59E0B"/>
+                <stop offset="100%" stop-color="#D97706"/>
+              </radialGradient>
+            </defs>
+            <rect x="4" y="4" width="40" height="40" rx="14" fill="url(#shieldGradSplash)"/>
+            <rect x="4.5" y="4.5" width="39" height="39" rx="13.5" stroke="#C4A4DA" stroke-opacity="0.3" stroke-width="1"/>
+            <circle cx="24" cy="24" r="12" stroke="url(#irisGradSplash)" stroke-width="2.5" stroke-dasharray="14 4" stroke-linecap="round"/>
+            <line x1="24" y1="7" x2="24" y2="10" stroke="#C4A4DA" stroke-width="2" stroke-linecap="round"/>
+            <line x1="24" y1="38" x2="24" y2="41" stroke="#C4A4DA" stroke-width="2" stroke-linecap="round"/>
+            <line x1="7" y1="24" x2="10" y2="24" stroke="#C4A4DA" stroke-width="2" stroke-linecap="round"/>
+            <line x1="38" y1="24" x2="41" y2="24" stroke="#C4A4DA" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="24" cy="24" r="5.5" fill="url(#amberCoreSplash)"/>
+            <path d="M21.5 24.5C21.5 22.8 24 21.2 24 21.2C24 21.2 26.5 22.8 26.5 24.5Z" fill="#FFFFFF" fill-opacity="0.95"/>
+          </svg>
+        </div>
+        <div style="font-size: 20px; font-weight: 800; color: #2A1138; letter-spacing: -0.02em;">NeoScan</div>
+        <div style="display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #4C2365; background: #EFE8F5; border: 1px solid #D4C2E3; border-radius: 9999px; padding: 2px 8px; margin-top: 4px;">Pediatric Screening</div>
+        <div style="width: 32px; height: 32px; border: 2.5px solid #EFE8F5; border-top-color: #7F5D99; border-radius: 50%; margin: 20px auto 12px; animation: spin 0.9s linear infinite;"></div>
+        <div style="font-size: 12px; color: #725B7E;">Initializing medical vision & calibration engine...</div>
       </div>
     </div>
   </div>
