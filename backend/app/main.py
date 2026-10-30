@@ -7,7 +7,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from .api.routes import router as api_router
 
 app = FastAPI(
@@ -60,6 +60,20 @@ def serve_manifest():
     if os.path.exists(manifest_file):
         return FileResponse(manifest_file, media_type="application/manifest+json")
     return {"name": "NeoScan"}
+
+@app.api_route("/sw.js", methods=["GET", "HEAD"])
+def serve_service_worker():
+    sw_file = os.path.join(frontend_path, "sw.js")
+    if os.path.exists(sw_file):
+        return FileResponse(
+            sw_file,
+            media_type="application/javascript",
+            headers={
+                "Service-Worker-Allowed": "/",
+                "Cache-Control": "no-cache"
+            }
+        )
+    return Response(status_code=404)
 
 @app.api_route("/apple-touch-icon.png", methods=["GET", "HEAD"])
 @app.api_route("/apple-touch-icon-precomposed.png", methods=["GET", "HEAD"])

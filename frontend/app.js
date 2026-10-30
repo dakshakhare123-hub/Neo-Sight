@@ -374,6 +374,17 @@ const Icon = ({
         x2: "16",
         y2: "11"
       }));
+    case "smartphone":
+      return /*#__PURE__*/React.createElement("svg", iconProps, /*#__PURE__*/React.createElement("rect", {
+        width: "14",
+        height: "20",
+        x: "5",
+        y: "2",
+        rx: "2",
+        ry: "2"
+      }), /*#__PURE__*/React.createElement("path", {
+        d: "M12 18h.01"
+      }));
     default:
       return null;
   }
@@ -959,6 +970,34 @@ function App() {
     });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // PWA Install Prompt State
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  useEffect(() => {
+    const handleBeforeInstallPrompt = e => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+      if (!sessionStorage.getItem("neoscan_install_dismissed")) {
+        setShowInstallBanner(true);
+      }
+    };
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+  }, []);
+  const handleInstallClick = async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    if (choice && choice.outcome === "accepted") {
+      setShowInstallBanner(false);
+    }
+    setDeferredInstallPrompt(null);
+  };
+  const handleDismissInstall = () => {
+    setShowInstallBanner(false);
+    sessionStorage.setItem("neoscan_install_dismissed", "true");
+  };
 
   // References
   const videoRef = useRef(null);
@@ -1625,7 +1664,35 @@ function App() {
     className: `flex-1 text-center py-2.5 px-2 text-xs font-semibold border-b-2 transition-colors min-h-[44px] flex items-center justify-center space-x-1.5 ${currentStep === 3 ? "border-plum-900 text-plum-900 bg-plum-100/40 font-bold" : analysisResult ? "border-transparent text-plum-600 hover:text-plum-950" : "border-transparent text-plum-300 opacity-50 cursor-not-allowed"}`
   }, /*#__PURE__*/React.createElement("span", {
     className: `w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${currentStep === 3 ? "bg-plum-900 text-white" : "bg-plum-200 text-plum-700"}`
-  }, "3"), /*#__PURE__*/React.createElement("span", null, "Results")))), /*#__PURE__*/React.createElement("main", {
+  }, "3"), /*#__PURE__*/React.createElement("span", null, "Results")))), showInstallBanner && /*#__PURE__*/React.createElement("aside", {
+    "aria-label": "Install NeoScan Application",
+    className: "bg-plum-900 text-white px-4 py-2.5 text-xs flex items-center justify-between border-b border-lavender-300/30 shadow-sm animate-fadeIn"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2.5 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0"
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "smartphone",
+    className: "w-4 h-4 text-lavender-300"
+  })), /*#__PURE__*/React.createElement("p", {
+    className: "truncate text-[11px] sm:text-xs"
+  }, /*#__PURE__*/React.createElement("strong", {
+    className: "font-bold"
+  }, "Install NeoScan:"), " Add to Home Screen for fast, fullscreen clinical camera access.")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-2 shrink-0 ml-3"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: handleInstallClick,
+    className: "px-3 py-1.5 rounded-lg bg-lavender-300 hover:bg-lavender-400 text-plum-950 font-bold text-[11px] transition-all shadow-xs active:scale-95 min-h-[36px]"
+  }, "Install App"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: handleDismissInstall,
+    className: "p-1.5 rounded-lg text-lavender-200 hover:text-white transition-colors",
+    "aria-label": "Dismiss installation banner"
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "x",
+    className: "w-4 h-4"
+  })))), /*#__PURE__*/React.createElement("main", {
     className: "flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8"
   }, error && /*#__PURE__*/React.createElement("div", {
     className: "mb-6 p-5 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-amber-900 shadow-sm animate-fadeIn"

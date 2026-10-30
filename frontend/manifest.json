@@ -1,11 +1,15 @@
 {
-  "name": "NeoScan \u2014 Neonatal Jaundice Screening",
+  "name": "NeoScan Pediatric — Neonatal Jaundice Screening",
   "short_name": "NeoScan",
   "description": "Lighting-robust clinical screening for neonatal jaundice with physiological color calibration.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
   "background_color": "#F7F3FA",
   "theme_color": "#4C2365",
+  "categories": ["medical", "health"],
   "icons": [
     {
       "src": "/app/icon-192.png",

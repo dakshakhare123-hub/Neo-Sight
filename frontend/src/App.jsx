@@ -262,6 +262,13 @@ const Icon = ({ name, className = "w-4 h-4", ...props }) => {
           <line x1="22" y1="11" x2="16" y2="11" />
         </svg>
       );
+    case "smartphone":
+      return (
+        <svg {...iconProps}>
+          <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+          <path d="M12 18h.01" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -798,6 +805,37 @@ function App() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // PWA Install Prompt State
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+      if (!sessionStorage.getItem("neoscan_install_dismissed")) {
+        setShowInstallBanner(true);
+      }
+    };
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    if (choice && choice.outcome === "accepted") {
+      setShowInstallBanner(false);
+    }
+    setDeferredInstallPrompt(null);
+  };
+
+  const handleDismissInstall = () => {
+    setShowInstallBanner(false);
+    sessionStorage.setItem("neoscan_install_dismissed", "true");
+  };
 
   // References
   const videoRef = useRef(null);
@@ -1534,6 +1572,37 @@ function App() {
           </button>
         </nav>
       </header>
+
+      {/* PWA Mobile Installation Banner */}
+      {showInstallBanner && (
+        <aside aria-label="Install NeoScan Application" className="bg-plum-900 text-white px-4 py-2.5 text-xs flex items-center justify-between border-b border-lavender-300/30 shadow-sm animate-fadeIn">
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+              <Icon name="smartphone" className="w-4 h-4 text-lavender-300" />
+            </div>
+            <p className="truncate text-[11px] sm:text-xs">
+              <strong className="font-bold">Install NeoScan:</strong> Add to Home Screen for fast, fullscreen clinical camera access.
+            </p>
+          </div>
+          <div className="flex items-center space-x-2 shrink-0 ml-3">
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className="px-3 py-1.5 rounded-lg bg-lavender-300 hover:bg-lavender-400 text-plum-950 font-bold text-[11px] transition-all shadow-xs active:scale-95 min-h-[36px]"
+            >
+              Install App
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissInstall}
+              className="p-1.5 rounded-lg text-lavender-200 hover:text-white transition-colors"
+              aria-label="Dismiss installation banner"
+            >
+              <Icon name="x" className="w-4 h-4" />
+            </button>
+          </div>
+        </aside>
+      )}
 
       {/* Main Container */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">

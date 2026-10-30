@@ -119,6 +119,36 @@ class TestMobileTransformationCharacterisation(unittest.TestCase):
         self.assertIn("icons", manifest)
         self.assertGreaterEqual(len(manifest["icons"]), 2)
 
+    def test_service_worker_asset_and_registration(self):
+        """Verifies sw.js exists, excludes /api/ from caching, and is registered in index.html."""
+        sw_path = os.path.join(PROJECT_ROOT, "frontend", "sw.js")
+        self.assertTrue(os.path.exists(sw_path), "frontend/sw.js must exist")
+
+        with open(sw_path, "r", encoding="utf-8") as f:
+            sw_content = f.read()
+
+        self.assertIn("CACHE_NAME", sw_content)
+        self.assertIn("/api/", sw_content)
+        self.assertIn("caches.match", sw_content)
+
+        # Check registration in index.html
+        with open(self.index_html_path, "r", encoding="utf-8") as f:
+            index_content = f.read()
+        self.assertIn("serviceWorker.register('/sw.js'", index_content)
+
+    def test_fastapi_sw_and_manifest_routes(self):
+        """Verifies FastAPI route handlers return valid FileResponses for sw.js and manifest.json."""
+        from backend.app.main import serve_manifest, serve_service_worker
+
+        res_manifest = serve_manifest()
+        self.assertEqual(res_manifest.media_type, "application/manifest+json")
+        self.assertTrue(os.path.exists(res_manifest.path))
+
+        res_sw = serve_service_worker()
+        self.assertEqual(res_sw.media_type, "application/javascript")
+        self.assertEqual(res_sw.headers.get("Service-Worker-Allowed"), "/")
+        self.assertTrue(os.path.exists(res_sw.path))
+
 
 if __name__ == "__main__":
     unittest.main()
