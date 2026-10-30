@@ -1479,7 +1479,9 @@ function App() {
                           startCamera();
                         }
                       }}
-                      className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-plum-900 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-plum-900 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400"
+                      title="Dismiss notice and retake photo"
+                      aria-label="Dismiss notice and retake photo"
                     >
                       <Icon name="camera" className="w-3.5 h-3.5" />
                       <span>Retake Photo</span>
@@ -1487,7 +1489,9 @@ function App() {
                     <button
                       type="button"
                       onClick={() => setError(null)}
-                      className="text-xs text-plum-700 hover:text-plum-950 underline font-medium"
+                      className="text-xs text-plum-700 hover:text-plum-950 underline font-medium py-2 px-1 focus:outline-none focus:ring-2 focus:ring-violet-400 rounded-lg min-h-[44px] inline-flex items-center"
+                      title="Dismiss this error banner"
+                      aria-label="Dismiss this error banner"
                     >
                       Dismiss
                     </button>
@@ -1495,9 +1499,11 @@ function App() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setError(null)}
-                className="text-amber-500 hover:text-amber-700 p-1.5 rounded-lg hover:bg-amber-100/60 transition-colors shrink-0"
-                title="Dismiss"
+                className="text-amber-500 hover:text-amber-700 p-2 rounded-lg hover:bg-amber-100/60 transition-colors shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-violet-400"
+                title="Close error alert"
+                aria-label="Close error alert"
               >
                 <Icon name="x" className="w-4 h-4" />
               </button>
@@ -2050,10 +2056,14 @@ function App() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-lavender-300/60 shadow-xs">
               <div className="flex items-center space-x-3">
                 <button
+                  type="button"
                   onClick={() => setCurrentStep(1)}
-                  className="p-2 rounded-xl text-plum-400 hover:text-plum-950 hover:bg-plum-100/60 transition-colors"
+                  className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-plum-700 hover:text-plum-950 bg-plum-100/60 hover:bg-plum-200/70 border border-lavender-200/80 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-400 min-h-[44px] min-w-[44px]"
+                  title="Back to Patient Profile"
+                  aria-label="Back to Patient Profile"
                 >
-                  <Icon name="chevron-right" className="w-4 h-4 rotate-180" />
+                  <Icon name="chevron-right" className="w-4 h-4 rotate-180 text-plum-600" />
+                  <span>Back</span>
                 </button>
                 <div>
                   <div className="flex items-center space-x-2">
@@ -2068,18 +2078,21 @@ function App() {
               </div>
 
               {/* Mode Switch: Live Camera vs Upload */}
-              <div className="flex items-center space-x-1 bg-plum-100/60 p-1 rounded-2xl border border-lavender-200/60 self-start sm:self-auto">
+              <div className="flex items-center space-x-1 bg-plum-100/60 p-1 rounded-2xl border border-lavender-200/60 self-start sm:self-auto" role="group" aria-label="Capture mode selection">
                 <button
                   type="button"
                   onClick={() => {
                     setCaptureMode("camera");
                     startCamera();
                   }}
-                  className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400 ${
                     captureMode === "camera"
                       ? "bg-white text-plum-950 shadow-sm"
                       : "text-plum-600 hover:text-plum-950"
                   }`}
+                  title="Switch to live camera capture"
+                  aria-label="Live camera capture mode"
+                  aria-pressed={captureMode === "camera"}
                 >
                   <Icon name="camera" className="w-3.5 h-3.5" />
                   <span>Live Camera</span>
@@ -2091,11 +2104,14 @@ function App() {
                     setCaptureMode("upload");
                     stopCamera();
                   }}
-                  className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400 ${
                     captureMode === "upload"
                       ? "bg-white text-plum-950 shadow-sm"
                       : "text-plum-600 hover:text-plum-950"
                   }`}
+                  title="Switch to photo upload mode"
+                  aria-label="Photo upload mode"
+                  aria-pressed={captureMode === "upload"}
                 >
                   <Icon name="upload" className="w-3.5 h-3.5" />
                   <span>Upload Photo</span>
@@ -2143,43 +2159,93 @@ function App() {
                         </div>
                       </div>
 
+                      {/* Camera Inactive / Offline Fallback Prompt */}
+                      {!cameraActive && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-950/90 text-white space-y-3 z-15">
+                          <div className="w-12 h-12 rounded-2xl bg-plum-500/20 text-lavender-300 flex items-center justify-center">
+                            <Icon name="camera" className="w-6 h-6" />
+                          </div>
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-bold text-white">Camera Offline or Inactive</h4>
+                            <p className="text-xs text-slate-300 max-w-sm">
+                              Start the camera stream to enable real-time anatomical screening, or switch to photo upload mode.
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={startCamera}
+                              className="px-4 py-2 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-semibold transition-colors flex items-center space-x-1.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400"
+                              title="Start camera stream"
+                              aria-label="Start camera stream"
+                            >
+                              <Icon name="refresh-cw" className="w-3.5 h-3.5" />
+                              <span>Start Camera</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCaptureMode("upload");
+                                stopCamera();
+                              }}
+                              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors flex items-center space-x-1.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400"
+                              title="Switch to photo upload mode"
+                              aria-label="Switch to photo upload mode"
+                            >
+                              <Icon name="upload" className="w-3.5 h-3.5" />
+                              <span>Upload Photo</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Bottom Quick Controls inside Viewport */}
                       <div className="absolute bottom-4 inset-x-4 flex items-center justify-between z-20">
                         {/* Continuous Streaming Toggle */}
                         <button
                           type="button"
                           onClick={() => setContinuousAnalysis(!continuousAnalysis)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-md transition-all border flex items-center space-x-1.5 ${
+                          className={`px-3.5 py-2 rounded-xl text-xs font-semibold backdrop-blur-md transition-all border flex items-center space-x-1.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400 ${
                             continuousAnalysis
-                              ? "bg-emerald-500/80 text-white border-emerald-400/30"
-                              : "bg-slate-900/70 text-slate-300 border-white/10"
+                              ? "bg-emerald-600/90 text-white border-emerald-400/40 shadow-sm"
+                              : "bg-slate-900/80 text-slate-200 border-white/20 hover:bg-slate-900"
                           }`}
+                          title={continuousAnalysis ? "Turn continuous tracking analysis off" : "Turn continuous tracking analysis on"}
+                          aria-label={continuousAnalysis ? "Continuous tracking analysis active. Click to pause." : "Continuous tracking analysis paused. Click to activate."}
+                          aria-pressed={continuousAnalysis}
                         >
-                          <Icon name="zap" className="w-3.5 h-3.5" />
+                          <Icon name="zap" className={`w-3.5 h-3.5 ${continuousAnalysis ? "text-emerald-200" : "text-slate-300"}`} />
                           <span>{continuousAnalysis ? "Continuous: ON" : "Continuous: PAUSED"}</span>
                         </button>
 
                         <div className="flex items-center space-x-2">
+                          {/* Framing HUD Guide Toggle */}
                           <button
                             type="button"
                             onClick={() => setShowBiometricOverlay(!showBiometricOverlay)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-md transition-all border flex items-center space-x-1.5 ${
+                            className={`px-3.5 py-2 rounded-xl text-xs font-semibold backdrop-blur-md transition-all border flex items-center space-x-1.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400 ${
                               showBiometricOverlay
-                                ? "bg-violet-700/80 text-white border-lavender-300/40"
-                                : "bg-slate-900/70 text-slate-300 border-white/10"
+                                ? "bg-violet-700/90 text-white border-lavender-300/40 shadow-sm"
+                                : "bg-slate-900/80 text-slate-200 border-white/20 hover:bg-slate-900"
                             }`}
+                            title={showBiometricOverlay ? "Hide anatomical framing guide overlay" : "Show anatomical framing guide overlay"}
+                            aria-label={showBiometricOverlay ? "Anatomical framing guide visible. Click to hide." : "Anatomical framing guide hidden. Click to show."}
+                            aria-pressed={showBiometricOverlay}
                           >
                             <Icon name="eye" className="w-3.5 h-3.5" />
-                            <span>{showBiometricOverlay ? "HUD On" : "HUD Off"}</span>
+                            <span>{showBiometricOverlay ? "Framing Guide: ON" : "Framing Guide: OFF"}</span>
                           </button>
 
+                          {/* Switch Camera Button */}
                           <button
                             type="button"
                             onClick={toggleCameraFacing}
-                            className="p-2.5 rounded-xl bg-slate-900/70 hover:bg-slate-900 backdrop-blur-md text-white border border-white/10 transition-all shadow-sm"
-                            title="Flip Camera"
+                            className="px-3.5 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-900 backdrop-blur-md text-white border border-white/20 transition-all shadow-sm flex items-center space-x-1.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400"
+                            title={`Switch camera (currently using ${cameraFacing === "user" ? "front" : "rear"} camera)`}
+                            aria-label={`Switch camera (currently using ${cameraFacing === "user" ? "front (selfie)" : "rear (environment)"} camera)`}
                           >
                             <Icon name="refresh-cw" className="w-4 h-4" />
+                            <span>Switch Camera</span>
                           </button>
                         </div>
                       </div>
@@ -2190,8 +2256,18 @@ function App() {
                   {captureMode === "upload" && (
                     <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
                       <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Upload photograph of ${activePatient.name} for jaundice screening`}
+                        title="Upload photo from your device"
                         onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-slate-700 hover:border-lavender-300/80 rounded-3xl p-8 w-full h-full flex flex-col items-center justify-center cursor-pointer transition-colors group bg-slate-800/40"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            fileInputRef.current?.click();
+                          }
+                        }}
+                        className="border-2 border-dashed border-slate-700 hover:border-lavender-300/80 focus:border-lavender-300 focus:outline-none focus:ring-2 focus:ring-violet-400 rounded-3xl p-8 w-full h-full flex flex-col items-center justify-center cursor-pointer transition-all group bg-slate-800/40"
                       >
                         <div className="w-14 h-14 rounded-2xl bg-plum-500/20 text-lavender-300 flex items-center justify-center group-hover:scale-110 transition-transform">
                           <Icon name="upload" className="w-7 h-7" />
@@ -2200,13 +2276,15 @@ function App() {
                         <p className="text-xs text-slate-400 mt-1 max-w-xs">
                           Select a clear photo of {activePatient.name}'s forehead or face under indoor or natural light.
                         </p>
-                        <span className="mt-4 px-4 py-2 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-semibold transition-colors">
+                        <span className="mt-4 px-4 py-2.5 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-semibold transition-colors min-h-[44px] inline-flex items-center">
                           Browse Local Files
                         </span>
                         <input
                           ref={fileInputRef}
+                          id="infant-photo-file-input"
                           type="file"
                           accept="image/*"
+                          aria-label="Choose infant photograph file from device"
                           onChange={handleFileUpload}
                           className="hidden"
                         />
@@ -2238,12 +2316,14 @@ function App() {
                             });
                           }
                         }}
-                        className="flex-1 sm:flex-none py-3 px-6 rounded-2xl bg-gradient-to-r from-plum-900 to-violet-700 hover:from-plum-950 hover:to-violet-800 text-white font-bold text-sm shadow-md shadow-plum-900/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.98]"
+                        className="flex-1 sm:flex-none py-3 px-6 rounded-2xl bg-gradient-to-r from-plum-900 to-violet-700 hover:from-plum-950 hover:to-violet-800 text-white font-bold text-sm shadow-md shadow-plum-900/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.98] min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2"
+                        title={`Capture photo of ${activePatient.name} and perform screening analysis`}
+                        aria-label={`Capture snapshot of ${activePatient.name} and start clinical jaundice screening`}
                       >
                         <div className="w-4 h-4 rounded-full border-2 border-white flex items-center justify-center">
                           <div className="w-2 h-2 rounded-full bg-white"></div>
                         </div>
-                        <span>Freeze Snapshot & Screen</span>
+                        <span>Capture &amp; Screen Photo</span>
                       </button>
                     </div>
                   )}
@@ -2301,7 +2381,9 @@ function App() {
                     href="/api/v1/reference-card"
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center space-x-1.5 text-xs font-bold text-plum-900 hover:text-violet-700 hover:underline"
+                    title="Download printable ArUco calibration reference card (opens in a new tab)"
+                    aria-label="Download printable ArUco calibration reference card (opens in a new tab)"
+                    className="inline-flex items-center space-x-1.5 text-xs font-bold text-plum-900 hover:text-violet-700 hover:underline min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400"
                   >
                     <span>Download Printable Card</span>
                     <Icon name="chevron-right" className="w-3.5 h-3.5" />
@@ -2313,7 +2395,11 @@ function App() {
                   <button
                     type="button"
                     onClick={() => setAdvancedOpticalOpen(!advancedOpticalOpen)}
-                    className="w-full p-4 flex items-center justify-between text-left hover:bg-plum-50/60 transition-colors"
+                    aria-expanded={advancedOpticalOpen}
+                    aria-controls="optical-method-selector-panel"
+                    title={advancedOpticalOpen ? "Collapse color constancy options" : "Expand color constancy options"}
+                    aria-label={advancedOpticalOpen ? "Collapse color constancy algorithm settings" : "Expand color constancy algorithm settings"}
+                    className="w-full p-4 flex items-center justify-between text-left hover:bg-plum-50/60 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-400 min-h-[44px]"
                   >
                     <div className="flex items-center space-x-2 text-plum-900">
                       <Icon name="sliders" className="w-4 h-4 text-plum-500" />
@@ -2326,14 +2412,19 @@ function App() {
                   </button>
 
                   {advancedOpticalOpen && (
-                    <div className="p-4 pt-0 border-t border-lavender-100 space-y-2">
+                    <div id="optical-method-selector-panel" className="p-4 pt-0 border-t border-lavender-100 space-y-2">
                       <p className="text-[11px] text-plum-600">
                         Choose the computer vision color constancy method used to remove ambient lighting bias:
                       </p>
+                      <label htmlFor="optical-method-select" className="sr-only">
+                        Color Constancy Algorithm
+                      </label>
                       <select
+                        id="optical-method-select"
+                        aria-label="Select color constancy normalization method"
                         value={correctionMethod}
                         onChange={(e) => handleMethodChange(e.target.value)}
-                        className="w-full py-2 px-3 rounded-xl bg-plum-50/50 border border-lavender-300 text-xs font-semibold text-plum-950 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full py-2.5 px-3 rounded-xl bg-plum-50/50 border border-lavender-300 text-xs font-semibold text-plum-950 focus:outline-none focus:ring-2 focus:ring-violet-500 min-h-[44px]"
                       >
                         <option value="auto">Auto-Select (Smart Hierarchy: Card → Sclera → Shades of Gray)</option>
                         <option value="card_ccm">ArUco Physical Card CCM (Gold Standard)</option>

@@ -6,7 +6,7 @@ and brand assets:
 1. Camera state handlers and capture triggers exist in app bundle.
 2. File upload handler and input specifications.
 3. Reference card download endpoint accessibility.
-4. Analyze endpoint integration contract for captured frames.
+4. Accessible labels, titles, and ARIA attributes for all capture controls.
 """
 
 import os
@@ -51,6 +51,40 @@ class TestCaptureControlsCharacterisation(unittest.TestCase):
         """Verifies printable ArUco calibration card asset is available in docs."""
         card_svg = os.path.join(PROJECT_ROOT, "docs", "CALIBRATION_CARD_PRINTABLE.svg")
         self.assertTrue(os.path.exists(card_svg), "CALIBRATION_CARD_PRINTABLE.svg must exist")
+
+    def test_capture_controls_have_accessible_names(self):
+        """Verifies all Step 2 capture controls have visible labels and accessible ARIA attributes."""
+        with open(self.app_jsx_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Back navigation button
+        self.assertIn('aria-label="Back to Patient Profile"', content)
+        self.assertIn('title="Back to Patient Profile"', content)
+
+        # Switch camera button
+        self.assertIn('<span>Switch Camera</span>', content)
+        self.assertIn('Switch camera (currently using', content)
+
+        # Framing guide toggle
+        self.assertIn('Framing Guide: ON', content)
+        self.assertIn('Framing Guide: OFF', content)
+        self.assertIn('aria-pressed={showBiometricOverlay}', content)
+
+        # Continuous streaming toggle
+        self.assertIn('aria-pressed={continuousAnalysis}', content)
+
+        # Shutter capture button
+        self.assertIn('Capture &amp; Screen Photo', content)
+        self.assertIn('start clinical jaundice screening', content)
+
+        # File upload dropzone & input
+        self.assertIn('role="button"', content)
+        self.assertIn('tabIndex={0}', content)
+        self.assertIn('id="infant-photo-file-input"', content)
+
+        # Color constancy dropdown
+        self.assertIn('id="optical-method-select"', content)
+        self.assertIn('aria-label="Select color constancy normalization method"', content)
 
 
 if __name__ == "__main__":
