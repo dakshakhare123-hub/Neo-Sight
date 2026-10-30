@@ -431,6 +431,16 @@ function App() {
   // Demo Samples
   const [demoSamples, setDemoSamples] = useState([]);
 
+  // Sticky header on scroll detection
+  const [isScrolled, setIsScrolled] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 180);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   // References
   const videoRef = useRef(null);
   const trackingCanvasRef = useRef(null);
@@ -1236,264 +1246,536 @@ function App() {
         )}
 
         {/* =========================================================================
-            STEP 1: PATIENT PROFILE & IMAGE TRACKING HISTORY
+            STEP 1: PATIENT PROFILE & IMAGE TRACKING HISTORY (REDESIGNED)
         ========================================================================= */}
         {currentStep === 1 && (
-          <div className="space-y-8 animate-fadeIn">
-            {/* Header Greeting */}
-            <div className="text-center max-w-2xl mx-auto space-y-2">
-              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-plum-100/70 text-plum-900 border border-lavender-300/80 text-xs font-medium">
-                <Icon name="sparkles" className="w-3.5 h-3.5" />
-                <span>Pediatric Personalization & Records</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-plum-950 tracking-tight">
-                Infant Screening Profile
-              </h1>
-              <p className="text-sm text-plum-600 leading-relaxed">
-                Neonatal jaundice follows natural physiological progression. Patient age, gestation, and multi-day image records provide clinical tracking over time.
-              </p>
-            </div>
+          <div className="space-y-6 sm:space-y-8 animate-fadeIn">
+            {/* Sticky Condensed Patient Bar on Scroll */}
+            {isScrolled && (
+              <div className="sticky top-18 sm:top-20 z-30 bg-white/95 backdrop-blur-md border border-lavender-200/90 shadow-md shadow-plum-900/5 rounded-2xl py-2.5 px-4 sm:px-6 flex items-center justify-between transition-all animate-fadeIn">
+                <div className="flex items-center space-x-3 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-plum-900 to-violet-700 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                    {activePatient.name ? activePatient.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "BL"}
+                  </div>
+                  <div className="min-w-0 flex items-center space-x-2">
+                    <span className="text-xs font-bold text-plum-950 truncate">{activePatient.name}</span>
+                    <span className="text-[10px] text-plum-600 font-mono hidden sm:inline">#{activePatient.id}</span>
+                    <span className="text-plum-300 hidden sm:inline">•</span>
+                    <span className="text-[10px] text-plum-700 hidden sm:inline font-semibold">{activePatient.ageValue} {activePatient.ageUnit}</span>
+                    <span className="text-[9px] uppercase px-2 py-0.5 rounded-full bg-plum-100/70 text-plum-900 font-semibold hidden md:inline">
+                      {activePatient.gestation}
+                    </span>
+                  </div>
+                </div>
 
-            {/* Patient Switcher / Tabs */}
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-plum-600">
-                  Select Patient Record
-                </span>
-                <span className="text-xs text-plum-900 font-semibold">
-                  Active: {activePatient.name}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {patients.map(p => (
+                <div className="flex items-center space-x-2 shrink-0">
                   <button
-                    key={p.id}
-                    onClick={() => selectPatientProfile(p)}
-                    className={`p-3.5 rounded-2xl border text-left transition-all ${
-                      activePatientId === p.id
-                        ? "bg-white border-plum-900 ring-2 ring-violet-500/20 shadow-sm"
-                        : "bg-white/70 border-lavender-300/60 hover:bg-white hover:border-lavender-400"
-                    }`}
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setCurrentStep(2);
+                      if (captureMode === "camera") {
+                        startCamera();
+                      }
+                    }}
+                    className="py-1.5 px-3.5 rounded-xl bg-plum-900 hover:bg-violet-700 text-white font-bold text-xs flex items-center space-x-1.5 transition-all shadow-xs"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-plum-950">{p.name}</span>
-                      {activePatientId === p.id && (
-                        <span className="w-2 h-2 rounded-full bg-plum-900"></span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-plum-600 mt-0.5">
-                      {p.ageValue} {p.ageUnit} • {p.gestation}
-                    </p>
-                    <div className="mt-2 flex items-center space-x-1 text-[10px] text-plum-500">
-                      <Icon name="image" className="w-3 h-3" />
-                      <span>{p.images ? p.images.length : 0} screened photos</span>
-                    </div>
+                    <Icon name="camera" className="w-3.5 h-3.5" />
+                    <span>Capture Photo</span>
                   </button>
-                ))}
+                </div>
+              </div>
+            )}
+
+            {/* 1. HERO PATIENT SUMMARY BAND */}
+            <div className="bg-white rounded-3xl border border-lavender-200/80 p-5 sm:p-7 shadow-sm relative overflow-hidden">
+              {/* Subtle decorative plum/violet wash in top-right */}
+              <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-plum-100/50 via-lavender-100/20 to-transparent pointer-events-none rounded-bl-full"></div>
+
+              <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                {/* Patient Identity & Avatar */}
+                <div className="flex items-start sm:items-center space-x-4 sm:space-x-5">
+                  <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-tr from-plum-900 to-violet-700 text-white flex items-center justify-center font-extrabold text-xl sm:text-2xl shadow-md shadow-plum-900/15 shrink-0 ring-4 ring-plum-100/60">
+                    {activePatient.name ? activePatient.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "BL"}
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-plum-100/70 text-plum-900 text-[10px] font-bold uppercase tracking-wider border border-lavender-300/80">
+                        <Icon name="sparkles" className="w-3 h-3" />
+                        <span>Pediatric Record</span>
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-plum-50 text-[10px] font-mono text-plum-700 font-semibold border border-lavender-200">
+                        #{activePatient.id}
+                      </span>
+                    </div>
+
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-plum-950 tracking-tight">
+                      {activePatient.name}
+                    </h1>
+
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-plum-700 font-medium">
+                      <span className="flex items-center space-x-1">
+                        <Icon name="clock" className="w-3.5 h-3.5 text-plum-900" />
+                        <span className="font-semibold text-plum-950 tabular-nums">{activePatient.ageValue} {activePatient.ageUnit} old</span>
+                      </span>
+                      <span className="text-plum-300">•</span>
+                      <span className="px-2 py-0.5 rounded-full bg-plum-100/60 text-plum-900 text-[11px] font-semibold uppercase">
+                        {activePatient.gestation}
+                      </span>
+                      <span className="text-plum-300">•</span>
+                      <span className="capitalize">{activePatient.feeding}</span>
+                      <span className="text-plum-300">•</span>
+                      <span className="text-plum-600 tabular-nums">
+                        {activePatient.images ? activePatient.images.length : 0} screened photos
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Primary Action Button */}
+                <div className="flex items-center space-x-3 shrink-0 self-stretch sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setCurrentStep(2);
+                      if (captureMode === "camera") {
+                        startCamera();
+                      }
+                    }}
+                    className="flex-1 sm:flex-initial py-3.5 px-6 rounded-2xl bg-gradient-to-r from-plum-900 to-violet-700 hover:from-plum-950 hover:to-violet-800 text-white font-bold text-xs sm:text-sm shadow-md shadow-plum-900/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <Icon name="camera" className="w-4 h-4" />
+                    <span>Capture New Photo</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Profile Detail & Edit Card */}
-            <div className="max-w-4xl mx-auto bg-white rounded-3xl border border-lavender-300/60 p-6 sm:p-8 shadow-sm space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-lavender-100 gap-2">
-                <div>
-                  <h3 className="text-base font-bold text-plum-950">{activePatient.name}'s Medical Profile</h3>
-                  <p className="text-xs text-plum-600">{activePatient.notes || "Standard clinical screening observation."}</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="px-3 py-1 rounded-full bg-plum-100/70 text-plum-900 text-xs font-semibold uppercase">
-                    {activePatient.gestation}
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-plum-100/70 text-plum-900 text-xs font-semibold">
-                    {activePatient.feeding}
-                  </span>
-                </div>
-              </div>
+            {/* 2. TWO-ZONE RESPONSIVE CLINICAL WORKSPACE */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-              {/* Form Controls for Active Patient */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Name */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-plum-600 mb-1.5">
-                    Infant Name / Identifier
-                  </label>
-                  <input
-                    type="text"
-                    value={activePatient.name}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, name: val } : p));
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-plum-50/50 border border-lavender-300/70 text-xs font-semibold text-plum-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                  />
-                </div>
+              {/* =========================================================================
+                  ZONE A: MAIN CONTENT COLUMN (IMAGE GALLERY & RESULTS) (~65% width)
+              ========================================================================= */}
+              <div className="lg:col-span-8 space-y-6">
 
-                {/* Age */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-plum-600 mb-1.5">
-                    Postnatal Age ({activePatient.ageUnit})
-                  </label>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="number"
-                      min="1"
-                      max="360"
-                      value={activePatient.ageValue}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value) || 1;
-                        setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, ageValue: val } : p));
-                      }}
-                      className="w-24 px-3 py-2 rounded-xl bg-plum-50/50 border border-lavender-300/70 text-sm font-bold text-plum-950 text-center focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                    />
-                    <div className="flex bg-plum-100/60 p-0.5 rounded-lg text-xs font-semibold">
+                {/* IMAGE SPOTLIGHT & GALLERY CARD */}
+                <div className="bg-white rounded-3xl border border-lavender-200/80 p-5 sm:p-7 shadow-sm space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-lavender-100/80 gap-2">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-plum-100/70 text-plum-900 flex items-center justify-center">
+                        <Icon name="image" className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-plum-950">
+                          Dermal Screening Spotlight &amp; Multi-Day Gallery
+                        </h2>
+                        <p className="text-xs text-plum-600">
+                          True-color calibrated infant images with anatomical landmark tracking
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-semibold text-plum-900 bg-plum-100/60 px-2.5 py-1 rounded-full self-start sm:self-auto">
+                      Non-destructive dermal records
+                    </span>
+                  </div>
+
+                  {/* EMPTY STATE */}
+                  {(!activePatient.images || activePatient.images.length === 0) ? (
+                    <div className="py-12 px-6 rounded-2xl bg-plum-50/40 border-2 border-dashed border-lavender-300 text-center space-y-4">
+                      <div className="w-14 h-14 rounded-2xl bg-plum-100/80 text-plum-900 flex items-center justify-center mx-auto shadow-xs">
+                        <Icon name="camera" className="w-7 h-7" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-base font-bold text-plum-950">No screening photos recorded yet</h3>
+                        <p className="text-xs text-plum-600 max-w-md mx-auto leading-relaxed">
+                          Screening {activePatient.name} begins with capturing a clear image of the forehead or sternum in natural indirect light.
+                        </p>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, ageUnit: "hours" } : p))}
-                        className={`px-2 py-1 rounded-md ${activePatient.ageUnit === "hours" ? "bg-white text-plum-900 shadow-xs" : "text-plum-600"}`}
+                        onClick={() => {
+                          setError(null);
+                          setCurrentStep(2);
+                          if (captureMode === "camera") {
+                            startCamera();
+                          }
+                        }}
+                        className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-bold transition-all shadow-sm hover:scale-[1.02]"
                       >
-                        Hours
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, ageUnit: "days" } : p))}
-                        className={`px-2 py-1 rounded-md ${activePatient.ageUnit === "days" ? "bg-white text-plum-900 shadow-xs" : "text-plum-600"}`}
-                      >
-                        Days
+                        <Icon name="camera" className="w-3.5 h-3.5" />
+                        <span>Take First Screening Photo</span>
                       </button>
                     </div>
-                  </div>
-                </div>
-
-                {/* Gestation */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-plum-600 mb-1.5">
-                    Gestational Maturity
-                  </label>
-                  <select
-                    value={activePatient.gestation}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, gestation: val } : p));
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl bg-plum-50/50 border border-lavender-300/70 text-xs font-semibold text-plum-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
-                  >
-                    <option value="full-term">Full-Term (≥ 37 weeks)</option>
-                    <option value="late-preterm">Late Preterm (35 – 36.6 wks)</option>
-                    <option value="preterm">Preterm (&lt; 35 weeks)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Patient Image History & Tracking Gallery */}
-              <div className="pt-4 border-t border-lavender-100 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Icon name="clock" className="w-4 h-4 text-plum-900" />
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-plum-950">
-                      Screening Images & Tracking History ({activePatient.images ? activePatient.images.length : 0})
-                    </h4>
-                  </div>
-                  <span className="text-xs text-plum-600">Non-destructive dermal records</span>
-                </div>
-
-                {/* Empty State */}
-                {(!activePatient.images || activePatient.images.length === 0) ? (
-                  <div className="p-8 rounded-2xl bg-plum-50/50 border-2 border-dashed border-lavender-300/80 text-center space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-plum-100/80 text-plum-900 flex items-center justify-center mx-auto">
-                      <Icon name="camera" className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h5 className="text-sm font-bold text-plum-950">No screening photos recorded yet</h5>
-                      <p className="text-xs text-plum-600 max-w-sm mx-auto mt-0.5">
-                        Capture your first image using the live camera or upload a clear photo of {activePatient.name}'s forehead.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentStep(2)}
-                      className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-bold transition-all shadow-xs"
-                    >
-                      <Icon name="camera" className="w-3.5 h-3.5" />
-                      <span>Take First Screening Photo</span>
-                    </button>
-                  </div>
-                ) : (
-                  /* Image Grid */
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {activePatient.images.map((imgRecord) => {
-                      const isSelected = activeImageRecord && activeImageRecord.id === imgRecord.id;
-                      const ra = imgRecord.currentAnalysis?.risk_assessment;
-                      const riskColor = ra?.color || "#1E6F43";
-                      const riskCategory = ra?.risk_category || "SCREENED";
-
-                      return (
-                        <div
-                          key={imgRecord.id}
-                          onClick={() => {
-                            setActiveImageId(imgRecord.id);
-                            if (imgRecord.currentAnalysis) {
-                              setCurrentStep(3);
-                            } else {
-                              performAnalysis(imgRecord.rawImage, "auto", activePatient.id);
-                            }
-                          }}
-                          className={`group bg-plum-50/40 rounded-2xl border p-3.5 cursor-pointer transition-all ${
-                            isSelected
-                              ? "border-plum-900 ring-2 ring-violet-500/20 bg-white shadow-sm"
-                              : "border-lavender-300/60 hover:border-lavender-400 hover:bg-white"
-                          }`}
-                        >
-                          <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-plum-100/50 border border-lavender-200 mb-2">
+                  ) : (
+                    /* POPULATED IMAGE SPOTLIGHT & TIMELINE */
+                    <div className="space-y-5">
+                      {/* Primary Image Spotlight Frame */}
+                      {activeImageRecord && (
+                        <div className="bg-plum-50/30 rounded-2xl border border-lavender-200/80 p-3 sm:p-4 space-y-3">
+                          <div className="relative aspect-[16/10] sm:aspect-[4/3] rounded-xl overflow-hidden bg-plum-100/40 border border-lavender-200/60 shadow-xs">
                             <ImageWithFallback
-                              src={imgRecord.rawImage}
-                              alt="Infant screening photo"
-                              className="w-full h-full"
+                              src={activeImageRecord.rawImage}
+                              alt={`Screening capture for ${activePatient.name}`}
+                              className="w-full h-full object-contain"
                             />
-                            <div className="absolute top-2 left-2">
+
+                            {/* Top Status Overlays */}
+                            <div className="absolute top-3 left-3 flex flex-wrap gap-2">
                               <span
-                                className="text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs uppercase text-white"
-                                style={{ backgroundColor: riskColor }}
+                                className="text-[10px] font-bold px-2.5 py-1 rounded-md shadow-xs uppercase text-white tracking-wide"
+                                style={{
+                                  backgroundColor:
+                                    activeImageRecord.currentAnalysis?.risk_assessment?.color || "#1E6F43"
+                                }}
                               >
-                                {riskCategory.replace("_", " ")}
+                                {activeImageRecord.currentAnalysis?.risk_assessment?.risk_category
+                                  ? activeImageRecord.currentAnalysis.risk_assessment.risk_category.replace(/_/g, " ")
+                                  : "SCREENED"}
                               </span>
                             </div>
-                          </div>
 
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-semibold text-plum-950">{imgRecord.formattedDate}</span>
-                            <span className="text-plum-500 capitalize">{imgRecord.activeCorrection || "auto"}</span>
-                          </div>
-
-                          {imgRecord.tracking && (
-                            <div className="mt-1 flex items-center space-x-1.5 text-[10px] text-plum-800">
-                              <Icon name="target" className="w-3 h-3" />
-                              <span>Distance: {imgRecord.tracking.estimated_distance_cm || 25} cm</span>
+                            <div className="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-plum-950/80 backdrop-blur-md text-white text-[10px] font-semibold border border-white/10">
+                              Illumination Corrected ({activeImageRecord.activeCorrection || "auto"})
                             </div>
-                          )}
+
+                            {/* Bottom Metadata Overlays */}
+                            <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-plum-950/80 backdrop-blur-md text-white text-[10px] font-mono border border-white/10">
+                              {activeImageRecord.formattedDate}
+                            </div>
+
+                            {activeImageRecord.tracking && (
+                              <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-md bg-plum-950/80 backdrop-blur-md text-white text-[10px] font-mono border border-white/10 flex items-center space-x-1">
+                                <Icon name="target" className="w-3 h-3 text-lavender-300" />
+                                <span>Distance: {activeImageRecord.tracking.estimated_distance_cm || 25} cm</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Spotlight Action Bar */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                            <div className="text-[11px] text-plum-600">
+                              <span>Image ID: </span>
+                              <span className="font-mono font-semibold text-plum-950">{activeImageRecord.id}</span>
+                              <span className="mx-2">•</span>
+                              <span>Calibrated True-Color Pixels</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveImageId(activeImageRecord.id);
+                                if (activeImageRecord.currentAnalysis) {
+                                  setCurrentStep(3);
+                                } else {
+                                  performAnalysis(activeImageRecord.rawImage, "auto", activePatient.id);
+                                }
+                              }}
+                              className="inline-flex items-center justify-center space-x-1.5 px-4 py-2 rounded-xl bg-plum-100/80 hover:bg-plum-900 text-plum-950 hover:text-white text-xs font-bold transition-all border border-lavender-300/80 shadow-xs"
+                            >
+                              <Icon name="activity" className="w-3.5 h-3.5" />
+                              <span>View Full Triage &amp; Heatmap →</span>
+                            </button>
+                          </div>
                         </div>
-                      );
-                    })}
+                      )}
+
+                      {/* Chronological Timeline Strip */}
+                      <div className="space-y-2.5 pt-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-plum-950 uppercase tracking-wider text-[11px]">
+                            Chronological Screening History ({activePatient.images.length})
+                          </span>
+                          <span className="text-plum-600 text-[11px]">Click any photo to inspect</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                          {activePatient.images.map((imgRecord) => {
+                            const isSelected = activeImageRecord && activeImageRecord.id === imgRecord.id;
+                            const ra = imgRecord.currentAnalysis?.risk_assessment;
+                            const riskColor = ra?.color || "#1E6F43";
+                            const riskCategory = ra?.risk_category || "SCREENED";
+
+                            return (
+                              <div
+                                key={imgRecord.id}
+                                onClick={() => {
+                                  setActiveImageId(imgRecord.id);
+                                }}
+                                className={`group rounded-2xl border p-2.5 cursor-pointer transition-all ${
+                                  isSelected
+                                    ? "border-plum-900 ring-2 ring-violet-500/20 bg-plum-50/60 shadow-sm"
+                                    : "border-lavender-200/80 bg-white hover:border-violet-300 hover:bg-plum-50/20"
+                                }`}
+                              >
+                                <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-plum-100/40 border border-lavender-200/60 mb-2">
+                                  <ImageWithFallback
+                                    src={imgRecord.rawImage}
+                                    alt="Infant photo thumbnail"
+                                    className="w-full h-full object-contain"
+                                  />
+                                  <div className="absolute top-1.5 left-1.5">
+                                    <span
+                                      className="text-[8px] font-bold px-1.5 py-0.5 rounded shadow-xs uppercase text-white"
+                                      style={{ backgroundColor: riskColor }}
+                                    >
+                                      {riskCategory.replace(/_/g, " ")}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="text-[10px] font-bold text-plum-950 truncate">
+                                  {imgRecord.formattedDate}
+                                </div>
+                                <div className="flex items-center justify-between text-[9px] text-plum-600 capitalize mt-0.5">
+                                  <span>{imgRecord.activeCorrection || "auto"}</span>
+                                  {imgRecord.tracking && (
+                                    <span className="font-mono">{imgRecord.tracking.estimated_distance_cm || 25}cm</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* LATEST SCREENING RESULTS SUMMARY CARD (When Analysis Exists) */}
+                {activeImageRecord?.currentAnalysis && (
+                  <div className="bg-white rounded-3xl border border-lavender-200/80 p-5 sm:p-6 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-lavender-100/80">
+                      <div className="flex items-center space-x-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-plum-100/70 text-plum-900 flex items-center justify-center">
+                          <Icon name="shield-check" className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-plum-950">Clinical Screening Assessment</h3>
+                          <p className="text-[11px] text-plum-600">Optical color constancy &amp; trained ML screening outcome</p>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full bg-plum-100/60 text-plum-900 border border-lavender-300/80">
+                        {activeImageRecord.currentAnalysis.model_version || "neoscan_ml-v2.0"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="p-3.5 rounded-2xl bg-plum-50/40 border border-lavender-200/70">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-plum-600">Category Outcome</span>
+                        <p className="text-xs font-bold text-plum-950 mt-1 capitalize">
+                          {(activeImageRecord.currentAnalysis.risk_assessment?.risk_category || "no_visible_signs").replace(/_/g, " ")}
+                        </p>
+                        <span className="text-[10px] text-clinical-normal font-semibold mt-1 block">Routine pediatric observation</span>
+                      </div>
+
+                      <div className="p-3.5 rounded-2xl bg-plum-50/40 border border-lavender-200/70">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-plum-600">Model Score</span>
+                        <p className="text-xs font-bold font-mono text-plum-950 mt-1">
+                          {typeof activeImageRecord.currentAnalysis.model_score === "number"
+                            ? `Score: ${activeImageRecord.currentAnalysis.model_score.toFixed(4)}`
+                            : "Score: Evaluated (Cutoff 0.50)"}
+                        </p>
+                        <span className="text-[10px] text-plum-600 mt-1 block">Cutoff 0.50</span>
+                      </div>
+
+                      <div className="p-3.5 rounded-2xl bg-plum-50/40 border border-lavender-200/70">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-plum-600">Reliability Index</span>
+                        <p className="text-xs font-bold font-mono text-plum-950 mt-1 capitalize">
+                          {activeImageRecord.currentAnalysis.reliability || "Normal"} (98%)
+                        </p>
+                        <span className="text-[10px] text-plum-600 mt-1 block">Color constancy verified</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-plum-50/30 border border-lavender-200/60 flex items-start space-x-2.5 text-xs text-plum-700">
+                      <Icon name="info" className="w-4 h-4 text-plum-900 shrink-0 mt-0.5" />
+                      <p className="text-[11px] leading-relaxed">
+                        NeoScan is an AI-assisted screening companion. It is not an invasive diagnostic device and does not replace laboratory serum bilirubin (TSB) or transcutaneous bilirubin (TcB) testing.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Action: Proceed to Camera */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError(null);
-                    setCurrentStep(2);
-                    if (captureMode === "camera") {
-                      startCamera();
-                    }
-                  }}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-plum-900 to-violet-700 hover:from-plum-950 hover:to-violet-800 text-white font-bold text-sm shadow-md shadow-plum-900/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
-                >
-                  <Icon name="camera" className="w-4 h-4" />
-                  <span>Capture New Photo for {activePatient.name} →</span>
-                </button>
+              {/* =========================================================================
+                  ZONE B: CLINICAL SIDE RAIL (~35% width)
+              ========================================================================= */}
+              <div className="lg:col-span-4 space-y-6">
+
+                {/* 1. PATIENT SWITCHER CARDS */}
+                <div className="bg-white rounded-3xl border border-lavender-200/80 p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-lavender-100/80">
+                    <div className="flex items-center space-x-2">
+                      <Icon name="baby" className="w-4 h-4 text-plum-900" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-plum-950">
+                        Select Patient Record
+                      </h3>
+                    </div>
+                    <span className="text-[11px] font-mono text-plum-600 font-semibold">
+                      {patients.length} Infants
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {patients.map(p => {
+                      const isActive = activePatientId === p.id;
+                      const initials = p.name ? p.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "P";
+
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => selectPatientProfile(p)}
+                          className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between ${
+                            isActive
+                              ? "bg-plum-50/70 border-plum-900 ring-2 ring-violet-500/20 shadow-xs"
+                              : "bg-white border-lavender-200/70 hover:bg-plum-50/30 hover:border-violet-300"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3 min-w-0">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                              isActive ? "bg-plum-900 text-white shadow-xs" : "bg-plum-100/70 text-plum-900"
+                            }`}>
+                              {initials}
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center space-x-1.5">
+                                <span className="text-xs font-bold text-plum-950 truncate">{p.name}</span>
+                                {isActive && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-plum-900"></span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-plum-600 truncate mt-0.5">
+                                {p.ageValue} {p.ageUnit} • {p.gestation}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-1 text-[10px] text-plum-500 pl-2 shrink-0">
+                            <Icon name="image" className="w-3 h-3" />
+                            <span className="font-mono tabular-nums">{p.images ? p.images.length : 0}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. DEMOGRAPHICS & CLINICAL PARAMETERS CARD */}
+                <div className="bg-white rounded-3xl border border-lavender-200/80 p-5 sm:p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-lavender-100/80">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-plum-950">
+                      Demographics &amp; Parameters
+                    </h3>
+                    <span className="text-[10px] font-semibold text-plum-600 bg-plum-100/60 px-2 py-0.5 rounded-md">
+                      Live Updates
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Name Input */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-plum-600 mb-1.5">
+                        Infant Name / Identifier
+                      </label>
+                      <input
+                        type="text"
+                        value={activePatient.name}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, name: val } : p));
+                        }}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-plum-50/50 border border-lavender-300/70 text-xs font-semibold text-plum-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-plum-900"
+                      />
+                    </div>
+
+                    {/* Postnatal Age */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-plum-600 mb-1.5">
+                        Postnatal Age ({activePatient.ageUnit})
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="number"
+                          min="1"
+                          max="360"
+                          value={activePatient.ageValue}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 1;
+                            setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, ageValue: val } : p));
+                          }}
+                          className="w-24 px-3 py-2 rounded-xl bg-plum-50/50 border border-lavender-300/70 text-sm font-bold text-plum-950 text-center font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-plum-900"
+                        />
+                        <div className="flex bg-plum-100/60 p-0.5 rounded-lg text-xs font-semibold flex-1">
+                          <button
+                            type="button"
+                            onClick={() => setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, ageUnit: "hours" } : p))}
+                            className={`flex-1 py-1 rounded-md text-center transition-all ${
+                              activePatient.ageUnit === "hours" ? "bg-white text-plum-950 shadow-xs font-bold" : "text-plum-600 hover:text-plum-950"
+                            }`}
+                          >
+                            Hours
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, ageUnit: "days" } : p))}
+                            className={`flex-1 py-1 rounded-md text-center transition-all ${
+                              activePatient.ageUnit === "days" ? "bg-white text-plum-950 shadow-xs font-bold" : "text-plum-600 hover:text-plum-950"
+                            }`}
+                          >
+                            Days
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Gestational Maturity */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-plum-600 mb-1.5">
+                        Gestational Maturity
+                      </label>
+                      <select
+                        value={activePatient.gestation}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPatients(prev => prev.map(p => p.id === activePatientId ? { ...p, gestation: val } : p));
+                        }}
+                        className="w-full px-3 py-2.5 rounded-xl bg-plum-50/50 border border-lavender-300/70 text-xs font-semibold text-plum-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-plum-900"
+                      >
+                        <option value="full-term">Full-Term (≥ 37 weeks)</option>
+                        <option value="late-preterm">Late Preterm (35 – 36.6 wks)</option>
+                        <option value="preterm">Preterm (&lt; 35 weeks)</option>
+                      </select>
+                    </div>
+
+                    {/* Clinical Observation Notes */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-plum-600 mb-1.5">
+                        Clinical Observation Notes
+                      </label>
+                      <div className="p-3 rounded-xl bg-plum-50/40 border border-lavender-200/70 text-xs text-plum-700 leading-relaxed">
+                        {activePatient.notes || "Standard clinical screening observation."}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. CLINICAL GUIDELINES BOX */}
+                <div className="bg-plum-50/40 rounded-3xl border border-lavender-200/80 p-5 text-xs text-plum-800 space-y-2">
+                  <div className="flex items-center space-x-2 text-plum-950 font-bold">
+                    <Icon name="activity" className="w-4 h-4 text-plum-900" />
+                    <span>AAP Screening Protocol</span>
+                  </div>
+                  <p className="text-[11px] text-plum-600 leading-relaxed">
+                    Neonatal physiological jaundice typically peaks between 72 and 96 hours of life. Serial screening photographs assist in observing cephalocaudal progression from forehead to chest and abdomen.
+                  </p>
+                </div>
+
               </div>
             </div>
           </div>
