@@ -149,6 +149,17 @@ class TestMobileTransformationCharacterisation(unittest.TestCase):
         self.assertEqual(res_sw.headers.get("Service-Worker-Allowed"), "/")
         self.assertTrue(os.path.exists(res_sw.path))
 
+    def test_smartphone_camera_features(self):
+        """Verifies smartphone camera enhancements: resolution ladder, EXIF normalizer, and ambient lighting guidance."""
+        with open(self.app_jsx_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn("getExifOrientation", content)
+        self.assertIn("normalizeImageOrientation", content)
+        self.assertIn("constraintsLadder", content)
+        self.assertIn("ambientLightStatus", content)
+        self.assertIn("NEOSCAN_API_URL", content)
+
 
 if __name__ == "__main__":
     unittest.main()

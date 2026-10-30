@@ -8,6 +8,123 @@ const {
   useCallback
 } = React;
 
+// Configurable API base for standalone mobile shells (e.g. Capacitor / Remote Backend)
+const API_BASE = typeof window !== "undefined" && window.NEOSCAN_API_URL ? window.NEOSCAN_API_URL : "";
+
+// Fast client-side EXIF Orientation parser (zero third-party dependency)
+const getExifOrientation = view => {
+  if (view.byteLength < 4 || view.getUint16(0, false) !== 0xFFD8) return 1;
+  let length = view.byteLength,
+    offset = 2;
+  while (offset < length - 2) {
+    let marker = view.getUint16(offset, false);
+    offset += 2;
+    if (marker === 0xFFE1) {
+      if (offset + 6 >= length) return 1;
+      if (view.getUint32(offset += 2, false) !== 0x45786966) return 1;
+      let little = view.getUint16(offset += 6, false) === 0x4949;
+      offset += view.getUint32(offset + 4, little);
+      if (offset + 2 >= length) return 1;
+      let tags = view.getUint16(offset, little);
+      offset += 2;
+      for (let i = 0; i < tags; i++) {
+        const tagOffset = offset + i * 12;
+        if (tagOffset + 10 >= length) return 1;
+        if (view.getUint16(tagOffset, little) === 0x0112) {
+          return view.getUint16(tagOffset + 8, little);
+        }
+      }
+    } else if ((marker & 0xFF00) !== 0xFF00) {
+      break;
+    } else {
+      if (offset + 2 >= length) break;
+      offset += view.getUint16(offset, false);
+    }
+  }
+  return 1;
+};
+
+// Pure geometric orientation normalizer — preserves authentic pixel color values
+const normalizeImageOrientation = file => {
+  return new Promise(resolve => {
+    if (!file || !file.type.startsWith("image/")) {
+      resolve(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const buffer = e.target.result;
+      let orientation = 1;
+      try {
+        const view = new DataView(buffer);
+        orientation = getExifOrientation(view);
+      } catch (err) {
+        console.warn("EXIF read notice:", err);
+      }
+      const blob = new Blob([buffer], {
+        type: file.type
+      });
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        if (orientation <= 1) {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL("image/jpeg", 0.92));
+          return;
+        }
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if ([5, 6, 7, 8].includes(orientation)) {
+          canvas.width = img.height;
+          canvas.height = img.width;
+        } else {
+          canvas.width = img.width;
+          canvas.height = img.height;
+        }
+        switch (orientation) {
+          case 2:
+            ctx.transform(-1, 0, 0, 1, img.width, 0);
+            break;
+          case 3:
+            ctx.transform(-1, 0, 0, -1, img.width, img.height);
+            break;
+          case 4:
+            ctx.transform(1, 0, 0, -1, 0, img.height);
+            break;
+          case 5:
+            ctx.transform(0, 1, 1, 0, 0, 0);
+            break;
+          case 6:
+            ctx.transform(0, 1, -1, 0, img.height, 0);
+            break;
+          case 7:
+            ctx.transform(0, -1, -1, 0, img.height, img.width);
+            break;
+          case 8:
+            ctx.transform(0, -1, 1, 0, 0, img.width);
+            break;
+          default:
+            ctx.transform(1, 0, 0, 1, 0, 0);
+        }
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/jpeg", 0.92));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      img.src = url;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsArrayBuffer(file);
+  });
+};
+
 // Safe canvas round rectangle helper (prevents TypeError on older WebViews)
 const drawSafeRoundRect = (ctx, x, y, w, h, r) => {
   if (ctx.roundRect) {
@@ -943,6 +1060,7 @@ function App() {
   const [showBiometricOverlay, setShowBiometricOverlay] = useState(true);
   const [liveFps, setLiveFps] = useState(0);
   const [frameCount, setFrameCount] = useState(0);
+  const [ambientLightStatus, setAmbientLightStatus] = useState("optimal"); // 'low', 'optimal', 'glare'
 
   // Correction Method & Views
   const [correctionMethod, setCorrectionMethod] = useState("auto");
@@ -1013,7 +1131,7 @@ function App() {
 
   // 1. Fetch demo samples & seed patient records
   useEffect(() => {
-    fetch("/api/v1/demo-samples").then(res => res.json()).then(data => {
+    fetch(`${API_BASE}/api/v1/demo-samples`).then(res => res.json()).then(data => {
       if (data.samples && data.samples.length > 0) {
         setDemoSamples(data.samples);
 
@@ -1047,16 +1165,34 @@ function App() {
     }).catch(err => console.log("Demo samples fetch notice:", err));
   }, []);
 
-  // 2. Camera Management
-  const startCamera = async () => {
+  // 2. Camera Management with Multi-Tier Smartphone Resolution Ladder Fallback
+  const startCamera = async overrideFacing => {
     try {
       setError(null);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
       }
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const targetFacing = overrideFacing || cameraFacing;
+
+      // Smartphone resolution ladder: Try 1080p -> 720p -> generic ideal -> basic video
+      const constraintsLadder = [{
         video: {
-          facingMode: cameraFacing,
+          facingMode: {
+            ideal: targetFacing
+          },
+          width: {
+            ideal: 1920
+          },
+          height: {
+            ideal: 1080
+          }
+        },
+        audio: false
+      }, {
+        video: {
+          facingMode: {
+            ideal: targetFacing
+          },
           width: {
             ideal: 1280
           },
@@ -1065,7 +1201,30 @@ function App() {
           }
         },
         audio: false
-      });
+      }, {
+        video: {
+          facingMode: {
+            ideal: targetFacing
+          }
+        },
+        audio: false
+      }, {
+        video: true,
+        audio: false
+      }];
+      let stream = null;
+      let lastErr = null;
+      for (const constraints of constraintsLadder) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          if (stream) break;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      if (!stream) {
+        throw lastErr || new Error("Camera stream could not be initialized");
+      }
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -1074,7 +1233,11 @@ function App() {
       setCameraActive(true);
     } catch (err) {
       console.error("Camera access error:", err);
-      setError("Unable to access camera: " + (err.message || "Permission denied"));
+      setError({
+        code: "CAMERA_ACCESS_DENIED",
+        message: "Unable to access smartphone camera: " + (err.message || "Permission denied"),
+        action: "Please enable camera permissions in your browser or switch to upload mode."
+      });
       setCameraActive(false);
     }
   };
@@ -1097,9 +1260,41 @@ function App() {
     const nextFacing = cameraFacing === "user" ? "environment" : "user";
     setCameraFacing(nextFacing);
     if (cameraActive) {
-      setTimeout(startCamera, 150);
+      setTimeout(() => startCamera(nextFacing), 150);
     }
   };
+
+  // Live Ambient Lighting & Exposure Quality Assessment
+  useEffect(() => {
+    if (!cameraActive) return;
+    const interval = setInterval(() => {
+      if (!videoRef.current || videoRef.current.readyState < 2) return;
+      try {
+        const sampleCanvas = document.createElement("canvas");
+        sampleCanvas.width = 32;
+        sampleCanvas.height = 32;
+        const sCtx = sampleCanvas.getContext("2d");
+        sCtx.drawImage(videoRef.current, 0, 0, 32, 32);
+        const imgData = sCtx.getImageData(0, 0, 32, 32).data;
+        let sumLum = 0;
+        const totalPixels = 32 * 32;
+        for (let i = 0; i < imgData.length; i += 4) {
+          sumLum += 0.299 * imgData[i] + 0.587 * imgData[i + 1] + 0.114 * imgData[i + 2];
+        }
+        const avgLum = sumLum / totalPixels;
+        if (avgLum < 45) {
+          setAmbientLightStatus("low");
+        } else if (avgLum > 230) {
+          setAmbientLightStatus("glare");
+        } else {
+          setAmbientLightStatus("optimal");
+        }
+      } catch (e) {
+        // Non-blocking sampling catch
+      }
+    }, 600);
+    return () => clearInterval(interval);
+  }, [cameraActive]);
 
   // Step 2 auto-starts camera if in camera mode
   useEffect(() => {
@@ -1292,7 +1487,7 @@ function App() {
       ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       const b64 = canvas.toDataURL("image/jpeg", 0.7);
       try {
-        const response = await fetch("/api/v1/analyze", {
+        const response = await fetch(`${API_BASE}/api/v1/analyze`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -1330,7 +1525,7 @@ function App() {
   }, [continuousAnalysis, cameraActive, correctionMethod]);
 
   // 6. Non-Destructive Analysis Pipeline & Patient Record Linking
-  const performAnalysis = async (imgB64, methodOverride, patientIdOverride) => {
+  const performAnalysis = async (imgB64, methodOverride, patientIdOverride, metadataOverride) => {
     const targetImage = imgB64 || activeImageRecord && activeImageRecord.rawImage;
     if (!targetImage) {
       setError("Please capture or upload an infant photo first.");
@@ -1385,7 +1580,7 @@ function App() {
           ageHours = unit.startsWith("day") ? activePatient.ageValue * 24.0 : activePatient.ageValue;
         }
       }
-      const response = await fetch("/api/v1/analyze", {
+      const response = await fetch(`${API_BASE}/api/v1/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -1464,7 +1659,14 @@ function App() {
             }
           },
           currentAnalysis: data,
-          tracking: data.tracking || {}
+          tracking: data.tracking || {},
+          metadata: {
+            source: metadataOverride?.source || "camera_capture",
+            deviceUserAgent: navigator.userAgent,
+            cameraFacing: cameraFacing,
+            capturedAt: new Date().toISOString(),
+            ...metadataOverride
+          }
         };
         const otherImages = p.images.filter(img => img.id !== newImageId);
         return {
@@ -1510,8 +1712,8 @@ function App() {
     }
   };
 
-  // 8. File Upload Handler
-  const handleFileUpload = e => {
+  // 8. Smartphone File Upload Handler with Client-Side Geometric EXIF Normalization
+  const handleFileUpload = async e => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -1522,14 +1724,31 @@ function App() {
       });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = event => {
-      const b64 = event.target.result;
+    setLoading(true);
+    setLoadingMessage("Detecting smartphone EXIF orientation & preparing photo...");
+    try {
+      const normalizedB64 = await normalizeImageOrientation(file);
+      if (!normalizedB64) {
+        throw new Error("Unable to decode uploaded image data.");
+      }
       stopCamera();
-      performAnalysis(b64);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+      await performAnalysis(normalizedB64, null, null, {
+        source: "file_upload",
+        originalFileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      });
+    } catch (err) {
+      console.error("Upload processing error:", err);
+      setError({
+        code: "IMAGE_DECODE_ERROR",
+        message: "Could not read image file: " + (err.message || "Unknown error"),
+        action: "Please try selecting a different photo from your device."
+      });
+    } finally {
+      setLoading(false);
+      e.target.value = "";
+    }
   };
 
   // Active Analysis Result (from active image record)
@@ -2305,19 +2524,30 @@ function App() {
     ref: trackingCanvasRef,
     className: "absolute inset-0 w-full h-full pointer-events-none z-10"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "absolute top-4 inset-x-4 flex items-center justify-between z-20 pointer-events-none"
+    className: "absolute top-3 inset-x-3 sm:top-4 sm:inset-x-4 flex items-center justify-between z-20 pointer-events-none gap-2"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-xs border border-white/10 shadow-sm pointer-events-auto"
-  }, /*#__PURE__*/React.createElement(Icon, {
-    name: "target",
-    className: "w-3.5 h-3.5 text-lavender-300"
+    className: "flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-[11px] sm:text-xs border border-white/10 shadow-sm pointer-events-auto shrink-0"
+  }, ambientLightStatus === "low" ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Icon, {
+    name: "sun",
+    className: "w-3.5 h-3.5 text-amber-400 shrink-0"
   }), /*#__PURE__*/React.createElement("span", {
-    className: "font-semibold"
-  }, analysisResult?.tracking?.distance_advice || "Target ~25 cm distance")), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-xs border border-white/10 shadow-sm pointer-events-auto"
+    className: "text-amber-200 font-medium"
+  }, "Low Light: Move to daylight")) : ambientLightStatus === "glare" ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Icon, {
+    name: "sun",
+    className: "w-3.5 h-3.5 text-amber-400 shrink-0"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-amber-200 font-medium"
+  }, "Direct Glare: Angle away")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    className: "w-2 h-2 rounded-full bg-emerald-400 shrink-0"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-emerald-200 font-medium hidden sm:inline"
+  }, "Lighting Good"), /*#__PURE__*/React.createElement("span", {
+    className: "text-emerald-200 font-medium sm:hidden"
+  }, "Light OK"))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-[11px] sm:text-xs border border-white/10 shadow-sm pointer-events-auto shrink-0"
   }, /*#__PURE__*/React.createElement("span", {
     className: `w-2 h-2 rounded-full ${continuousAnalysis ? "bg-emerald-400 animate-ping" : "bg-slate-400"}`
-  }), /*#__PURE__*/React.createElement("span", null, continuousAnalysis ? `Tracking Live (${liveFps || 1.6} Hz)` : "Tracking Paused"))), !cameraActive && /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, continuousAnalysis ? `Live (${liveFps || 1.6} Hz)` : "Tracking Paused"))), !cameraActive && /*#__PURE__*/React.createElement("div", {
     className: "absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-950/90 text-white space-y-3 z-15"
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-12 h-12 rounded-2xl bg-plum-500/20 text-lavender-300 flex items-center justify-center"
