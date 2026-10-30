@@ -10,7 +10,10 @@
 ## 1. Executive Summary
 
 This report documents the verification, accessibility audit, and regression testing for two targeted visual/UX defect repairs in NeoScan:
-1. **Defect 1 (Nameless Capture Controls)**: In Step 2 (Guided Camera & Capture), interactive buttons previously lacked visible text labels, descriptive tooltips, and accessible names for assistive technology. All controls now provide persistent visible text or contextual badges, WCAG-compliant accessible names (`aria-label`, `aria-pressed`, `title`), min $44 \times 44\text{px}$ touch targets, and high-visibility keyboard focus rings.
+1. **Defect 1 (Nameless & Invisible Capture Controls & Patient Badges)**:
+   - In Step 2 (Guided Camera & Capture), interactive buttons previously lacked visible text labels, descriptive tooltips, and accessible names.
+   - Furthermore, because Tailwind CDN initialization previously reset custom palette tokens (`plum`, `violet`), buttons and patient avatar badges rendered with white text over an unstyled transparent background (rendering as empty white boxes).
+   - This was resolved by correcting Tailwind script execution order in `index.html`, adding native fallback CSS classes for all purple theme tokens and linear gradients, and providing inline style fallbacks for all primary action buttons ("Capture & Screen Photo", "Capture New Photo", "Retake Photo") and patient avatar badges (main profile header, sticky header, and patient selector list).
 2. **Defect 2 (Missing NeoScan Brand Assets)**: The application lacked brand image assets, vector logo files, favicons, and PWA metadata, resulting in browser 404 errors and blank placeholders in the header, splash screen, and browser tabs. A complete brand asset suite was generated, embedded, and integrated across the frontend markup, React components, and backend static/API route handlers.
 
 **Zero Clinical Logic Regression**: Camera stream acquisition, video-to-canvas extraction, color constancy transforms (Shades-of-Gray / ArUco), and the `neoscan_ml` diagnostic inference pipeline were preserved with 100% fidelity. No pixel transformations or color distortions were introduced.

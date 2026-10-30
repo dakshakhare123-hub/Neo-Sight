@@ -37,3 +37,8 @@ All notable changes to the capture controls, accessible names, logo, and icons o
   - Resolved missing favicon and blank brand placeholder by provisioning genuine brand vector assets and adding `<link rel="icon">`, `<link rel="apple-touch-icon">`, and `<link rel="manifest">` tags in `frontend/index.html`.
 - **Nameless Capture Controls**:
   - Resolved missing button labels and screen-reader names across the camera capture screen.
+- **Invisible Button Labels & Patient Avatar Initials**:
+  - Fixed root cause where `window.tailwind.config` placed before `tailwind.min.js` was reset by Tailwind CDN's initialization proxy, preventing custom `plum` and `violet` color and gradient classes from compiling.
+  - Corrected script execution order in `frontend/index.html`.
+  - Added dedicated fallback CSS utility rules for all purple palette tokens and gradients.
+  - Added explicit inline style and color fallbacks to primary buttons ("Capture New Photo", "Capture & Screen Photo", "Retake Photo") and avatar badges (main profile header, sticky header, and patient selector list).
