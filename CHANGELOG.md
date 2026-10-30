@@ -1,68 +1,41 @@
-# Changelog: Deep Plum & Violet Re-Theme & Heuristic Badge Removal
+# Changelog: Patient Profile Layout & Typography Redesign
 
-**Branch:** `feat/purple-theme`  
+**Branch:** `feat/profile-redesign`  
 **Date:** 2026-10-30  
-**Authors:** Senior Front-End Engineer & UI Specialist  
-
-All changes in this release preserve 100% of existing application behavior, data structures, routes, layouts, and image integrity.
+**Scope:** Presentation-only redesign of Step 1 (Patient Profile & Image Tracking History). Zero alterations to business logic, API calls, routes, or dermal image pixels.
 
 ---
 
-## Modified Files
+## Summary of Changes
 
-### 1. `frontend/index.html`
-- **Design Tokens**: Configured `window.tailwind.config` with extended palettes:
-  - `plum` (`50` through `950`, anchored on Deep Plum `#4C2365` and Deep Plum Black `#2A1138`).
-  - `violet` (`50` through `900`, anchored on Violet `#7F5D99` and Soft Violet `#9E7EB5`).
-  - `lavender` (`50` through `900`, anchored on Lavender `#C4A4DA`).
-  - `clinical` (`normal`: `#1E6F43`, `warning`: `#9E5700`, `elevated`: `#8F1D40`).
-- **CSS Custom Properties**: Added `:root` tokens for `--color-plum-900`, `--color-violet-500`, `--color-lavender-400`, `--color-bg-wash`, and status tokens.
-- **Initial Loader & Body**: Updated `body` background to `bg-plum-50 text-plum-950` and pre-React spinner to `text-violet-500`.
+### 1. `frontend/src/App.jsx`
+- **Patient Hero Summary Band:**
+  - Added a prominent top banner featuring a dynamic monogram initials avatar (`w-16 h-16 rounded-2xl bg-gradient-to-tr from-plum-900 to-violet-700`).
+  - Rendered patient display title (`text-2xl sm:text-3xl font-extrabold text-plum-950`), monospace patient identifier (`#patient-leo`), age with units, gestation chip, feeding method, and photo counter badge.
+  - Positioned primary action CTA ("Capture New Photo") in the top right.
+- **Sticky Condensed Patient Bar on Scroll:**
+  - Added an active scroll listener (`window.scrollY > 180`) that displays a compact sticky bar beneath the global header when scrolling down the page.
+  - Keeps infant identity, age, gestation, and quick "Capture Photo" action accessible at all scroll depths.
+- **Two-Zone Responsive Workspace (12-Column Grid):**
+  - **Zone A: Main Content Column (`lg:col-span-8`):**
+    - **Primary Image Spotlight Frame:** Large high-fidelity preview frame for the active/most recent infant photo, with clean status overlays (risk category, illumination correction method, capture date, camera distance).
+    - **Spotlight Action Bar:** Metadata display + direct action link ("View Full Triage & Heatmap →").
+    - **Chronological Timeline Strip:** Responsive grid of all historical captures with active plum selection ring and hover feedback.
+    - **Empty State:** Re-styled dashed empty state with camera illustration, soothing copy, and prominent "Take First Screening Photo" CTA.
+    - **Latest Screening Results Card:** Clean triage summary card showing category outcome, honest Model Score with cutoff 0.50, reliability index, and AAP screening disclaimer.
+  - **Zone B: Clinical Side Rail (`lg:col-span-4`):**
+    - **Patient Switcher Selector:** 4-card vertical stack (Baby Leo, Baby Maya, Baby Sam, Baby Noah) with initials badges, photo counts, and active plum selection dots.
+    - **Demographics & Clinical Parameters Card:** Re-styled controlled inputs for infant name, postnatal age with Hours/Days toggle, gestational maturity dropdown, and clinical observation notes.
+    - **AAP Screening Protocol Reference:** Compact educational guidance card on neonatal jaundice progression.
 
-### 2. `frontend/src/App.jsx`
-- **Task 2 (Heuristic Badge Removal)**:
-  - Completely removed `<div className="flex items-center space-x-3">...<span className="hidden sm:inline font-medium">Optical Heuristic Active</span>...</div>` from the global header.
-  - Closed spacing cleanly with zero layout shift or visual gaps.
-- **Canvas Viewfinder HUD**:
-  - Replaced hardcoded cyan (`#06b6d4`) with Soft Violet (`rgba(158, 126, 181, 0.75)`).
-  - Replaced dark slate pills with Deep Plum Black overlay (`rgba(42, 17, 56, 0.85)`).
-- **Navigation & Wizards**:
-  - Re-themed logo badge to `bg-gradient-to-tr from-plum-900 to-violet-700`.
-  - Re-themed 3-step wizard active indicator to `bg-plum-900 text-white shadow-plum-900/25`.
-- **Step 1 (Patient Profile)**:
-  - Re-themed active patient selection cards to `border-plum-900 bg-plum-50/60 ring-2 ring-plum-900/15`.
-  - Re-themed form input borders and focus rings to `border-lavender-200 focus:ring-plum-900`.
-  - Re-themed "Proceed to Scan" button to `bg-gradient-to-r from-plum-900 to-violet-700`.
-- **Step 2 (Camera & Shutter)**:
-  - Re-themed mode tabs (Live Camera vs Upload) to `bg-plum-900 text-white`.
-  - Re-themed shutter capture button to `border-4 border-plum-900 text-plum-900 hover:scale-105`.
-  - Re-themed guidance checklist and color card detection cards to lavender/plum borders.
-- **Step 3 (Clinical Triage & Diagnostics)**:
-  - Re-themed Hero Triage Card and risk badge to palette-harmonized status tokens.
-  - Re-themed Multi-Spectrum Viewport pills (Raw, Corrected, Diagnostic, Heatmap) to `bg-plum-900 text-white`.
-  - Re-themed Clinical Insights accordion sub-tabs and telemetry breakdown cards.
-  - Re-themed Biometric ROI table headers and row highlights to `text-plum-900 font-bold`.
-  - Re-themed Historical Timeline strip active border to `border-plum-900 ring-2 ring-plum-900/20`.
-- **Modals & Utilities**:
-  - Re-themed Calming Heartbeat Loading Modal to `bg-plum-950/70` backdrop and `from-plum-900 to-violet-700` pulsing heart container.
-  - Updated image fallback loading spinner from `text-teal-400` to `text-violet-600`.
-  - Re-themed Medical Disclaimer footer borders and copy.
+### 2. `frontend/app.js`
+- Recompiled production JavaScript bundle containing the redesigned layout and typography components (121,196 bytes).
 
-### 3. `frontend/app.js`
-- Recompiled production JavaScript bundle via Babel (`build.cjs`) containing the re-themed components and removed heuristic badge.
+### 3. `tests/test_profile_characterisation.py`
+- Added comprehensive characterisation test suite covering patient record schema, selection logic, editing immutability, image tracking, and demo sample seeding.
 
----
-
-## Created Documentation Files
-
-### 4. `FEATURE_INVENTORY.md`
-- Complete inventory of all 16 features across all 3 steps of the application, verified prior to making edits.
-
-### 5. `BASELINE.md`
-- Phase 0 safety net recording test results, lint checks, and exact original code for the "Optical Heuristic Active" badge.
-
-### 6. `COLOUR_MAP.md`
-- Comprehensive mapping of every pre-existing color (teal, cyan, slate, amber, emerald, rose) to its exact replacement token in the Deep Plum & Violet system.
-
-### 7. `REGRESSION_REPORT.md`
-- Detailed verification report including calculated WCAG 2.1 AA/AAA contrast tables, non-regression checklists, and full automated test suite outputs.
+### 4. Documentation & Verification Artifacts
+- **`DESIGN_BRIEF.md`:** Comprehensive layout wireframes (desktop & mobile), typography scale, 8px grid spacing, and complete mapping table.
+- **`FEATURE_INVENTORY.md`:** Catalog of all 16 elements, controls, fields, and states.
+- **`BASELINE.md`:** Pre-redesign test outputs and audit notes.
+- **`REGRESSION_REPORT.md`:** Contrast calculation matrix, test execution logs, and non-regression checklist.
