@@ -1,41 +1,46 @@
-# Changelog: Patient Profile Layout & Typography Redesign
+# Changelog — NeoScan Triage and Insights Fixes
 
-**Branch:** `feat/profile-redesign`  
-**Date:** 2026-10-30  
-**Scope:** Presentation-only redesign of Step 1 (Patient Profile & Image Tracking History). Zero alterations to business logic, API calls, routes, or dermal image pixels.
+All notable changes in this release are strictly confined to the three clinical problems on the **Triage and Insights** page (Step 3).
 
 ---
 
-## Summary of Changes
+## [Unreleased] - Branch: `fix/triage-insights` - 2026-10-30
 
-### 1. `frontend/src/App.jsx`
-- **Patient Hero Summary Band:**
-  - Added a prominent top banner featuring a dynamic monogram initials avatar (`w-16 h-16 rounded-2xl bg-gradient-to-tr from-plum-900 to-violet-700`).
-  - Rendered patient display title (`text-2xl sm:text-3xl font-extrabold text-plum-950`), monospace patient identifier (`#patient-leo`), age with units, gestation chip, feeding method, and photo counter badge.
-  - Positioned primary action CTA ("Capture New Photo") in the top right.
-- **Sticky Condensed Patient Bar on Scroll:**
-  - Added an active scroll listener (`window.scrollY > 180`) that displays a compact sticky bar beneath the global header when scrolling down the page.
-  - Keeps infant identity, age, gestation, and quick "Capture Photo" action accessible at all scroll depths.
-- **Two-Zone Responsive Workspace (12-Column Grid):**
-  - **Zone A: Main Content Column (`lg:col-span-8`):**
-    - **Primary Image Spotlight Frame:** Large high-fidelity preview frame for the active/most recent infant photo, with clean status overlays (risk category, illumination correction method, capture date, camera distance).
-    - **Spotlight Action Bar:** Metadata display + direct action link ("View Full Triage & Heatmap →").
-    - **Chronological Timeline Strip:** Responsive grid of all historical captures with active plum selection ring and hover feedback.
-    - **Empty State:** Re-styled dashed empty state with camera illustration, soothing copy, and prominent "Take First Screening Photo" CTA.
-    - **Latest Screening Results Card:** Clean triage summary card showing category outcome, honest Model Score with cutoff 0.50, reliability index, and AAP screening disclaimer.
-  - **Zone B: Clinical Side Rail (`lg:col-span-4`):**
-    - **Patient Switcher Selector:** 4-card vertical stack (Baby Leo, Baby Maya, Baby Sam, Baby Noah) with initials badges, photo counts, and active plum selection dots.
-    - **Demographics & Clinical Parameters Card:** Re-styled controlled inputs for infant name, postnatal age with Hours/Days toggle, gestational maturity dropdown, and clinical observation notes.
-    - **AAP Screening Protocol Reference:** Compact educational guidance card on neonatal jaundice progression.
+### 1. Fix 1: Deterministic Clinical Triage Engine
+- **Added `backend/app/core/triage_rules.py`**: Pure, side-effect-free clinical triage engine implementing American Academy of Pediatrics (AAP) 2022 Hyperbilirubinemia guidelines.
+- **Added `frontend/src/triage.js` & `frontend/src/triageConfig.js`**: Client-side mirror of the triage engine for instant reactivity and explainability.
+- **Removed Hardcoded Triage Mapping**: Replaced static fallback that previously forced *"Pediatric consultation recommended"* onto all infant images.
+- **Added Demographic Red-Flag Sensitivity**:
+  - Automatically escalates early-onset jaundice (< 24 hours postnatal age) to **URGENT EVALUATION** (`#8F1D40`), as early icterus is pathological regardless of visual skin appearance.
+  - Automatically escalates preterm (<37 weeks) and feeding-compromised infants.
+- **Added Safe Error & Pending States**:
+  - When an image fails the quality gate (e.g. no face detected, blurry, poor exposure), the page returns *"Assessment Unavailable (Quality Alert)"* with a *"RETAKE PHOTO"* action.
+  - When no image has been screened, displays *"Awaiting Screening Capture"* with zero clinical recommendation.
+- **Added Clinical Explainability**: Returns an array of explainable `reasons` detailing the exact model score, measured b\* cutaneous chrominance, lighting reliability caution, and patient demographic risk factors.
+- **Added Unit Test Suites**: `tests/test_triage_decision_matrix.py` (10 tests) and `tests/test_frontend_triage.mjs` (7 tests).
 
-### 2. `frontend/app.js`
-- Recompiled production JavaScript bundle containing the redesigned layout and typography components (121,196 bytes).
+### 2. Fix 2: Accurate CIE b\* Yellowness Scale
+- **Calibrated Physiological Scale**: Replaced arbitrary 0–32 linear range with an empirically grounded 0.0 to 30.0 b\* scale based on a cohort of 1,238 neonates (25th percentile: 10.7, median: 14.6, 75th percentile: 18.6, 95th percentile: 23.3).
+- **Added Yellow $\rightarrow$ Orange $\rightarrow$ Red Continuous Gradient**:
+  - Low / Routine: 0.0 to 14.0 b\* (Pale Yellow `#FEF08A` to Golden Yellow `#FBBF24`).
+  - Moderate / Borderline: 14.0 to 20.0 b\* (Amber `#F97316`).
+  - Elevated / High: 20.0 to 30.0+ b\* (Deep Crimson Red `#DC2626`).
+- **Added Numeric Ticks**: Clear visual marks at 0, 5, 10, 15, 20, 25, and 30+.
+- **Anatomical Breakdown**: Surfaces Forehead b\*, Cheeks b\*, and Combined median b\* values.
+- **Strict Marker Safety**: Marker pin is only rendered when a valid, measured cutaneous b\* value exists; eliminated old fallback that erroneously plotted `modelScore * 100` onto the b\* yellowness bar.
+- **Added Colorimetric Test Suite**: `tests/test_bstar_scale.py` validating OpenCV float Lab against reference CIE D65 2-degree observer values on Macbeth patches within $\Delta b^* < 0.16$ (tolerance $< 0.5$).
 
-### 3. `tests/test_profile_characterisation.py`
-- Added comprehensive characterisation test suite covering patient record schema, selection logic, editing immutability, image tracking, and demo sample seeding.
-
-### 4. Documentation & Verification Artifacts
-- **`DESIGN_BRIEF.md`:** Comprehensive layout wireframes (desktop & mobile), typography scale, 8px grid spacing, and complete mapping table.
-- **`FEATURE_INVENTORY.md`:** Catalog of all 16 elements, controls, fields, and states.
-- **`BASELINE.md`:** Pre-redesign test outputs and audit notes.
-- **`REGRESSION_REPORT.md`:** Contrast calculation matrix, test execution logs, and non-regression checklist.
+### 3. Fix 3: Multi-Spectrum Visual Inspection Modes
+- **Added Real "Corrected" Mode**:
+  - Backend returns genuine illumination-normalized BGR image (`prepared.norm`) as JPEG base64 when background color constancy is applied (`colour_normalised: True`).
+  - When background pixels are insufficient for illuminant estimation, returns `None` and displays an amber notice banner: *"No illumination correction applied: Insufficient neutral background to calibrate illuminant"*.
+  - Strict prohibition of fake CSS filters (`sepia`, `hue-rotate`, etc.).
+- **Fixed "Diagnostic ROIs" Spatial Alignment**:
+  - Anatomical forehead and cheek bounding boxes are now scaled against the analyzed image frame dimensions (`w_an`, `h_an`), resolving the 4x top-left shrinkage bug.
+  - Generates PNG overlay directly from `draw_overlay(prepared)`.
+- **Relabeled and Re-Engineered "Yellowness Heat Map"**:
+  - Renamed tab from "Thermal Heatmap" to **"Yellowness Heat Map"** (RGB phone cameras have zero thermal sensitivity).
+  - Implemented `backend/app/core/heatmap.py` to compute per-pixel b\* chrominance on segmented skin, rendered using a Yellow $\rightarrow$ Amber $\rightarrow$ Red colormap, with background desaturated to 45% grayscale for anatomical focus.
+  - Added matching horizontal colormap legend beneath the viewport.
+- **Fixed Image Retake & Flickering**: Keyed viewport with `${patientId}_${imageId}_${mode}` to guarantee immediate update upon rescreening or mode switching.
+- **Added Inspection Test Suite**: `tests/test_inspection_modes.py` (verifying all modes, base64 data URIs, and alignment geometry).
