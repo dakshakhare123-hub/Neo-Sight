@@ -1,79 +1,47 @@
-# NeoScan Application Feature Inventory
+# NeoScan Feature Inventory (`FEATURE_INVENTORY.md`)
 
-**Audit Date:** October 29, 2026  
-**Environment:** macOS (Localhost:8000), Python 3.13, Node v20, React 18 SPA  
-**Branch:** `feat/neoscan-integration`  
-
-This document inventories every user-facing feature, route, API endpoint, component, and data model currently implemented in NeoScan. Every item has been verified against the running application.
+**Date:** October 30, 2026  
+**Application:** NeoScan — Intelligent Neonatal Bilirubin Screening  
+**Verification Method:** Static code analysis, test execution, and live runtime verification on `http://127.0.0.1:8000`  
 
 ---
 
-## 1. User-Facing Frontend Features & Components
+## 1. User-Facing Screens & Stepped Wizard Routes
 
-| Feature Category | User-Facing Capability | Implementing Component / File | Verification Method |
+| Step / Route | Component / Container | User-Facing Features | Interactive Elements |
 | :--- | :--- | :--- | :--- |
-| **Patient Profile Management** | View default preloaded profiles (Leo, Maya, Noah), view DOB, gestational age, birth weight, and clinical notes. | `frontend/src/App.jsx` (`DEFAULT_PATIENTS`, `activePatientId`, lines 312–409) | Verified via browser UI; persisted in `localStorage["neoscan_patients_store_v3"]`. |
-| **Patient Creation & Switching** | Modal dialog to register a new infant profile (Name, DOB, Gestational Age, Birth Weight, Notes) and switch active patient. | `frontend/src/App.jsx` (`handleAddPatient`, `setActivePatientId`, lines 1320–1460) | Tested patient creation; persists across page reloads. |
-| **Patient Scan History & Timeline** | Displays historical screening timeline per patient with timestamps, triage badges, thumbnails, and inspection actions. | `frontend/src/App.jsx` (lines 1940–2080) | Past records render cleanly with thumbnail fallbacks. |
-| **Multi-Step Screening Wizard** | Intuitive 3-step navigation (Step 1: Patient Profile, Step 2: Capture/Upload, Step 3: Triage & Insights). | `frontend/src/App.jsx` (`currentStep`, Step progress header, lines 880–940) | Smooth forward and backward step transitions verified. |
-| **Camera Viewfinder & Live Stream** | Real-time web camera feed with front/environment camera selection and active state controls. | `frontend/src/App.jsx` (`startCamera`, `stopCamera`, `videoRef`, lines 580–680) | Live video stream tested in browser. |
-| **Biometric Face Framing Guide** | SVG oval guidance overlay helping clinicians/parents align infant face at optimal focal distance. | `frontend/src/App.jsx` (lines 1480–1540) | Visible on camera viewfinder. |
-| **Real-Time Biometric Tracking HUD**| Live bounding box overlays for detected forehead, nose, and cheeks, with distance estimation telemetry. | `frontend/src/App.jsx` (`tracking`, lines 1550–1620) | Displays "Optimal screening distance (~26 cm)" telemetry. |
-| **Live Performance Telemetry** | Live FPS meter and frame counter for real-time tracking performance. | `frontend/src/App.jsx` (`liveFps`, `frameCount`, lines 416–417) | Renders dynamically when continuous tracking is enabled. |
-| **Image File Upload** | Drag-and-drop or file browser upload for local JPEG/PNG photos. | `frontend/src/App.jsx` (`handleFileUpload`, `fileInputRef`, lines 740–790) | Uploads and decodes correctly into canvas. |
-| **Preloaded Clinical Demo Patients**| Quick-select toolbar with verified clinical sample patients (Healthy Daylight, Mild Tungsten, Elevated Overcast, ArUco Card). | `frontend/src/App.jsx` (`handleSelectDemo`, lines 500–530, 1660–1740) | Preloads image and triggers analysis smoothly. |
-| **Color Constancy Options** | Dropdown selecting illumination normalization method (`auto`, `card_ccm`, `sclera_wb`, `shades_of_gray`, `gray_world`, `white_patch`, `none`). | `frontend/src/App.jsx` (`correctionMethod`, lines 1760–1810) | Passed to `/api/v1/analyze` payload. |
-| **Triage Results Dashboard** | Reassuring, human-centric triage outcome card with category badges and actionable clinical guidance. | `frontend/src/App.jsx` (`risk_assessment`, lines 1020–1180) | Renders triage recommendations and badges. |
-| **Multi-Mode Visualizations** | Toggle between `Corrected Image`, `Raw Capture`, `Diagnostic Overlay`, and `Yellowness Heatmap`. | `frontend/src/App.jsx` (`imageCompareMode`, lines 1190–1280) | Base64 PNG visualizations render with image modal viewer. |
-| **Clinical Insights Accordion** | Expandable technical panel breaking down optical metrics, CIELAB biomarkers, and model confidence. | `frontend/src/App.jsx` (`clinicalAccordionOpen`, lines 1830–1930) | Accordion expands/collapses smoothly. |
-| **Medical Disclaimer Footer** | Persistent clinical safety disclaimer stating NeoScan is a screening adjuvant, not a standalone diagnostic device. | `frontend/src/App.jsx` (lines 2220–2250) | Displayed on every screen. |
+| **Top Global Header** | `<header>` lines 1070–1165 in `App.jsx` | Brand Logo (`NeoScan Pediatric`), Stepped Navigation Pills (`1. Patient Profile`, `2. Capture & Guidance`, `3. Triage & Insights`), Mobile Step Progress Bar | Step navigation clicks (`setCurrentStep(1\|2\|3)`) |
+| **Step 1: Patient Profile** | Step 1 container lines 1225–1440 | Infant demographic switcher, active patient summary card, preloaded clinical demo patient catalog | Patient switcher tabs, "New Infant Record" button, "Edit Profile" button, 4 demo sample load buttons |
+| **Step 2: Capture & Guidance** | Step 2 container lines 1445–1780 | Camera live viewfinder, 60 FPS face guidance HUD canvas, camera controls, manual photo upload drag/drop zone, illumination strategy selector accordion | "Live Camera" vs "Photo Upload" tabs, "Capture Photo" shutter, "Switch Camera" (user/environment), "Stop Camera", "Color Constancy Algorithm" dropdown |
+| **Step 3: Triage & Insights** | Step 3 container lines 1785–2280 | Hero Triage Card, Calibrated Risk Gauge, Parent Care Checklist, Multi-Spectrum Viewport, Technical Insights Deep Dive Accordion, Longitudinal History Timeline Strip | "Rescreen / Retake" button, "Export Report" print button, Viewport mode tabs ("Corrected", "Raw", "Diagnostic ROIs", "Thermal Heatmap"), Technical Sub-tabs ("Optical", "Biometric ROIs", "Model & Quality"), Timeline frame clicks |
 
 ---
 
-## 2. Backend API Routes & Services
+## 2. Interactive Modals & Notification Banners
 
-| Route | HTTP Method | Implementation File | Purpose & Behavior |
-| :--- | :---: | :--- | :--- |
-| `/api/v1/health` | `GET` | `backend/app/api/routes.py::health_check` | Returns API status, screening engine version, model loaded state, and supported methods. |
-| `/api/v1/demo-samples` | `GET` | `backend/app/api/routes.py::list_demo_samples` | Serves metadata and base64 payloads for 4 preloaded clinical test cases. |
-| `/api/v1/analyze` | `POST` | `backend/app/api/routes.py::analyze_image` | Decodes image base64, runs quality gate, color correction, ROI segmentation, and classification. |
-| `/` | `GET` | `backend/app/main.py::serve_index` | Serves `frontend/index.html`. |
-| `/app/*` | `GET` | `backend/app/main.py` (StaticFiles) | Serves compiled `frontend/app.js`, `index.html`, and vendor libraries. |
-| `/static/docs/*` | `GET` | `backend/app/main.py` (StaticFiles) | Serves static documentation, charts, and downloadable ArUco cards. |
+| Modal / Banner | Trigger Condition | Visual Content | Actions |
+| :--- | :--- | :--- | :--- |
+| **Quality Gate Error Banner** | `error !== null` (lines 1184–1222) | Warning icon, error title, message, actionable guidance box | "Retake Photo" (clears error, switches to step 2, activates camera), "Dismiss" button |
+| **Add / Edit Infant Modal** | `modalOpen === true` (lines 1250–1330) | Infant name, age value & unit, gestation weeks, birth weight, notes | "Cancel" button, "Save Record" button |
+| **Heartbeat Loading Modal** | `loading === true` (lines 2282–2315) | Pulsing heartbeat icon, animated pulse ring, rotating progress bar, multi-stage status text | Background backdrop overlay (non-interactive, self-dismisses on response) |
+| **Medical Disclaimer Footer** | Always present (lines 2318–2329) | Clinical screening disclaimer text, version badge | Informational text |
 
 ---
 
-## 3. Data Models & Storage Schema
+## 3. Backend API Endpoints (`backend/app/api/routes.py`)
 
-1. **Client Storage (`localStorage["neoscan_patients_store_v3"]`):**
-   ```typescript
-   interface PatientStore {
-     id: string;                    // e.g. "patient-leo"
-     name: string;                  // e.g. "Leo Vance"
-     dob: string;                   // ISO date string
-     gestationalAgeWeeks: number;   // e.g. 39
-     birthWeightKg: number;         // e.g. 3.4
-     notes: string;
-     avatarUrl?: string;
-     records: ScanRecord[];
-   }
+| Endpoint | Method | Input | Output Contract | Verification Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `/api/v1/health` | `GET` | None | `{status: "online", screening_method: "neoscan_ml", neoscan_enabled: true, ml_model_loaded: true, ...}` | Verified (HTTP 200) |
+| `/api/v1/demo-samples` | `GET` | None | `{"samples": [4 clinical demo cases with base64 data URLs]}` | Verified (HTTP 200) |
+| `/api/v1/analyze` | `POST` | `{"image_base64": "..."}` | `{category, model_score, reliability, risk_assessment, tracking, visualizations, ...}` | Verified (HTTP 200 / 413 / 422 / 503) |
+| `/api/v1/analyze/file` | `POST` | Multipart `file` | Equivalent to `/analyze` | Verified (HTTP 200) |
 
-   interface ScanRecord {
-     id: string;                    // unique scan UUID
-     timestamp: string;             // ISO timestamp
-     imageUri: string;              // Raw capture (base64 data URL)
-     correctedImageUri?: string;    // Color-corrected capture (base64 data URL)
-     diagnosticOverlayUri?: string; // ROI diagnostic overlay
-     heatmapUri?: string;           // Yellowness heatmap
-     result: any;                   // Analysis payload
-     tracking?: any;                // Real-time tracking telemetry
-     quality?: any;                 // Sharpness & exposure metrics
-     metadata?: {
-       device?: string;
-       cameraFacing?: string;
-       correctionMethod?: string;
-     };
-   }
-   ```
-2. **Server-Side Models:**
-   - Stateless REST architecture; image payloads processed in-memory without storing unconsented patient photos on server disk.
+---
+
+## 4. Optical & Machine Learning Engine
+
+- **Quality & Face Gate:** OpenCV Haar cascades + YCrCb/HSV skin mask check. Rejects non-faces, blur, extreme exposure.
+- **Color Normalization:** Shades-of-Gray background normalization + optional ArUco Card CCM and Sclera WB.
+- **Classification Engine:** `HistGradientBoostingClassifier` trained on NJN dataset (`models/model.joblib`), evaluating forehead and cheek ROIs with zero infant leakage.
+- **Outputs:** Three honest clinical categories (`no_visible_signs`, `possible_jaundice_signs`, `inconclusive`), raw model score, reliability indicator, diagnostic visualizer overlay.
