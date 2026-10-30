@@ -25,9 +25,12 @@ from ..core.sclera_balancer import ScleraBalancer
 from ..core.face_roi import FaceROIExtractor
 from ..core.feature_extractor import FeatureExtractor
 from ..core.classifier import JaundiceClassifier
+from ..core.triage_rules import compute_triage
+from ..core.heatmap import generate_yellowness_heatmap
 from ..utils.image_io import ImageIO
 from backend.neoscan_ml.errors import AnalysisError
 from backend.neoscan_ml.predict import Analyzer
+from backend.neoscan_ml.vision import skin_mask, draw_overlay, Prepared
 
 logger = logging.getLogger("neoscan")
 router = APIRouter()
@@ -74,6 +77,10 @@ class AnalyzeRequest(BaseModel):
     image_base64: str
     correction_method: Optional[str] = "auto"
     include_visualizations: Optional[bool] = True
+    age_hours: Optional[float] = None
+    gestation: Optional[str] = None
+    feeding: Optional[str] = None
+    symptoms: Optional[List[str]] = None
 
 
 @router.get("/health")
@@ -107,59 +114,132 @@ def health_check():
     }
 
 
-def _build_adapter_response(res: dict, raw_bgr: np.ndarray, active_method: str) -> dict:
-    """Builds a backward-compatible response for existing frontend components."""
+def _build_adapter_response(
+    res: dict,
+    raw_bgr: np.ndarray,
+    active_method: str,
+    patient_info: Optional[dict] = None,
+    prepared: Optional[Any] = None
+) -> dict:
+    """Builds a backward-compatible, clinical-grade response for existing frontend components."""
     cat = res["category"]
     cat_upper = cat.upper()
     score = res["model_score"]
 
-    if cat == "no_visible_signs":
-        triage_recommendation = "Routine Observation Suggested"
-        badge = "ROUTINE OBSERVATION"
-        color = "#16a34a"
-        title = "No Visible Jaundice Signs"
-        recommendation = "Cutaneous yellowness is within expected limits for healthy neonates. Maintain standard feeding and routine pediatric checks."
-    elif cat == "possible_jaundice_signs":
-        triage_recommendation = "Pediatric Consultation Recommended"
-        badge = "CLINICAL EVALUATION ADVISED"
-        color = "#dc2626"
-        title = "Possible Jaundice Signs"
-        recommendation = "Cutaneous yellowness exceeds normal thresholds. A healthcare provider evaluation and transcutaneous (TcB) or blood (TSB) bilirubin test are recommended."
-    else:
-        triage_recommendation = "Clinical Assessment Advised (Inconclusive)"
-        badge = "INCONCLUSIVE — CLINICAL REVIEW ADVISED"
-        color = "#d97706"
-        title = "Inconclusive Screening Result"
-        recommendation = "Optical yellowness is borderline or ambient lighting precluded confident analysis. Please repeat in bright indirect daylight or consult a clinician."
-
     feats = res.get("features", {})
     fh_b = float(feats.get("fh_b", 0.0))
+    ck_b = float(feats.get("ck_b", 0.0))
     fh_yi = float(feats.get("fh_yi", 0.0))
     cr = float(feats.get("fh_Cr", 0.0))
     cb = max(float(feats.get("fh_Cb", 1.0)), 1e-3)
     meta = res.get("meta", {})
     face_box = meta.get("face_box", [0, 0, 100, 100])
 
-    h_img, w_img = raw_bgr.shape[:2]
-    fx, fy, fw, fh = face_box
+    # 1. CIE b* Yellowness Scale Calculation
+    comb_b = round(float(np.median([fh_b, ck_b])), 1)
+    if comb_b < 14.0:
+        band_id = "low"
+        band_label = "Low (< 14)"
+    elif comb_b < 20.0:
+        band_id = "moderate"
+        band_label = "Moderate (14–20)"
+    else:
+        band_id = "elevated"
+        band_label = "Elevated (≥ 20)"
+
+    is_colour_norm = bool(prepared.colour_normalised if prepared else meta.get("colour_normalised", False))
+    b_star_display = {
+        "forehead": round(float(fh_b), 1),
+        "cheeks": round(float(ck_b), 1),
+        "combined": comb_b,
+        "band_id": band_id,
+        "band_label": band_label,
+        "colour_normalised": is_colour_norm,
+        "reliability": res.get("reliability", "normal")
+    }
+
+    # 2. Pure Deterministic Clinical Triage Engine
+    triage_dec = compute_triage(
+        category=cat,
+        model_score=score,
+        reliability=res.get("reliability", "normal"),
+        reliability_note=res.get("reliability_note"),
+        b_star=comb_b,
+        age_hours=patient_info.get("age_hours") if patient_info else None,
+        gestation=patient_info.get("gestation") if patient_info else None,
+        feeding=patient_info.get("feeding") if patient_info else None,
+        symptoms=patient_info.get("symptoms") if patient_info else None,
+        error=None,
+    )
+    triage_dict = triage_dec.to_dict()
+
+    # 3. Spatial Alignment & Anatomical ROIs in Analyzed Frame
+    if prepared is not None:
+        h_an, w_an = prepared.raw.shape[:2]
+        fx, fy, fw, fh = prepared.face_box
+        alignment = {
+            "analyzed_width": int(w_an),
+            "analyzed_height": int(h_an),
+            "rotation_k": int(prepared.rotation_k),
+            "face_box": list(map(int, prepared.face_box)),
+            "rois": {k: list(map(int, v)) for k, v in prepared.rois.items()}
+        }
+    else:
+        h_an, w_an = raw_bgr.shape[:2]
+        fx, fy, fw, fh = face_box
+        alignment = {
+            "analyzed_width": int(w_an),
+            "analyzed_height": int(h_an),
+            "rotation_k": int(meta.get("rotation_k", 0)),
+            "face_box": list(map(int, face_box)),
+            "rois": {}
+        }
+
     tracking_rois = {
         "forehead": {
-            "x": round(float(fx + 0.28 * fw) / w_img, 4),
-            "y": round(float(fy + 0.06 * fh) / h_img, 4),
-            "w": round(float(0.44 * fw) / w_img, 4),
-            "h": round(float(0.20 * fh) / h_img, 4),
+            "x": round(float(fx + 0.28 * fw) / w_an, 4),
+            "y": round(float(fy + 0.06 * fh) / h_an, 4),
+            "w": round(float(0.44 * fw) / w_an, 4),
+            "h": round(float(0.20 * fh) / h_an, 4),
         },
         "cheeks": {
-            "x": round(float(fx + 0.12 * fw) / w_img, 4),
-            "y": round(float(fy + 0.52 * fh) / h_img, 4),
-            "w": round(float(0.76 * fw) / w_img, 4),
-            "h": round(float(0.24 * fh) / h_img, 4),
+            "x": round(float(fx + 0.12 * fw) / w_an, 4),
+            "y": round(float(fy + 0.52 * fh) / h_an, 4),
+            "w": round(float(0.76 * fw) / w_an, 4),
+            "h": round(float(0.24 * fh) / h_an, 4),
         }
     }
 
+    # 4. Multi-Spectrum Inspection Visualizations
     diag_overlay_b64 = None
     if "overlay_png_base64" in res:
         diag_overlay_b64 = f"data:image/png;base64,{res['overlay_png_base64']}"
+
+    corrected_b64 = None
+    heat_b64 = None
+    analyzed_raw_b64 = None
+
+    if prepared is not None:
+        if not diag_overlay_b64:
+            ok, buf = cv2.imencode(".png", draw_overlay(prepared))
+            if ok:
+                diag_overlay_b64 = f"data:image/png;base64,{base64.b64encode(buf.tobytes()).decode()}"
+
+        ok_raw, buf_raw = cv2.imencode(".jpg", prepared.raw, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+        if ok_raw:
+            analyzed_raw_b64 = f"data:image/jpeg;base64,{base64.b64encode(buf_raw.tobytes()).decode()}"
+
+        if prepared.colour_normalised:
+            ok_norm, buf_norm = cv2.imencode(".jpg", prepared.norm, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
+            if ok_norm:
+                corrected_b64 = f"data:image/jpeg;base64,{base64.b64encode(buf_norm.tobytes()).decode()}"
+
+        inspect_base = prepared.norm if prepared.colour_normalised else prepared.raw
+        s_mask = skin_mask(inspect_base)
+        heat_composite = generate_yellowness_heatmap(inspect_base, s_mask)
+        ok_heat, buf_heat = cv2.imencode(".jpg", heat_composite, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+        if ok_heat:
+            heat_b64 = f"data:image/jpeg;base64,{base64.b64encode(buf_heat.tobytes()).decode()}"
 
     return {
         "status": "ok",
@@ -173,15 +253,18 @@ def _build_adapter_response(res: dict, raw_bgr: np.ndarray, active_method: str) 
         "meta": meta,
         "overlay_png_base64": res.get("overlay_png_base64"),
         "model_version": res.get("model_version"),
-        "disclaimer": res.get("disclaimer"),
+        "disclaimer": triage_dec.disclaimer,
         "active_correction_method": active_method,
         "risk_assessment": {
             "risk_category": cat_upper,
-            "triage_recommendation": triage_recommendation,
-            "badge": badge,
-            "color": color,
-            "title": title,
-            "recommendation": recommendation,
+            "triage_recommendation": triage_dec.headline,
+            "badge": triage_dec.badge,
+            "color": triage_dec.color,
+            "title": triage_dec.headline,
+            "recommendation": triage_dec.advice[0] if triage_dec.advice else "",
+            "advice": triage_dec.advice,
+            "reasons": triage_dec.reasons,
+            "triage_level": triage_dec.level,
             "confidence": 0.85 if res.get("reliability") == "normal" else 0.55,
             "confidence_score": 0.85 if res.get("reliability") == "normal" else 0.55,
             "confidence_percent": 85.0 if res.get("reliability") == "normal" else 55.0,
@@ -196,7 +279,7 @@ def _build_adapter_response(res: dict, raw_bgr: np.ndarray, active_method: str) 
                 "cr_cb_ratio": round(cr / cb, 3),
                 "dermal_pixel_count": meta.get("roi_pixels", {}).get("fh", 0) + meta.get("roi_pixels", {}).get("ck", 0)
             },
-            "disclaimer": res.get("disclaimer")
+            "disclaimer": triage_dec.disclaimer
         },
         "tracking": {
             "locked": True,
@@ -214,8 +297,15 @@ def _build_adapter_response(res: dict, raw_bgr: np.ndarray, active_method: str) 
         },
         "visualizations": {
             "diagnostic_overlay_base64": diag_overlay_b64,
-            "corrected_image_base64": None
-        }
+            "corrected_image_base64": corrected_b64,
+            "yellowness_heatmap_base64": heat_b64,
+            "analyzed_frame_base64": analyzed_raw_b64,
+            "colour_normalised": is_colour_norm,
+            "correction_notice": None if is_colour_norm else "No illumination correction applied: Insufficient neutral background to calibrate illuminant."
+        },
+        "triage": triage_dict,
+        "b_star_display": b_star_display,
+        "alignment": alignment
     }
 
 
@@ -272,7 +362,9 @@ async def analyze_image(payload: AnalyzeRequest):
 
         # Run CPU-heavy analysis off event loop
         try:
-            res = await asyncio.to_thread(analyzer.analyse, img_bytes, with_overlay=True)
+            res, prepared = await asyncio.to_thread(
+                analyzer.analyse, img_bytes, with_overlay=True, return_prepared=True
+            )
         except AnalysisError as e:
             code = 503 if e.code == "MODEL_UNAVAILABLE" else 422
             return JSONResponse(status_code=code, content={"status": "error", "error": e.to_dict()})
@@ -297,7 +389,13 @@ async def analyze_image(payload: AnalyzeRequest):
             raw_bgr = np.zeros((480, 640, 3), dtype=np.uint8)
 
         active_method = payload.correction_method or "background_shades_of_gray"
-        return _build_adapter_response(res, raw_bgr, active_method)
+        patient_info = {
+            "age_hours": payload.age_hours,
+            "gestation": payload.gestation,
+            "feeding": payload.feeding,
+            "symptoms": payload.symptoms
+        }
+        return _build_adapter_response(res, raw_bgr, active_method, patient_info=patient_info, prepared=prepared)
 
     # ------------------------------------------------------------------
     # FALLBACK PATH (ONLY WHEN NEOSCAN_ENABLED=false)

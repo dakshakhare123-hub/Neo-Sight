@@ -362,6 +362,281 @@ const DEFAULT_PATIENTS = [
 
 const STORAGE_KEY = "neoscan_patients_store_v3";
 
+// NeoScan Pure Deterministic Clinical Triage Engine
+const TRIAGE_CONFIG = {
+  MODEL_THRESHOLD: 0.50,
+  B_STAR_BANDS: {
+    LOW_MAX: 14.0,
+    MODERATE_MAX: 20.0
+  },
+  EARLY_ONSET_HOURS: 24.0,
+  COLORS: {
+    URGENT: "#8F1D40",    // Crimson-Plum (WCAG AAA)
+    ELEVATED: "#8F1D40",  // Crimson-Plum
+    WARNING: "#9E5700",   // Amber-Gold (WCAG AA)
+    NORMAL: "#1E6F43",    // Sage-Emerald (WCAG AA)
+    NEUTRAL: "#725B7E"    // Muted Plum (WCAG AA)
+  },
+  DISCLAIMER: (
+    "NeoScan is an AI-assisted screening companion designed to support parents and pediatric care teams. " +
+    "It is not an invasive diagnostic device and does not replace confirmed laboratory serum bilirubin (TSB) " +
+    "or clinical transcutaneous bilirubin (TcB) testing. Always seek medical guidance from a licensed pediatrician."
+  )
+};
+
+function computeTriage({ analysisResult = null, patient = null, error = null } = {}) {
+  const { COLORS, DISCLAIMER } = TRIAGE_CONFIG;
+
+  if (error) {
+    const errMsg = typeof error === "string" ? error : (error.message || "Image quality check failed.");
+    const errHint = typeof error === "object" ? (error.action || error.hint || "Adjust lighting and ensure the face is clearly visible.") : "Retake photo in natural daylight.";
+    return {
+      level: "none",
+      headline: "Assessment Unavailable (Quality Alert)",
+      badge: "RETAKE PHOTO",
+      color: COLORS.WARNING,
+      reasons: [`Image rejected by quality gate: ${errMsg}`],
+      advice: [errHint, "Ensure the baby is positioned front-on in soft indirect daylight."],
+      confidenceNote: null,
+      modelScore: null,
+      category: "ERROR",
+      disclaimer: DISCLAIMER,
+      isActionable: false
+    };
+  }
+
+  if (!analysisResult || (!analysisResult.category && !analysisResult.risk_assessment?.risk_category)) {
+    return {
+      level: "none",
+      headline: "Awaiting Screening Capture",
+      badge: "READY FOR SCREENING",
+      color: COLORS.NEUTRAL,
+      reasons: ["No patient image has been evaluated yet."],
+      advice: ["Capture or upload a clear photo of the infant's forehead or sternum in natural daylight."],
+      confidenceNote: null,
+      modelScore: null,
+      category: "PENDING",
+      disclaimer: DISCLAIMER,
+      isActionable: false
+    };
+  }
+
+  const ra = analysisResult.risk_assessment || {};
+  const rawCat = analysisResult.category || ra.risk_category || "";
+  const catNorm = String(rawCat).trim().toLowerCase();
+  const modelScore = typeof analysisResult.model_score === "number" 
+    ? analysisResult.model_score 
+    : (typeof ra.model_score === "number" ? ra.model_score : null);
+
+  const reliability = analysisResult.reliability || ra.reliability || "normal";
+  const reliabilityNote = analysisResult.reliability_note || ra.reliability_note || null;
+
+  const feats = analysisResult.features || {};
+  const bStarVal = analysisResult.b_star_display?.combined 
+    ?? feats.fh_b 
+    ?? ra.primary_biomarkers?.dermal_yellowness_b_star 
+    ?? analysisResult.fused_biomarkers?.fused_lab_b_star 
+    ?? null;
+  const bStar = typeof bStarVal === "number" && !isNaN(bStarVal) ? bStarVal : null;
+
+  let ageHours = null;
+  if (patient) {
+    if (typeof patient.ageHours === "number") {
+      ageHours = patient.ageHours;
+    } else if (typeof patient.ageValue === "number") {
+      const unit = (patient.ageUnit || "hours").toLowerCase();
+      ageHours = unit.startsWith("day") ? patient.ageValue * 24.0 : patient.ageValue;
+    }
+  }
+
+  const gestation = (patient?.gestation || "").toLowerCase();
+  const feeding = (patient?.feeding || "").toLowerCase();
+  const symptoms = Array.isArray(patient?.symptoms) ? patient.symptoms : [];
+
+  const isEarlyOnset = ageHours !== null && ageHours < TRIAGE_CONFIG.EARLY_ONSET_HOURS;
+  const isPreterm = gestation === "preterm" || gestation === "late-preterm";
+  const isFeedingProblem = feeding === "poor" || feeding === "lethargic" || symptoms.some(s => ["poor_feeding", "lethargy", "difficult_to_wake"].includes(s));
+
+  const reasons = [];
+  const advice = [];
+
+  if (isEarlyOnset) {
+    reasons.push(`Postnatal age is ${Math.round(ageHours)} hours (< 24 hours). Jaundice appearing in the first 24 hours of life is non-physiological and requires urgent evaluation.`);
+  }
+  if (isPreterm) {
+    const gestLabel = gestation === "preterm" ? "Preterm (< 35 weeks)" : "Late preterm (35–36.6 weeks)";
+    reasons.push(`Gestational maturity: ${gestLabel}. Preterm infants have higher susceptibility to bilirubin neurotoxicity.`);
+  }
+  if (isFeedingProblem) {
+    reasons.push("Feeding difficulties or lethargy reported. Poor feeding impairs bilirubin excretion and increases risk.");
+  }
+
+  let confNote = null;
+  if (reliability === "reduced") {
+    confNote = reliabilityNote || "Ambient lighting was non-uniform or insufficient background was present for illuminant correction. Clinical evaluation should not be delayed.";
+    reasons.push("Image reliability flag: Reduced confidence due to ambient lighting conditions.");
+  }
+
+  if (["possible_jaundice_signs", "possible", "jaundice"].includes(catNorm)) {
+    if (modelScore !== null) {
+      reasons.unshift(`Optical machine learning screening model score: ${modelScore.toFixed(4)} (exceeds threshold ${TRIAGE_CONFIG.MODEL_THRESHOLD.toFixed(2)}).`);
+    }
+    if (bStar !== null) {
+      reasons.splice(1, 0, `Calibrated cutaneous yellowness b* = ${bStar.toFixed(1)} (elevated dermal chrominance).`);
+    }
+
+    advice.push("Contact your pediatrician or healthcare provider for an immediate in-person clinical assessment.");
+    advice.push("A transcutaneous bilirubin (TcB) or total serum bilirubin (TSB) blood test is recommended to determine if phototherapy is indicated.");
+    advice.push("Maintain frequent feeding (8–12 times per 24 hours) to stimulate bowel movements.");
+
+    if (isEarlyOnset || isPreterm || isFeedingProblem) {
+      return {
+        level: "urgent",
+        headline: "Immediate Pediatric Evaluation Required",
+        badge: "URGENT EVALUATION",
+        color: COLORS.URGENT,
+        reasons,
+        advice,
+        confidenceNote: confNote,
+        modelScore,
+        category: "POSSIBLE_JAUNDICE_SIGNS",
+        disclaimer: DISCLAIMER,
+        isActionable: true
+      };
+    }
+
+    return {
+      level: "elevated",
+      headline: "Pediatric Consultation Recommended",
+      badge: "CLINICAL EVALUATION ADVISED",
+      color: COLORS.ELEVATED,
+      reasons,
+      advice,
+      confidenceNote: confNote,
+      modelScore,
+      category: "POSSIBLE_JAUNDICE_SIGNS",
+      disclaimer: DISCLAIMER,
+      isActionable: true
+    };
+  }
+
+  if (["inconclusive", "borderline", "referral"].includes(catNorm)) {
+    if (modelScore !== null) {
+      reasons.unshift(`Model score ${modelScore.toFixed(4)} falls in the indeterminate screening interval.`);
+    }
+    reasons.splice(1, 0, "Optical yellowness is borderline or ambient illuminant precluded definitive automated classification.");
+
+    advice.push("Retake the screening photograph in bright, indirect, even daylight.");
+    advice.push("If you have any clinical concerns, or if the infant appears visibly yellow, do not wait for a retake—seek healthcare provider evaluation.");
+
+    if (isEarlyOnset || isPreterm || isFeedingProblem) {
+      advice.unshift("Due to infant risk factors, proceed directly to clinical evaluation rather than relying on image retakes.");
+      return {
+        level: "urgent",
+        headline: "Clinical Assessment Advised (Risk Factors Present)",
+        badge: "CLINICAL REVIEW ADVISED",
+        color: COLORS.URGENT,
+        reasons,
+        advice,
+        confidenceNote: confNote,
+        modelScore,
+        category: "INCONCLUSIVE",
+        disclaimer: DISCLAIMER,
+        isActionable: true
+      };
+    }
+
+    return {
+      level: "warning",
+      headline: "Inconclusive: Retake in Daylight",
+      badge: "INCONCLUSIVE — RETAKE PHOTO",
+      color: COLORS.WARNING,
+      reasons,
+      advice,
+      confidenceNote: confNote,
+      modelScore,
+      category: "INCONCLUSIVE",
+      disclaimer: DISCLAIMER,
+      isActionable: true
+    };
+  }
+
+  if (["no_visible_signs", "normal", "routine"].includes(catNorm)) {
+    if (modelScore !== null) {
+      reasons.unshift(`Model score ${modelScore.toFixed(4)} is within normal physiological limits (below threshold ${TRIAGE_CONFIG.MODEL_THRESHOLD.toFixed(2)}).`);
+    }
+    if (bStar !== null) {
+      reasons.splice(1, 0, `Calibrated cutaneous yellowness b* = ${bStar.toFixed(1)} is within typical baseline limits.`);
+    }
+
+    advice.push("Continue routine newborn monitoring and observe skin in natural daylight daily.");
+    advice.push("Ensure regular infant feeding (8–12 times per 24 hours).");
+    advice.push("Contact your pediatrician immediately if yellowness develops or spreads to abdomen or eyes, or if the baby feeds poorly or becomes difficult to wake.");
+
+    if (isEarlyOnset) {
+      advice.unshift("Jaundice appearing in the first 24 hours of life is non-physiological regardless of visual appearance. Have a clinician examine the baby.");
+      return {
+        level: "urgent",
+        headline: "Pediatric Review Advised (Early Postnatal Age)",
+        badge: "EARLY ONSET REVIEW",
+        color: COLORS.URGENT,
+        reasons,
+        advice,
+        confidenceNote: confNote,
+        modelScore,
+        category: "NO_VISIBLE_SIGNS",
+        disclaimer: DISCLAIMER,
+        isActionable: true
+      };
+    }
+
+    if (isFeedingProblem) {
+      advice.unshift("Feeding difficulties require clinical review regardless of skin color.");
+      return {
+        level: "elevated",
+        headline: "Clinical Review Advised (Feeding Concern)",
+        badge: "CLINICAL REVIEW ADVISED",
+        color: COLORS.ELEVATED,
+        reasons,
+        advice,
+        confidenceNote: confNote,
+        modelScore,
+        category: "NO_VISIBLE_SIGNS",
+        disclaimer: DISCLAIMER,
+        isActionable: true
+      };
+    }
+
+    return {
+      level: "normal",
+      headline: "No Visible Signs Detected — Routine Monitoring",
+      badge: "ROUTINE OBSERVATION",
+      color: COLORS.NORMAL,
+      reasons,
+      advice,
+      confidenceNote: confNote,
+      modelScore,
+      category: "NO_VISIBLE_SIGNS",
+      disclaimer: DISCLAIMER,
+      isActionable: true
+    };
+  }
+
+  return {
+    level: "warning",
+    headline: "Clinical Assessment Advised (Unrecognized Output)",
+    badge: "REVIEW REQUIRED",
+    color: COLORS.WARNING,
+    reasons: [`Unrecognized screening outcome category: '${rawCat}'.`],
+    advice: ["Seek medical evaluation from a licensed pediatrician."],
+    confidenceNote: null,
+    modelScore,
+    category: "UNKNOWN",
+    disclaimer: DISCLAIMER,
+    isActionable: false
+  };
+}
+
 function App() {
   // Navigation & Wizard State (Step 1: Profile & Records, Step 2: Capture & Guidance, Step 3: Triage & Insights)
   const [currentStep, setCurrentStep] = useState(1);
@@ -820,13 +1095,27 @@ function App() {
     }, 1200);
 
     try {
+      let ageHours = null;
+      if (activePatient) {
+        if (typeof activePatient.ageHours === "number") {
+          ageHours = activePatient.ageHours;
+        } else if (typeof activePatient.ageValue === "number") {
+          const unit = (activePatient.ageUnit || "hours").toLowerCase();
+          ageHours = unit.startsWith("day") ? activePatient.ageValue * 24.0 : activePatient.ageValue;
+        }
+      }
+
       const response = await fetch("/api/v1/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           image_base64: targetImage,
           correction_method: effectiveMethod,
-          include_visualizations: true
+          include_visualizations: true,
+          age_hours: ageHours,
+          gestation: activePatient?.gestation,
+          feeding: activePatient?.feeding,
+          symptoms: activePatient?.symptoms || []
         })
       });
 
@@ -977,7 +1266,9 @@ function App() {
   // Active Display Image based on compare mode
   const activeDisplayImage = useMemo(() => {
     if (!activeImageRecord) return null;
-    if (imageCompareMode === "raw") return activeImageRecord.rawImage;
+    if (imageCompareMode === "raw") {
+      return analysisResult?.visualizations?.analyzed_frame_base64 || activeImageRecord.rawImage;
+    }
     if (imageCompareMode === "diagnostic") {
       return (
         analysisResult?.visualizations?.diagnostic_overlay_base64 ||
@@ -994,85 +1285,54 @@ function App() {
 
   // Dynamic Risk Details (derived directly from real optical biomarkers and neoscan_ml)
   const riskDetails = useMemo(() => {
-    if (!analysisResult || (!analysisResult.risk_assessment && !analysisResult.category)) {
-      return {
-        category: "PENDING",
-        title: "Awaiting Assessment",
-        subtitle: "Capture infant skin to evaluate bilirubin levels.",
-        color: "#725B7E",
-        badge: "READY FOR SCREENING",
-        confidence: 0,
-        confidenceLevel: "N/A",
-        bStar: "N/A",
-        bix: "N/A",
-        recommendation: "Ensure baby's face is centered and in soft indirect lighting.",
-        markerPos: 10,
-        modelScore: null,
-        reliability: "normal",
-        reliabilityNote: null
-      };
-    }
+    const triage = computeTriage({
+      analysisResult,
+      patient: activePatient,
+      error
+    });
 
-    const ra = analysisResult.risk_assessment || {};
-    const catRaw = analysisResult.category || ra.risk_category || "inconclusive";
-    const cat = catRaw.toUpperCase();
-    const primary = ra.primary_biomarkers || {};
-    const feats = analysisResult.features || {};
-    const bStarVal = feats.fh_b ?? primary.dermal_yellowness_b_star ?? analysisResult.fused_biomarkers?.fused_lab_b_star;
-    const bixVal = feats.fh_yi ?? primary.bilirubin_index_bix ?? analysisResult.fused_biomarkers?.fused_bix;
-    const modelScoreVal = analysisResult.model_score ?? ra.model_score ?? null;
-    const reliability = analysisResult.reliability || ra.reliability || "normal";
-    const reliabilityNote = analysisResult.reliability_note || ra.reliability_note || null;
+    const ra = analysisResult?.risk_assessment || {};
+    const feats = analysisResult?.features || {};
+    const bStarVal = analysisResult?.b_star_display?.combined 
+      ?? feats.fh_b 
+      ?? ra.primary_biomarkers?.dermal_yellowness_b_star 
+      ?? analysisResult?.fused_biomarkers?.fused_lab_b_star;
+    const bixVal = feats.fh_yi ?? ra.primary_biomarkers?.bilirubin_index_bix ?? analysisResult?.fused_biomarkers?.fused_bix;
+    const modelScoreVal = analysisResult?.model_score ?? ra.model_score ?? null;
+    const reliability = analysisResult?.reliability || ra.reliability || "normal";
+    const reliabilityNote = analysisResult?.reliability_note || ra.reliability_note || triage.confidenceNote || null;
     const confScore = Math.round((ra.confidence_score || (reliability === "normal" ? 0.85 : 0.55)) * 100);
     const confLevel = ra.confidence_level || (reliability === "normal" ? "HIGH" : "REDUCED");
 
-    // Physically meaningful marker position on 0 - 32 b* yellowness scale:
-    // Normal: b* < 16 (0% - 50%)
-    // Mild jaundice signs: 16 <= b* < 22 (50% - 75%)
-    // High yellowness signs: b* >= 22 (75% - 100%)
-    let markerPos = 25;
+    // Accurate 0.0 to 30.0 b* yellowness scale marker position:
+    // Clamped safely between 0% and 100%. Null if no valid b* measurement.
+    let markerPos = null;
     if (typeof bStarVal === "number" && !isNaN(bStarVal)) {
-      markerPos = Math.min(96, Math.max(4, Math.round((Math.max(0, bStarVal) / 32) * 100)));
-    } else if (typeof modelScoreVal === "number" && !isNaN(modelScoreVal)) {
-      markerPos = Math.min(96, Math.max(4, Math.round(modelScoreVal * 100)));
-    }
-
-    let color = "#1E6F43"; // Sage-Emerald (WCAG AA 6.16:1)
-    let badge = "NO VISIBLE SIGNS";
-    let title = "No Visible Jaundice Signs";
-    let recommendation = ra.recommendation || ra.triage_recommendation || "Cutaneous yellowness is within expected limits for healthy neonates. Maintain standard feeding and routine pediatric checks.";
-
-    if (cat.includes("POSSIBLE") || cat.includes("JAUNDICE")) {
-      const isElevated = typeof bStarVal === "number" && bStarVal >= 22.0;
-      color = isElevated ? "#8F1D40" : "#A21D3F"; // Crimson-Plum (WCAG AAA 8.69:1)
-      badge = isElevated ? "ELEVATED JAUNDICE SIGNS" : "POSSIBLE JAUNDICE SIGNS";
-      title = "Pediatric Consultation Recommended";
-      recommendation = ra.recommendation || ra.triage_recommendation || "Cutaneous yellowness exceeds normal thresholds. A healthcare provider evaluation and transcutaneous (TcB) or blood (TSB) bilirubin test are recommended.";
-    } else if (cat.includes("INCONCLUSIVE")) {
-      color = "#9E5700"; // Amber-Gold (WCAG AA 5.50:1)
-      badge = "INCONCLUSIVE (REFERRAL RECOMMENDED)";
-      title = "Inconclusive Screening Result";
-      recommendation = ra.recommendation || ra.triage_recommendation || "Optical yellowness is borderline or ambient lighting precluded confident analysis. Please repeat in bright indirect daylight or consult a clinician.";
+      markerPos = Math.min(100, Math.max(0, Math.round((Math.max(0, bStarVal) / 30.0) * 100)));
     }
 
     return {
-      category: cat,
-      title,
-      color,
-      badge,
+      ...triage,
+      title: triage.headline,
+      recommendation: triage.advice && triage.advice.length > 0 ? triage.advice[0] : "",
+      adviceList: triage.advice || [],
+      reasonsList: triage.reasons || [],
       confidence: confScore,
       confidenceLevel: confLevel,
       bStar: typeof bStarVal === "number" ? bStarVal.toFixed(1) : "N/A",
+      bStarNum: typeof bStarVal === "number" ? bStarVal : null,
       bix: typeof bixVal === "number" ? bixVal.toFixed(3) : "N/A",
-      recommendation,
       markerPos,
       modelScore: modelScoreVal,
       reliability,
       reliabilityNote,
-      modelVersion: analysisResult.model_version || "neoscan_ml-v2.0",
-      methodology: ra.screening_engine === "neoscan_ml" ? "Trained ML Optical Screening Model (HistGradientBoosting / NJN Dataset)" : (ra.methodology || "Rule-Based Optical Screening Heuristic (AAP Guidelines)")
+      modelVersion: analysisResult?.model_version || "neoscan_ml-v2.0",
+      methodology: ra.screening_engine === "neoscan_ml" 
+        ? "Trained ML Optical Screening Model (HistGradientBoosting / NJN Dataset)" 
+        : (ra.methodology || "Rule-Based Optical Screening Heuristic (AAP Guidelines)"),
+      bStarDisplay: analysisResult?.b_star_display || null
     };
-  }, [analysisResult]);
+  }, [analysisResult, activePatient, error]);
 
   return (
     <div className="min-h-screen bg-plum-50/60 text-plum-950 flex flex-col font-sans">
@@ -2138,7 +2398,7 @@ function App() {
               </div>
             </div>
 
-            {/* Hero Triage Card (Bound directly to backend risk assessment) */}
+            {/* Hero Triage Card (Bound directly to deterministic clinical triage) */}
             <div
               className="p-6 sm:p-8 rounded-3xl border shadow-sm space-y-6"
               style={{
@@ -2146,8 +2406,8 @@ function App() {
                 borderColor: `${riskDetails.color}35`
               }}
             >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="space-y-3">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                <div className="space-y-3 flex-1">
                   <div
                     className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full border text-xs font-bold tracking-wide uppercase shadow-xs"
                     style={{
@@ -2168,6 +2428,23 @@ function App() {
                     {riskDetails.recommendation}
                   </p>
 
+                  {/* Explainable Clinical Rationale */}
+                  {riskDetails.reasonsList && riskDetails.reasonsList.length > 0 && (
+                    <div className="pt-2 space-y-1.5 bg-white/60 p-3.5 rounded-2xl border border-lavender-200/70">
+                      <span className="text-xs font-bold uppercase tracking-wider text-plum-900 block">
+                        Clinical Rationale &amp; Decision Factors:
+                      </span>
+                      <ul className="space-y-1 text-xs text-plum-800">
+                        {riskDetails.reasonsList.map((r, i) => (
+                          <li key={i} className="flex items-start space-x-2">
+                            <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: riskDetails.color }} />
+                            <span>{r}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   {riskDetails.reliabilityNote && (
                     <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-900 flex items-start space-x-2.5">
                       <Icon name="alert-triangle" className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
@@ -2180,10 +2457,10 @@ function App() {
                 </div>
 
                 {/* Calibrated Risk Gauge Mini Visualizer */}
-                <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-lavender-300/70 p-5 shadow-xs shrink-0 w-full md:w-72 space-y-3">
+                <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-lavender-300/70 p-5 shadow-xs shrink-0 w-full md:w-80 space-y-3">
                   {riskDetails.modelScore !== null && riskDetails.modelScore !== undefined && (
                     <div className="flex items-center justify-between text-xs pb-1 border-b border-lavender-100">
-                      <span className="font-semibold text-plum-600">Model Score:</span>
+                      <span className="font-semibold text-plum-600">Model Screening Score:</span>
                       <span className="font-bold text-plum-950 font-mono text-sm">
                         {riskDetails.modelScore.toFixed(4)}
                       </span>
@@ -2191,46 +2468,83 @@ function App() {
                   )}
 
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-plum-600">CIE b* Yellowness:</span>
+                    <span className="font-semibold text-plum-600">CIE b* Cutaneous Yellowness:</span>
                     <span className="font-bold text-plum-950 font-mono text-sm">
-                      {riskDetails.bStar !== "N/A" ? riskDetails.bStar : (analysisResult?.fused_biomarkers?.fused_lab_b_star?.toFixed(1) || "N/A")}
+                      {riskDetails.bStar !== "N/A" ? `${riskDetails.bStar} b*` : "No measurement"}
                     </span>
                   </div>
 
-                  {/* Dynamic Risk Bar with Indicator Marker */}
-                  <div className="space-y-1.5 relative pt-2">
-                    <div className="w-full h-3 rounded-full bg-plum-100 overflow-hidden flex">
-                      <div className="h-full bg-clinical-normal" style={{ width: "50%" }}></div>
-                      <div className="h-full bg-clinical-warning" style={{ width: "25%" }}></div>
-                      <div className="h-full bg-clinical-elevated" style={{ width: "25%" }}></div>
+                  {/* Anatomical Regions breakdown if available */}
+                  {riskDetails.bStarDisplay && (
+                    <div className="flex items-center justify-between text-[11px] text-plum-600 bg-plum-50/60 px-2.5 py-1 rounded-lg">
+                      <span>Forehead: <strong className="text-plum-900 font-mono">{riskDetails.bStarDisplay.forehead.toFixed(1)}</strong></span>
+                      <span className="text-lavender-300">|</span>
+                      <span>Cheeks: <strong className="text-plum-900 font-mono">{riskDetails.bStarDisplay.cheeks.toFixed(1)}</strong></span>
+                      <span className="text-lavender-300">|</span>
+                      <span>Combined: <strong className="text-plum-900 font-mono">{riskDetails.bStarDisplay.combined.toFixed(1)}</strong></span>
                     </div>
-                    {/* Glowing Marker Pin */}
-                    <div
-                      className="absolute top-0 w-3 h-3 rounded-full border-2 border-white shadow-md transform -translate-x-1/2 transition-all duration-500"
-                      style={{
-                        left: `${riskDetails.markerPos}%`,
-                        backgroundColor: riskDetails.color
-                      }}
-                    ></div>
+                  )}
 
-                    <div className="flex justify-between text-[10px] text-plum-500 font-medium">
-                      <span>Normal (&lt;16)</span>
-                      <span>Mild (16-22)</span>
-                      <span>Elevated (&gt;22)</span>
+                  {/* Accurate Continuous Yellow -> Orange -> Red Gradient Bar (0 to 30 b*) */}
+                  <div className="space-y-1.5 relative pt-3 pb-1" role="meter" aria-label={`CIE b* Yellowness scale: ${riskDetails.bStar} b*`} aria-valuenow={riskDetails.bStarNum || 0} aria-valuemin="0" aria-valuemax="30">
+                    <div 
+                      className="w-full h-3.5 rounded-full shadow-inner relative"
+                      style={{
+                        background: "linear-gradient(to right, #FEF08A 0%, #FBBF24 46.7%, #F97316 66.7%, #DC2626 100%)"
+                      }}
+                    >
+                      {/* Visual Tick lines at 0, 5, 10, 15, 20, 25, 30 */}
+                      <div className="absolute inset-0 flex justify-between px-0.5 items-center pointer-events-none opacity-40">
+                        {[0, 5, 10, 15, 20, 25, 30].map(tick => (
+                          <div key={tick} className="w-[1px] h-2 bg-black/60" style={{ left: `${(tick / 30) * 100}%` }} />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Marker Pin (Only rendered when a genuine b* measurement exists) */}
+                    {riskDetails.markerPos !== null && (
+                      <div
+                        className="absolute top-1 w-4 h-4 rounded-full border-2 border-white shadow-lg transform -translate-x-1/2 transition-all duration-500 z-10 flex items-center justify-center ring-1 ring-black/20"
+                        style={{
+                          left: `${riskDetails.markerPos}%`,
+                          backgroundColor: riskDetails.color
+                        }}
+                        title={`Measured b* = ${riskDetails.bStar}`}
+                      >
+                        <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                      </div>
+                    )}
+
+                    {/* Numeric Ticks */}
+                    <div className="flex justify-between text-[9px] text-plum-500 font-mono font-semibold px-0.5">
+                      <span>0</span>
+                      <span>5</span>
+                      <span>10</span>
+                      <span>15</span>
+                      <span>20</span>
+                      <span>25</span>
+                      <span>30+</span>
+                    </div>
+
+                    {/* Screening Bands Legend */}
+                    <div className="flex justify-between text-[10px] font-medium pt-0.5">
+                      <span className="text-yellow-700">Low (&lt;14)</span>
+                      <span className="text-orange-700">Moderate (14–20)</span>
+                      <span className="text-red-700">Elevated (≥20)</span>
                     </div>
                   </div>
 
                   <div className="pt-2 border-t border-lavender-100 flex items-center justify-between text-xs">
                     <span className="text-plum-600">Bilirubin Index (BIx):</span>
                     <span className="font-bold text-plum-950 font-mono">
-                      {riskDetails.bix !== "N/A" ? riskDetails.bix : (analysisResult?.fused_biomarkers?.fused_bix?.toFixed(3) || "N/A")}
+                      {riskDetails.bix !== "N/A" ? riskDetails.bix : "N/A"}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-plum-600">Reliability / Quality:</span>
-                    <span className={`font-bold font-mono ${riskDetails.reliability === "reduced" ? "text-amber-600" : "text-plum-900"}`}>
-                      {riskDetails.reliability === "reduced" ? "Reduced" : "Normal"} ({riskDetails.confidence}%)
+                    <span className="text-plum-600">Illumination Normalization:</span>
+                    <span className={`font-bold font-mono ${riskDetails.reliability === "reduced" ? "text-amber-600" : "text-emerald-700"}`}>
+                      {riskDetails.reliability === "reduced" ? "Reduced (Uncalibrated)" : "Calibrated (D65)"}
                     </span>
                   </div>
                 </div>
@@ -2275,7 +2589,7 @@ function App() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-lavender-100 pb-4">
                 <div>
                   <h3 className="text-sm font-bold text-plum-950">Multi-Spectrum Visual Inspection</h3>
-                  <p className="text-xs text-plum-600">Toggle between raw input, illumination correction, and diagnostic overlays</p>
+                  <p className="text-xs text-plum-600">Real illumination correction, anatomical landmarks, and dermal b* yellowness distribution</p>
                 </div>
 
                 <div className="flex items-center space-x-1 bg-plum-100/60 p-1 rounded-xl text-xs overflow-x-auto border border-lavender-200/60">
@@ -2309,26 +2623,66 @@ function App() {
                       imageCompareMode === "heatmap" ? "bg-white text-plum-950 shadow-sm" : "text-plum-600 hover:text-plum-950"
                     }`}
                   >
-                    Thermal Heatmap
+                    Yellowness Heat Map
                   </button>
                 </div>
               </div>
 
+              {/* Notice banner when in Corrected mode but no correction could be applied */}
+              {imageCompareMode === "corrected" && !analysisResult?.visualizations?.colour_normalised && (
+                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-900 flex items-start space-x-2">
+                  <Icon name="alert-circle" className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>No illumination correction applied:</strong> Insufficient neutral background to isolate illuminant. Image is displayed in original capture without color shift.
+                  </span>
+                </div>
+              )}
+
               {/* Viewport Frame */}
               <div className="relative aspect-[16/10] sm:aspect-video rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center">
                 <ImageWithFallback
+                  key={`${activePatient?.id || "p"}_${activeImageRecord?.id || "img"}_${imageCompareMode}`}
                   src={activeDisplayImage}
                   alt="Clinical Inspection View"
                   className="w-full h-full"
                 />
 
                 <div className="absolute top-3 left-3 px-3 py-1 rounded-md bg-slate-900/80 backdrop-blur-md text-white text-[11px] font-semibold border border-white/10">
-                  {imageCompareMode === "corrected" && `Illumination Corrected (${activeImageRecord.activeCorrection || "auto"})`}
+                  {imageCompareMode === "corrected" && (
+                    analysisResult?.visualizations?.colour_normalised 
+                      ? "Illumination Corrected (Shades-of-Gray Background Constancy)"
+                      : "Raw Capture (No Background Correction Available)"
+                  )}
                   {imageCompareMode === "raw" && "Original Uncorrected Capture"}
-                  {imageCompareMode === "diagnostic" && "Anatomical Landmark ROI Contours"}
-                  {imageCompareMode === "heatmap" && "Dermal Bilirubin Thermal Heatmap"}
+                  {imageCompareMode === "diagnostic" && "Anatomical Landmark ROI Contours (Forehead & Cheeks)"}
+                  {imageCompareMode === "heatmap" && "Cutaneous CIE b* Yellowness Heat Map"}
                 </div>
               </div>
+
+              {/* Yellowness Heat Map Legend */}
+              {imageCompareMode === "heatmap" && (
+                <div className="p-3.5 rounded-2xl bg-plum-50/70 border border-lavender-200/80 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-plum-950">Cutaneous b* Chrominance Colormap:</span>
+                    <span className="text-plum-600 font-mono text-[11px]">0.0 – 30.0+ b*</span>
+                  </div>
+                  <div 
+                    className="w-full h-3 rounded-full shadow-inner"
+                    style={{
+                      background: "linear-gradient(to right, #FEF08A 0%, #FBBF24 46.7%, #F97316 66.7%, #DC2626 100%)"
+                    }}
+                  />
+                  <div className="flex justify-between text-[10px] font-medium text-plum-700">
+                    <span>0 b* Low (Light Yellow)</span>
+                    <span>14 b* Moderate (Amber)</span>
+                    <span>20 b* Elevated (Orange)</span>
+                    <span>30+ b* Severe (Crimson)</span>
+                  </div>
+                  <p className="text-[10px] text-plum-600 leading-tight">
+                    Heatmap depicts calibrated yellowness chrominance (b*) across segmented infant skin. Non-skin background pixels are desaturated for anatomical focus.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Expandable Clinical Insights & Deep Dive Accordion */}

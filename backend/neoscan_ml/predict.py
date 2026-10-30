@@ -25,7 +25,7 @@ class Analyzer:
                                 "Run train.py first.") from None
         self.names = self.bundle["feature_names"]
 
-    def analyse(self, data, with_overlay: bool = True) -> dict:
+    def analyse(self, data, with_overlay: bool = True, return_prepared: bool = False):
         feats, meta, prepared = extract_features(data)   # raises on non-face / bad images
         x = np.array([[feats[n] for n in self.names]], dtype=np.float64)
         if not np.isfinite(x).all():
@@ -67,4 +67,6 @@ class Analyzer:
             ok, buf = cv2.imencode(".png", draw_overlay(prepared))
             if ok:
                 out["overlay_png_base64"] = base64.b64encode(buf.tobytes()).decode()
+        if return_prepared:
+            return out, prepared
         return out
