@@ -15,6 +15,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="description" content="NeoScan: Lighting-robust neonatal jaundice screening companion using smartphone optics and clinical color calibration." />
   
+  <!-- Tailwind CSS (Local first, CDN fallback) -->
+  <script src="/app/vendor/tailwind.min.js" onerror="this.onerror=null;this.src='https://cdn.tailwindcss.com';"></script>
+  
   <!-- Tailwind CSS Configuration & Design Tokens -->
   <script>
     window.tailwind = window.tailwind || {};
@@ -73,9 +76,6 @@
       }
     };
   </script>
-
-  <!-- Tailwind CSS (Local first, CDN fallback) -->
-  <script src="/app/vendor/tailwind.min.js" onerror="this.onerror=null;this.src='https://cdn.tailwindcss.com';"></script>
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -109,6 +109,45 @@
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
+
+    /* Primary Clinical Plum-Violet Brand Gradients & Elements */
+    .bg-gradient-to-r.from-plum-900.to-violet-700,
+    .bg-gradient-to-tr.from-plum-900.to-violet-700,
+    .btn-plum-primary,
+    .avatar-plum-gradient {
+      background: linear-gradient(135deg, #4C2365 0%, #7F5D99 100%) !important;
+      color: #FFFFFF !important;
+    }
+    .bg-gradient-to-r.from-plum-900.to-violet-700:hover,
+    .btn-plum-primary:hover {
+      background: linear-gradient(135deg, #2A1138 0%, #674780 100%) !important;
+    }
+
+    /* Core Palette Fail-Safe Utilities */
+    .bg-plum-900 { background-color: #4C2365 !important; }
+    .bg-plum-950 { background-color: #2A1138 !important; }
+    .bg-plum-800 { background-color: #5D2F7B !important; }
+    .bg-plum-700 { background-color: #725B7E !important; }
+    .bg-plum-500 { background-color: #9E7EB5 !important; }
+    .bg-plum-200 { background-color: #E2D5EC !important; }
+    .bg-plum-100 { background-color: #EFE8F5 !important; }
+    .bg-plum-50  { background-color: #F7F3FA !important; }
+
+    .text-plum-950 { color: #2A1138 !important; }
+    .text-plum-900 { color: #4C2365 !important; }
+    .text-plum-800 { color: #5D2F7B !important; }
+    .text-plum-700 { color: #725B7E !important; }
+    .text-plum-600 { color: #856E91 !important; }
+    .text-plum-500 { color: #9E7EB5 !important; }
+    .text-plum-400 { color: #C4A4DA !important; }
+    .text-plum-300 { color: #D4C2E3 !important; }
+    .text-plum-200 { color: #E2D5EC !important; }
+
+    .border-plum-900 { border-color: #4C2365 !important; }
+    .border-plum-200 { border-color: #E2D5EC !important; }
+    .border-plum-100 { border-color: #EFE8F5 !important; }
+    .border-lavender-300 { border-color: #C4A4DA !important; }
+    .border-lavender-200 { border-color: #E8DDF0 !important; }
     .custom-scroll::-webkit-scrollbar {
       width: 6px;
       height: 6px;

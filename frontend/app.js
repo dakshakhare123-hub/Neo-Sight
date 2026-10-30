@@ -1641,12 +1641,18 @@ function App() {
       }
     },
     className: "inline-flex items-center space-x-1.5 px-3.5 py-2 bg-plum-900 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400",
+    style: {
+      backgroundColor: "#4C2365",
+      color: "#FFFFFF"
+    },
     title: "Dismiss notice and retake photo",
     "aria-label": "Dismiss notice and retake photo"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "camera",
-    className: "w-3.5 h-3.5"
-  }), /*#__PURE__*/React.createElement("span", null, "Retake Photo")), /*#__PURE__*/React.createElement("button", {
+    className: "w-3.5 h-3.5 text-white"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-white font-bold"
+  }, "Retake Photo")), /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => setError(null),
     className: "text-xs text-plum-700 hover:text-plum-950 underline font-medium py-2 px-1 focus:outline-none focus:ring-2 focus:ring-violet-400 rounded-lg min-h-[44px] inline-flex items-center",
@@ -1668,7 +1674,11 @@ function App() {
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-3 min-w-0"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-8 h-8 rounded-xl bg-gradient-to-tr from-plum-900 to-violet-700 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs"
+    className: "w-8 h-8 rounded-xl avatar-plum-gradient text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs",
+    style: {
+      background: "linear-gradient(135deg, #4C2365 0%, #7F5D99 100%)",
+      color: "#FFFFFF"
+    }
   }, activePatient.name ? activePatient.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "BL"), /*#__PURE__*/React.createElement("div", {
     className: "min-w-0 flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement("span", {
@@ -1692,11 +1702,17 @@ function App() {
         startCamera();
       }
     },
-    className: "py-1.5 px-3.5 rounded-xl bg-plum-900 hover:bg-violet-700 text-white font-bold text-xs flex items-center space-x-1.5 transition-all shadow-xs"
+    className: "py-1.5 px-3.5 rounded-xl bg-plum-900 hover:bg-violet-700 text-white font-bold text-xs flex items-center space-x-1.5 transition-all shadow-xs",
+    style: {
+      backgroundColor: "#4C2365",
+      color: "#FFFFFF"
+    }
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "camera",
-    className: "w-3.5 h-3.5"
-  }), /*#__PURE__*/React.createElement("span", null, "Capture Photo")))), /*#__PURE__*/React.createElement("div", {
+    className: "w-3.5 h-3.5 text-white"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-white font-bold"
+  }, "Capture Photo")))), /*#__PURE__*/React.createElement("div", {
     className: "bg-white rounded-3xl border border-lavender-200/80 p-5 sm:p-7 shadow-sm relative overflow-hidden"
   }, /*#__PURE__*/React.createElement("div", {
     className: "absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-plum-100/50 via-lavender-100/20 to-transparent pointer-events-none rounded-bl-full"
@@ -1705,7 +1721,11 @@ function App() {
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-start sm:items-center space-x-4 sm:space-x-5"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-tr from-plum-900 to-violet-700 text-white flex items-center justify-center font-extrabold text-xl sm:text-2xl shadow-md shadow-plum-900/15 shrink-0 ring-4 ring-plum-100/60"
+    className: "w-16 h-16 sm:w-18 sm:h-18 rounded-2xl avatar-plum-gradient text-white flex items-center justify-center font-extrabold text-xl sm:text-2xl shadow-md shadow-plum-900/15 shrink-0 ring-4 ring-plum-100/60",
+    style: {
+      background: "linear-gradient(135deg, #4C2365 0%, #7F5D99 100%)",
+      color: "#FFFFFF"
+    }
   }, activePatient.name ? activePatient.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "BL"), /*#__PURE__*/React.createElement("div", {
     className: "space-y-1"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1751,11 +1771,17 @@ function App() {
         startCamera();
       }
     },
-    className: "flex-1 sm:flex-initial py-3.5 px-6 rounded-2xl bg-gradient-to-r from-plum-900 to-violet-700 hover:from-plum-950 hover:to-violet-800 text-white font-bold text-xs sm:text-sm shadow-md shadow-plum-900/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+    className: "flex-1 sm:flex-initial py-3.5 px-6 rounded-2xl btn-plum-primary text-white font-bold text-xs sm:text-sm shadow-md shadow-plum-900/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.02] active:scale-[0.98]",
+    style: {
+      background: "linear-gradient(135deg, #4C2365 0%, #7F5D99 100%)",
+      color: "#FFFFFF"
+    }
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "camera",
-    className: "w-4 h-4"
-  }), /*#__PURE__*/React.createElement("span", null, "Capture New Photo"))))), /*#__PURE__*/React.createElement("div", {
+    className: "w-4 h-4 text-white"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-white font-bold"
+  }, "Capture New Photo"))))), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lg:col-span-8 space-y-6"
@@ -1798,11 +1824,17 @@ function App() {
         startCamera();
       }
     },
-    className: "inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-bold transition-all shadow-sm hover:scale-[1.02]"
+    className: "inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-bold transition-all shadow-sm hover:scale-[1.02]",
+    style: {
+      backgroundColor: "#4C2365",
+      color: "#FFFFFF"
+    }
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "camera",
-    className: "w-3.5 h-3.5"
-  }), /*#__PURE__*/React.createElement("span", null, "Take First Screening Photo"))) :
+    className: "w-3.5 h-3.5 text-white"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-white font-bold"
+  }, "Take First Screening Photo"))) :
   /*#__PURE__*/
   /* POPULATED IMAGE SPOTLIGHT & TIMELINE */
   React.createElement("div", {
@@ -1972,7 +2004,11 @@ function App() {
     }, /*#__PURE__*/React.createElement("div", {
       className: "flex items-center space-x-3 min-w-0"
     }, /*#__PURE__*/React.createElement("div", {
-      className: `w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${isActive ? "bg-plum-900 text-white shadow-xs" : "bg-plum-100/70 text-plum-900"}`
+      className: `w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${isActive ? "bg-plum-900 text-white shadow-xs" : "bg-plum-100/70 text-plum-900"}`,
+      style: {
+        backgroundColor: isActive ? "#4C2365" : "#EFE8F5",
+        color: isActive ? "#FFFFFF" : "#4C2365"
+      }
     }, initials), /*#__PURE__*/React.createElement("div", {
       className: "min-w-0"
     }, /*#__PURE__*/React.createElement("div", {
@@ -2180,12 +2216,18 @@ function App() {
     type: "button",
     onClick: startCamera,
     className: "px-4 py-2 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-semibold transition-colors flex items-center space-x-1.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400",
+    style: {
+      backgroundColor: "#4C2365",
+      color: "#FFFFFF"
+    },
     title: "Start camera stream",
     "aria-label": "Start camera stream"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "refresh-cw",
-    className: "w-3.5 h-3.5"
-  }), /*#__PURE__*/React.createElement("span", null, "Start Camera")), /*#__PURE__*/React.createElement("button", {
+    className: "w-3.5 h-3.5 text-white"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-white font-bold"
+  }, "Start Camera")), /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => {
       setCaptureMode("upload");
@@ -2255,8 +2297,14 @@ function App() {
   }, "Upload Infant Photograph"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-400 mt-1 max-w-xs"
   }, "Select a clear photo of ", activePatient.name, "'s forehead or face under indoor or natural light."), /*#__PURE__*/React.createElement("span", {
-    className: "mt-4 px-4 py-2.5 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-semibold transition-colors min-h-[44px] inline-flex items-center"
-  }, "Browse Local Files"), /*#__PURE__*/React.createElement("input", {
+    className: "mt-4 px-4 py-2.5 rounded-xl bg-plum-900 hover:bg-violet-700 text-white text-xs font-semibold transition-colors min-h-[44px] inline-flex items-center",
+    style: {
+      backgroundColor: "#4C2365",
+      color: "#FFFFFF"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-white font-bold"
+  }, "Browse Local Files")), /*#__PURE__*/React.createElement("input", {
     ref: fileInputRef,
     id: "infant-photo-file-input",
     type: "file",
@@ -2286,14 +2334,20 @@ function App() {
         });
       }
     },
-    className: "flex-1 sm:flex-none py-3 px-6 rounded-2xl bg-gradient-to-r from-plum-900 to-violet-700 hover:from-plum-950 hover:to-violet-800 text-white font-bold text-sm shadow-md shadow-plum-900/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.98] min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2",
+    className: "flex-1 sm:flex-none py-3 px-6 rounded-2xl btn-plum-primary text-white font-bold text-sm shadow-md shadow-plum-900/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.98] min-h-[44px] focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2",
+    style: {
+      background: "linear-gradient(135deg, #4C2365 0%, #7F5D99 100%)",
+      color: "#FFFFFF"
+    },
     title: `Capture photo of ${activePatient.name} and perform screening analysis`,
     "aria-label": `Capture snapshot of ${activePatient.name} and start clinical jaundice screening`
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-4 h-4 rounded-full border-2 border-white flex items-center justify-center"
+    className: "w-4 h-4 rounded-full border-2 border-white flex items-center justify-center shrink-0"
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-2 h-2 rounded-full bg-white"
-  })), /*#__PURE__*/React.createElement("span", null, "Capture & Screen Photo"))))), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("span", {
+    className: "text-white font-bold"
+  }, "Capture & Screen Photo"))))), /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bg-white rounded-3xl border border-lavender-300/60 p-5 shadow-xs space-y-4"
@@ -2828,10 +2882,14 @@ function App() {
   }, /*#__PURE__*/React.createElement("div", {
     className: "absolute inset-0 rounded-full bg-violet-500/20 animate-pulse-ring"
   }), /*#__PURE__*/React.createElement("div", {
-    className: "w-14 h-14 rounded-2xl bg-gradient-to-tr from-plum-900 to-violet-700 flex items-center justify-center text-white shadow-lg shadow-plum-900/30 animate-heartbeat"
+    className: "w-14 h-14 rounded-2xl avatar-plum-gradient flex items-center justify-center text-white shadow-lg shadow-plum-900/30 animate-heartbeat",
+    style: {
+      background: "linear-gradient(135deg, #4C2365 0%, #7F5D99 100%)",
+      color: "#FFFFFF"
+    }
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "heart",
-    className: "w-7 h-7"
+    className: "w-7 h-7 text-white"
   }))), /*#__PURE__*/React.createElement("div", {
     className: "space-y-2"
   }, /*#__PURE__*/React.createElement("h3", {
