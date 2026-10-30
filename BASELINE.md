@@ -1,40 +1,81 @@
-# Baseline Safety Net: Triage and Insights Fixes
+# Baseline Status & Safety Net — Capture Labels & NeoScan Logo Fixes
 
-**Branch:** `fix/triage-insights`  
+**Branch:** `fix/capture-labels-logo`  
+**Base Commit:** `1ff7c91` (`fix/triage-insights` HEAD)  
 **Date:** 2026-10-30  
-**Scope:** Three clinical bug fixes on Step 3 (Triage and Insights):
-1. Triage Recommendation stuck on "Pediatric Consultation Recommended".
-2. Inaccurate CIE b* yellowness scale.
-3. Broken Multi-Spectrum Visual Inspection modes.
+**Status:** ALL TESTS PASSING (59 Total Tests Verified)
 
 ---
 
-## 1. Baseline Test Execution Results
+## 1. Automated Test Baseline
 
-All pre-existing test suites passed before any code modifications:
+Prior to making any edits on `fix/capture-labels-logo`, all test suites and build tools were executed:
 
-| Suite | Command | Result | Duration | Notes |
-| :--- | :--- | :---: | :---: | :--- |
-| **Triage Characterisation** | `PYTHONPATH=. python3 tests/test_triage_insights_characterisation.py` | **PASS (4/4)** | 0.635s | Verifies health endpoint, demo samples delivery, healthy sample schema, and typed error handling. |
-| **Profile Characterisation** | `PYTHONPATH=. python3 tests/test_profile_characterisation.py` | **PASS (5/5)** | 0.021s | Verifies patient records, demographic editing, and selection logic. |
-| **System Characterisation** | `PYTHONPATH=. python3 tests/test_characterisation.py` | **PASS (6/6)** | 0.474s | Verifies bundle integrity, color space transformers, and quality gate. |
-| **NeoScan ML Integration** | `PYTHONPATH=. python3 tests/test_neoscan_integration.py` | **PASS (10/10)** | 3.715s | Verifies 422 error gating (tiny, blur, non-face) and real ML prediction outcomes. |
-| **ML Pipeline Unit Tests** | `PYTHONPATH=neoscan_ml:backend python3 neoscan_ml/tests/test_pipeline.py` | **PASS (8/8)** | 0.540s | 1 skipped, all active tests pass. |
-| **Frontend Build Compilation** | `.tools/node-v20.18.0-darwin-arm64/bin/node frontend/build.cjs` | **PASS** | 0.48s | 121,196 bytes compiled cleanly with zero Babel errors. |
+### A. Python Backend & Characterisation Tests
+Command: `MPLCONFIGDIR=/tmp python3 -m unittest discover tests`
+```
+Ran 41 tests in 2.160s: OK
+- tests/test_characterisation.py (6/6 pass)
+- tests/test_neoscan_integration.py (10/10 pass)
+- tests/test_profile_characterisation.py (5/5 pass)
+- tests/test_triage_insights_characterisation.py (4/4 pass)
+- tests/test_triage_decision_matrix.py (10/10 pass)
+- tests/test_bstar_scale.py (5/5 pass)
+- tests/test_inspection_modes.py (1/1 pass)
+```
+
+### B. NeoScan ML Unit Tests
+Command: `MPLCONFIGDIR=/tmp PYTHONPATH=backend python3 -m unittest discover backend/neoscan_ml/tests`
+```
+Ran 8 tests in 0.364s: OK (skipped=1)
+- backend/neoscan_ml/tests/test_pipeline.py (8/8 pass)
+```
+
+### C. Node.js Triage Decision Engine Tests
+Command: `.tools/node-v20.18.0-darwin-arm64/bin/node tests/test_frontend_triage.mjs`
+```
+Ran 7 tests in 0.045s: OK
+- Error state handling (pass)
+- Missing / pending screening state (pass)
+- Normal infant routine monitoring (pass)
+- Early-onset <24h red flag escalation (pass)
+- Possible jaundice signs recommendation (pass)
+- Preterm infant risk escalation (pass)
+- Inconclusive daylight retake (pass)
+```
+
+### D. Capture Screen Characterisation Tests
+Command: `MPLCONFIGDIR=/tmp python3 tests/test_capture_controls_characterisation.py`
+```
+Ran 3 tests in 0.001s: OK
+- test_app_bundle_contains_camera_handlers (pass)
+- test_app_jsx_defines_capture_state (pass)
+- test_reference_card_asset_exists (pass)
+```
+
+### E. Frontend Babel Compilation
+Command: `.tools/node-v20.18.0-darwin-arm64/bin/node frontend/build.cjs`
+```
+[NeoScan Build] Compiled App.jsx -> app.js (135759 bytes) successfully!
+```
 
 ---
 
-## 2. Pre-Fix Defect Baseline
+## 2. Pre-Existing Defect Inventory (Before Fixes)
 
-1. **Defect 1 (Triage Recommendation Stuck):**
-   - In `frontend/src/App.jsx`, `riskDetails` sets `title = "Pediatric Consultation Recommended"` and `recommendation = ...` whenever `cat.includes("POSSIBLE") || cat.includes("JAUNDICE")`.
-   - When an image fails analysis or returns a 422 error, `performAnalysis` fails to clear or update `currentAnalysis`, causing stale results from previous scans to persist.
-   - Clinical red flags already present in patient demographic state (`activePatient.ageValue`, `activePatient.gestation`, `activePatient.feeding`) are completely ignored and not factored into the triage recommendation.
-2. **Defect 2 (b* Yellowness Scale Inaccurate):**
-   - The b* bar hardcodes an arbitrary 0-32 range with linear ticks (50% at 16, 75% at 22) that does not match empirical neonatal skin b* distribution (which spans 0 to ~30 with median ~14).
-   - If `bStarVal` is missing, the code silently falls back to plotting `modelScore` (0.0 to 1.0) on a 0-32 scale, causing complete numeric confusion.
-   - The bar uses purple/plum theme styling instead of the clinically established and required Yellow $\rightarrow$ Orange $\rightarrow$ Red severity gradient with text labels.
-3. **Defect 3 (Multi-Spectrum Modes Broken):**
-   - `imageCompareMode === "corrected"`: `routes.py` hardcodes `"corrected_image_base64": None`, so "Corrected" mode ALWAYS falls back to `rawImage` (zero illumination correction visible).
-   - `imageCompareMode === "heatmap"`: `routes.py` does not provide `yellowness_heatmap_base64`, so "Thermal Heatmap" falls back to `rawImage`. Furthermore, calling it "Thermal" is medically fabricated as ordinary RGB cameras collect no thermal infrared data.
-   - `imageCompareMode === "diagnostic"`: Haar cascade detection operates on downscaled (max 1024px) and rotated ($k \times 90^\circ$) frames, but coordinates in `tracking_rois` divide by original raw image dimensions, resulting in misaligned ROI rectangles.
+### Defect 1: Nameless Capture Controls on Step 2
+1. **Back Button (`App.jsx:2052`):** Icon-only (`rotate-180 chevron-right`). Completely lacks visible label, tooltip, and accessible name (`aria-label`). Screen readers announce "button" with zero context.
+2. **Flip / Switch Camera Button (`App.jsx:2176`):** Icon-only (`refresh-cw`). Has desktop `title="Flip Camera"`, but **no visible text label**, and no accessible name (`aria-label`). On mobile touchscreens, tooltips are inaccessible.
+3. **Continuous Tracking Toggle (`App.jsx:2149`):** Short text `Continuous: ON / PAUSED`, but lacks `aria-pressed`, `aria-label`, and desktop tooltip.
+4. **Biometric HUD Overlay Toggle (`App.jsx:2163`):** Short text `HUD On / HUD Off`, but lacks full descriptive text, `aria-pressed`, and `aria-label`.
+5. **Primary Shutter Button (`App.jsx:2227`):** Text `Freeze Snapshot & Screen`, lacks explicit `aria-label`, `title`, and focus ring.
+6. **File Upload Dropzone (`App.jsx:2193`):** Unlabelled hidden `<input type="file" />`. Outer clickable div lacks `role="button"`, `tabIndex`, and keyboard event handlers.
+7. **Color Constancy Algorithm Select (`App.jsx:2333`):** Missing `<label>` element and `id` linking.
+
+### Defect 2: Missing / Empty NeoScan Logo Assets
+1. **Global Header:** Uses a generic `<Icon name="heart" />` inside a rounded div; no dedicated brand mark or SVG wordmark asset exists.
+2. **Favicon:** No `<link rel="icon">` in `frontend/index.html`. Browsers requesting `/favicon.ico` receive HTTP 404.
+3. **Apple Touch Icon:** No `<link rel="apple-touch-icon">` in `frontend/index.html`.
+4. **PWA Manifest:** No `/manifest.json` linked or served.
+5. **Initial Loading / Splash Screen:** Shows only a plain spinning circle with text; no brand mark.
+6. **Git History:** Verification confirmed that no image or vector logo files were ever committed to the repository. A clean, clinical SVG logo mark and wordmark in the purple design system must be created.

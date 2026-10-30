@@ -1,79 +1,40 @@
-# Feature Inventory: Triage and Insights Page
+# Feature Inventory — Capture Screen Controls & Brand Logo Locations
 
-**Target View:** NeoScan Step 3 (`currentStep === 3`: "Clinical Triage & Real-Time Insights")  
-**Branch:** `fix/triage-insights`  
+**Branch:** `fix/capture-labels-logo`  
 **Date:** 2026-10-30  
-
-This inventory catalogs every visual element, data field, interactive control, chart, telemetry card, and state on the Triage and Insights page. Every feature listed here must remain fully functional and uncompromised.
-
----
-
-## 1. Top Bar & Patient Context
-| ID | Element / Control | Type | Data Binding / Behavior | Status |
-| :--- | :--- | :--- | :--- | :---: |
-| `TRI-NAV-01` | Step 3 Header Pill | Navigation tab | Highlights active step "3. Triage & Insights" | Preserved |
-| `TRI-NAV-02` | Return to Step 1 / 2 | Buttons | Header wizard pills allow navigating back to Profile or Capture | Preserved |
-| `TRI-CTX-01` | Active Patient Context | Text / metadata | Displays active patient name, age, and gestation | Preserved |
-| `TRI-CTX-02` | Active Image Date | Timestamp | Shows formatted timestamp of active screening frame | Preserved |
+**Status:** COMPLETE AUDIT
 
 ---
 
-## 2. Hero Triage Assessment Card
-| ID | Element / Control | Type | Data Binding / Behavior | Status |
-| :--- | :--- | :--- | :--- | :---: |
-| `TRI-HERO-01` | Hero Card Container | Surface panel | Dynamic background tint and border keyed to triage status | Preserved |
-| `TRI-HERO-02` | Risk Category Badge | Pill badge | Multi-modal badge: SVG icon + category text (`NO VISIBLE SIGNS`, `POSSIBLE JAUNDICE SIGNS`, `INCONCLUSIVE`) | **To Fix (deterministic)** |
-| `TRI-HERO-03` | Headline Title | Heading (h1) | Primary clinical assessment headline | **To Fix (deterministic)** |
-| `TRI-HERO-04` | Recommendation Copy | Paragraph | Detailed clinical triage guidance and next steps | **To Fix (deterministic)** |
-| `TRI-HERO-05` | Reliability Alert Banner | Warning box | Appears when `reliabilityNote` exists (e.g. reduced lighting confidence) | Preserved |
-| `TRI-HERO-06` | Model Score Display | Metric line | Monospace model score (e.g. `0.0820`) with cutoff note | Preserved |
-| `TRI-HERO-07` | CIE b* Yellowness Line | Metric line | Formatted b* dermal yellowness value with 1 decimal place | **To Fix (accurate CIE Lab)** |
-| `TRI-HERO-08` | b* Yellowness Scale Bar | Visual gauge | Horizontal gradient bar with marker indicating level | **To Fix (yellow->orange->red)** |
-| `TRI-HERO-09` | Bilirubin Index (BIx) | Metric line | Optical bilirubin index value (`fh_yi`) | Preserved |
-| `TRI-HERO-10` | Reliability & Confidence | Metric line | Shows "Normal" or "Reduced" with confidence percentage | Preserved |
-| `TRI-CARE-01` | Feeding & Hydration Card | Care tip | Guidance: 8–12 feeds per 24 hours to stimulate bilirubin excretion | Preserved |
-| `TRI-CARE-02` | Daylight Observation Card | Care tip | Guidance: check skin in indirect natural window light | Preserved |
-| `TRI-CARE-03` | When to Call Doctor Card | Care tip | Emergency signs: jaundice spreading to abdomen/legs, lethargy | Preserved |
+## 1. Inventory of Interactive Controls on Step 2 (Capture & Guidance)
+
+| # | Control Name | DOM Element / Ref | Current Label / Appearance | Current Accessible Name (`aria-label` / `title`) | Missing / Defective Properties | Target Fix |
+| :- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1** | **Back to Profile** | `<button onClick={() => setCurrentStep(1)}>` | Icon only: `rotate-180 chevron-right` | None | No visible text, no `aria-label`, no `title`. Screen readers announce "button" with no name. | Add visible text label "Back", `title="Back to Patient Profile"`, `aria-label="Back to Patient Profile"`, $\ge 44\times 44$px touch target. |
+| **2** | **Mode: Live Camera** | `<button onClick={() => setCaptureMode("camera")}>` | Icon (`camera`) + "Live Camera" | None | Missing `aria-pressed`, missing `title`, missing focus ring. | Add `aria-pressed={captureMode === "camera"}`, `title="Switch to live camera capture"`, visible focus ring. |
+| **3** | **Mode: Upload Photo** | `<button onClick={() => setCaptureMode("upload")}>` | Icon (`upload`) + "Upload Photo" | None | Missing `aria-pressed`, missing `title`, missing focus ring. | Add `aria-pressed={captureMode === "upload"}`, `title="Switch to local photo upload"`, visible focus ring. |
+| **4** | **Continuous Stream Toggle** | `<button onClick={() => setContinuousAnalysis(!continuousAnalysis)}>` | Icon (`zap`) + "Continuous: ON / PAUSED" | None | Cryptic label; lacks `aria-pressed`, `aria-label`, and explanatory tooltip. | Add `aria-label="Toggle continuous background tracking analysis"`, `aria-pressed={continuousAnalysis}`, `title="Toggle continuous streaming analysis"`. |
+| **5** | **Framing HUD Guide Toggle** | `<button onClick={() => setShowBiometricOverlay(!showBiometricOverlay)}>` | Icon (`eye`) + "HUD On / HUD Off" | None | Lacks full descriptive label, missing `aria-pressed`, missing `aria-label`. | Add clear visible text "Framing Guide: On / Off", `aria-label="Toggle biometric framing guide overlay"`, `aria-pressed={showBiometricOverlay}`, `title="Toggle anatomical alignment guide"`. |
+| **6** | **Switch Camera** | `<button onClick={toggleCameraFacing}>` | Icon only: `refresh-cw` | `title="Flip Camera"` | **Icon-only button!** No visible text label. Missing `aria-label`. Tooltip inaccessible on mobile devices. | Add visible text label "Switch Camera", `aria-label={`Switch camera (currently ${cameraFacing === "user" ? "front" : "rear"})`}`, `title="Switch between front and rear cameras"`, $\ge 44\times 44$px target. |
+| **7** | **Primary Shutter** | `<button onClick={() => performAnalysis(captureFrame())}>` | Concentric circles + "Freeze Snapshot & Screen" | None | Missing `aria-label`, missing `title`, missing prominent accessible focus ring. | Maintain prominent gradient design; add `aria-label="Capture photograph and start clinical screening analysis"`, `title="Capture and analyze photograph"`, high-contrast focus ring. |
+| **8** | **Upload Dropzone** | `<div onClick={() => fileInputRef.current?.click()}>` | Icon (`upload`) + "Upload Infant Photograph" | None | Not keyboard operable (no `role="button"`, no `tabIndex="0"`, no Enter/Space handler). | Add `role="button"`, `tabIndex="0"`, `onKeyDown` handler, `aria-label="Upload infant photograph for screening"`. |
+| **9** | **Hidden File Input** | `<input ref={fileInputRef} type="file">` | Hidden input | None | Lacks `id`, lacks `aria-label`. | Add `id="infant-photo-file-input"`, `aria-label="Choose infant photograph file from device"`. |
+| **10**| **Download Printable Card** | `<a href="/api/v1/reference-card" target="_blank">` | Text: "Download Printable Card" + arrow | None | Missing open-in-new-tab accessibility notice. | Add `aria-label="Download printable ArUco calibration reference card (opens in a new tab)"`, `title="Download printable ArUco calibration card"`. |
+| **11**| **Color Constancy Accordion** | `<button onClick={() => setAdvancedOpticalOpen(...)}>` | Icon (`sliders`) + "Color Constancy Algorithm" | None | Missing `aria-expanded`, missing `aria-controls`. | Add `aria-expanded={advancedOpticalOpen}`, `aria-controls="optical-method-select"`, `title="Toggle color constancy options"`. |
+| **12**| **Color Constancy Select** | `<select value={correctionMethod}>` | Native dropdown select | None | Unlabelled form control! No `<label>` or `id`. | Add `<label htmlFor="optical-method-select" className="sr-only">Color Constancy Algorithm</label>`, `id="optical-method-select"`, `aria-label="Select color constancy normalization method"`. |
+| **13**| **Retake Photo (in Error Banner)** | `<button onClick={() => { setError(null); setCurrentStep(2); }}>` | Icon (`camera`) + "Retake Photo" | None | Lacks `aria-label` and `title`. | Add `aria-label="Dismiss error and retake infant photograph"`, `title="Retake screening photo"`. |
+| **14**| **Dismiss (in Error Banner)** | `<button onClick={() => setError(null)}>` | Text: "Dismiss" | None | Lacks `aria-label` and `title`. | Add `aria-label="Dismiss this error banner"`, `title="Dismiss notice"`. |
+| **15**| **Close (in Error Banner)** | `<button onClick={() => setError(null)}>` | Icon only: `x` | `title="Dismiss"` | Lacks `aria-label`. | Add `aria-label="Close error alert"`. |
 
 ---
 
-## 3. Multi-Spectrum Visual Inspection Viewport
-| ID | Element / Control | Type | Data Binding / Behavior | Status |
-| :--- | :--- | :--- | :--- | :---: |
-| `TRI-SPEC-01` | Viewport Section Header | Title & subtext | "Multi-Spectrum Visual Inspection" description | Preserved |
-| `TRI-MODE-01` | "Corrected" Mode Tab | Button | Switches to illumination-normalized view | **To Fix (real corrected image)** |
-| `TRI-MODE-02` | "Original Raw" Mode Tab | Button | Switches to uncorrected original input photo | **To Fix (true original, orientation)** |
-| `TRI-MODE-03` | "Diagnostic ROIs" Mode Tab | Button | Switches to aligned anatomical landmark contours | **To Fix (true-aligned ROIs)** |
-| `TRI-MODE-04` | "Thermal Heatmap" Mode Tab | Button | Switches to dermal yellowness heatmap | **To Fix (relabel to Yellowness Heatmap & real b* map)** |
-| `TRI-FRAME-01` | Visual Viewport Frame | Display frame | Aspect ratio 16:10 / video container displaying selected mode | Preserved |
-| `TRI-PILL-01` | Viewport Floating Badge | Metadata pill | Overlaid indicator confirming active inspection mode | Preserved |
+## 2. Inventory of Brand Identity & Logo Locations
 
----
-
-## 4. Clinical Insights & Technical Breakdown Accordion
-| ID | Element / Control | Type | Data Binding / Behavior | Status |
-| :--- | :--- | :--- | :--- | :---: |
-| `TRI-ACC-01` | Accordion Toggle Bar | Interactive header | Clicking expands / collapses clinical telemetry breakdown | Preserved |
-| `TRI-TAB-01` | Sub-tab: Optical Normalization | Tab button | Displays active method, ambient CCT, sharpness, dermal coverage | Preserved |
-| `TRI-TAB-02` | Sub-tab: Biometric ROIs | Tab button | Displays landmark table (forehead, cheeks) with raw & corrected b* | Preserved |
-| `TRI-TAB-03` | Sub-tab: Model & Gating | Tab button | Displays model version, quality gates, screening score, disclaimer | Preserved |
-| `TRI-DISC-01` | Screening Disclosures Box | Alert callout | Persistent AAP screening limitation disclaimer | Preserved |
-
----
-
-## 5. Longitudinal History Timeline Strip
-| ID | Element / Control | Type | Data Binding / Behavior | Status |
-| :--- | :--- | :--- | :--- | :---: |
-| `TRI-HIST-01` | Longitudinal Strip Header | Title & count | Displays `{activePatient.name}'s Longitudinal Screenings ({count})` | Preserved |
-| `TRI-HIST-02` | Historical Thumbnail Cards | Interactive cards | Clicking any frame sets `activeImageId` and inspects its result | Preserved |
-| `TRI-HIST-03` | Active Frame Ring | Visual indicator | Highlights currently displayed frame in timeline | Preserved |
-| `TRI-HIST-04` | Scan Version Badge | Pill badge | Labeled `v2.0` (neoscan_ml) or `Legacy` | Preserved |
-
----
-
-## 6. Global Modals, Banners & Footers
-| ID | Element / Control | Type | Data Binding / Behavior | Status |
-| :--- | :--- | :--- | :--- | :---: |
-| `TRI-ERR-01` | Error Notification Banner | Dismissible banner | Appears on 422/503 errors with error code, message, hint, and Retake | Preserved |
-| `TRI-LOAD-01` | Calming Heartbeat Modal | Overlay modal | Displays rotating progress message and pulsing heart during analysis | Preserved |
-| `TRI-FOOT-01` | Medical Disclaimer Footer | Global footer | AAP legal screening aid disclaimer across all views | Preserved |
+| Location | Component / File | Current Implementation | Defect Analysis | Target Fix |
+| :--- | :--- | :--- | :--- | :--- |
+| **Global Navigation Header** | `frontend/src/App.jsx:1342` | Gradient rounded div with `<Icon name="heart" />` + text "NeoScan" | Generic heart icon, not an authentic medical imaging brand mark. Lacks SVG asset fallback and explicit accessibility label. | Implement dedicated `NeoScanLogo` component featuring the authentic optical shield brand mark, wordmark, `alt="NeoScan Pediatric Screening"`, and text fallback. |
+| **Browser Tab Favicon** | `frontend/index.html` | None. Browser requests `/favicon.ico` $\rightarrow$ 404 Not Found. | Tab icon is blank/empty across Chrome, Safari, Firefox. | Add scalable `favicon.svg` and `favicon.ico` in the Deep Plum & Violet palette. Link in `index.html` `<head>`. Serve via FastAPI. |
+| **Apple Touch Icon** | `frontend/index.html` | None. Missing from `<head>`. | Blank icon when saved to iOS / iPadOS home screen. | Add high-resolution `apple-touch-icon.png` (180x180) and link in `<head>`. |
+| **PWA Web App Manifest** | `frontend/index.html` | None. No manifest file exists. | Missing PWA install metadata, theme color, and mobile splash icon. | Add `manifest.json` with theme color `#4C2365`, background `#F7F3FA`, and icons. Link via `<link rel="manifest">`. |
+| **Initial Loading / Splash** | `frontend/index.html:140` | Plain CSS spinning circle with text. | No brand mark or visual logo shown during pre-hydration loading. | Integrate the SVG brand logo mark directly above the spinner in `index.html`. |
+| **Sticky Condensed Header** | `frontend/src/App.jsx:1515` | Avatar initials "BL" + patient name. | No home/brand anchor in condensed view. | Ensure brand identity remains clear and accessible. |
